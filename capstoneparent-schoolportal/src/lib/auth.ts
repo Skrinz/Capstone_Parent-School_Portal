@@ -8,6 +8,10 @@ export interface AuthUser {
 
 const AUTH_STORAGE_KEY = "dummyAuthUser";
 
+export const setAuthUser = (user: AuthUser): void => {
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+};
+
 export const clearAuthUser = (): void => {
   localStorage.removeItem(AUTH_STORAGE_KEY);
 };

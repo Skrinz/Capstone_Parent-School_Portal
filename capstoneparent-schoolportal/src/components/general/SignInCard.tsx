@@ -36,13 +36,23 @@ export const SignInCard = () => {
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
 
+		const normalizedEmail = email.trim().toLowerCase()
+
 		const matchedAccount = dummyAccounts.find(
 			(account) =>
-				account.email.toLowerCase() === email.trim().toLowerCase() &&
-				account.password === password,
+				account.email.toLowerCase() === normalizedEmail,
 		)
 
 		if (!matchedAccount) {
+			setErrorMessage("Invalid email or password.")
+			return
+		}
+
+		const passwordKey = `dummyAuthPassword:${matchedAccount.email.toLowerCase()}`
+		const savedOverridePassword = localStorage.getItem(passwordKey)
+		const effectivePassword = savedOverridePassword ?? matchedAccount.password
+
+		if (password !== effectivePassword) {
 			setErrorMessage("Invalid email or password.")
 			return
 		}

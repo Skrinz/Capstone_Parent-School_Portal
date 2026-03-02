@@ -1,14 +1,16 @@
 import { X } from "lucide-react";
 import { useEffect } from "react";
+import { cn } from "@/lib/utils";
 
 interface ModalProps {
 	isOpen: boolean;
 	onClose: () => void;
 	title: string;
 	children: React.ReactNode;
+	contentClassName?: string;
 }
 
-export const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
+export const Modal = ({ isOpen, onClose, title, children, contentClassName }: ModalProps) => {
 	useEffect(() => {
 		if (isOpen) {
 			document.body.style.overflow = "hidden";
@@ -32,7 +34,10 @@ export const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
 
 			{/* Modal Content */}
 			<div
-				className="relative bg-yellow-100 rounded-lg shadow-2xl w-full max-w-lg mx-4 animate-in zoom-in-95 duration-200"
+				className={cn(
+					"relative mx-4 w-full max-w-lg rounded-lg bg-yellow-100 shadow-2xl animate-in zoom-in-95 duration-200",
+					contentClassName
+				)}
 				onClick={(e) => e.stopPropagation()}
 			>
 				{/* Header */}
