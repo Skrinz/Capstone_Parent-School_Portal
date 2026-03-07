@@ -1,19 +1,32 @@
 const prisma = require("../config/database");
-const fs = require("fs");
+const { uploadFile, attachSignedUrls } = require("../utils/supabaseStorage");
 
-// optional supabase client for storage uploads
-let supabase;
-if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
-  const { createClient } = require("@supabase/supabase-js");
-  supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY,
+/**
+ * Enrich a registration object by replacing bare file records with
+ * ones that also carry a fresh signed_url field.
+ */
+const enrichRegistrationFiles = async (registration) => {
+  if (!registration?.files?.length) return registration;
+
+  const enrichedFiles = await attachSignedUrls(
+    registration.files.map((pf) => pf.file),
   );
-}
+
+  return {
+    ...registration,
+    files: registration.files.map((pf, i) => ({
+      ...pf,
+      file: enrichedFiles[i],
+    })),
+  };
+};
 
 const parentsService = {
+  /**
+   * Upload multer files to Supabase Storage and persist File records.
+   * file_path stores the Supabase storage object path, NOT a URL.
+   */
   async createFiles(files, uploaded_by) {
-    // Check if uploader exists
     const uploader = await prisma.user.findUnique({
       where: { user_id: uploaded_by },
     });
@@ -22,54 +35,37 @@ const parentsService = {
     }
 
     const created = [];
+
     for (const f of files) {
-      let storedPath = f.path;
-
-      if (supabase) {
-        const bucket = process.env.SUPABASE_BUCKET || "parent-docs";
-        const destPath = `${Date.now()}_${f.originalname}`;
-        const { data, error } = await supabase.storage
-          .from(bucket)
-          .upload(destPath, fs.createReadStream(f.path), {
-            upsert: false,
-          });
-
-        if (error) {
-          console.error("Supabase upload error:", error.message || error);
-        } else {
-          storedPath = `${process.env.SUPABASE_URL}/storage/v1/object/public/${bucket}/${destPath}`;
-        }
-        fs.unlink(f.path, () => {});
-      }
+      // uploadFile returns the storage path, e.g. "1715000000000_abc123.pdf"
+      const storagePath = await uploadFile(f);
 
       const file = await prisma.file.create({
         data: {
           file_name: f.originalname,
-          file_path: storedPath,
+          file_path: storagePath, // storage path — signed URL generated on read
           file_type: f.mimetype,
           file_size: f.size,
           uploaded_by,
         },
       });
+
       created.push(file);
     }
+
     return created;
   },
 
   async submitRegistration({ parent_id, student_ids, file_ids }) {
-    // Coerce IDs to integers — form data and JSON arrays may contain strings
+    // Coerce to integers — form-data values arrive as strings
     const parsedStudentIds = (student_ids || []).map((id) => parseInt(id, 10));
     const parsedFileIds = (file_ids || []).map((id) => parseInt(id, 10));
 
-    // Check if parent exists
     const parent = await prisma.user.findUnique({
       where: { user_id: parent_id },
     });
-    if (!parent) {
-      throw new Error("Parent not found");
-    }
+    if (!parent) throw new Error("Parent not found");
 
-    // Check if parent already has a pending or verified registration
     const existingRegistration = await prisma.parentRegistration.findFirst({
       where: {
         parent_id,
@@ -80,7 +76,6 @@ const parentsService = {
       throw new Error("Parent already has an active or pending registration");
     }
 
-    // Check if all students exist
     const students = await prisma.student.findMany({
       where: { student_id: { in: parsedStudentIds } },
     });
@@ -88,7 +83,6 @@ const parentsService = {
       throw new Error("One or more students not found");
     }
 
-    // Check if all file IDs exist
     if (parsedFileIds.length > 0) {
       const files = await prisma.file.findMany({
         where: { file_id: { in: parsedFileIds } },
@@ -108,28 +102,16 @@ const parentsService = {
         },
         files:
           parsedFileIds.length > 0
-            ? {
-                create: parsedFileIds.map((fileId) => ({
-                  file_id: fileId,
-                })),
-              }
+            ? { create: parsedFileIds.map((fileId) => ({ file_id: fileId })) }
             : undefined,
       },
       include: {
-        students: {
-          include: {
-            student: true,
-          },
-        },
-        files: {
-          include: {
-            file: true,
-          },
-        },
+        students: { include: { student: true } },
+        files: { include: { file: true } },
       },
     });
 
-    return registration;
+    return enrichRegistrationFiles(registration);
   },
 
   async getAllRegistrations({ page, limit, status }) {
@@ -137,9 +119,7 @@ const parentsService = {
     const take = parseInt(limit);
 
     const where = {};
-    if (status) {
-      where.status = status;
-    }
+    if (status) where.status = status;
 
     const [registrations, total] = await Promise.all([
       prisma.parentRegistration.findMany({
@@ -157,36 +137,23 @@ const parentsService = {
             },
           },
           students: {
-            include: {
-              student: {
-                include: {
-                  grade_level: true,
-                },
-              },
-            },
+            include: { student: { include: { grade_level: true } } },
           },
-          files: {
-            include: {
-              file: true,
-            },
-          },
-          verifier: {
-            select: {
-              user_id: true,
-              fname: true,
-              lname: true,
-            },
-          },
+          files: { include: { file: true } },
+          verifier: { select: { user_id: true, fname: true, lname: true } },
         },
-        orderBy: {
-          submitted_at: "desc",
-        },
+        orderBy: { submitted_at: "desc" },
       }),
       prisma.parentRegistration.count({ where }),
     ]);
 
+    // Attach signed URLs to every registration's files in parallel
+    const enriched = await Promise.all(
+      registrations.map((r) => enrichRegistrationFiles(r)),
+    );
+
     return {
-      registrations,
+      registrations: enriched,
       pagination: {
         total,
         page: parseInt(page),
@@ -210,66 +177,35 @@ const parentsService = {
           },
         },
         students: {
-          include: {
-            student: {
-              include: {
-                grade_level: true,
-              },
-            },
-          },
+          include: { student: { include: { grade_level: true } } },
         },
-        files: {
-          include: {
-            file: true,
-          },
-        },
-        verifier: {
-          select: {
-            user_id: true,
-            fname: true,
-            lname: true,
-          },
-        },
+        files: { include: { file: true } },
+        verifier: { select: { user_id: true, fname: true, lname: true } },
       },
     });
 
-    if (!registration) {
-      throw new Error("Registration not found");
-    }
+    if (!registration) throw new Error("Registration not found");
 
-    return registration;
+    return enrichRegistrationFiles(registration);
   },
 
   async verifyRegistration({ pr_id, status, remarks, verified_by }) {
-    // Check if registration exists
     const existingRegistration = await prisma.parentRegistration.findUnique({
       where: { pr_id },
     });
-    if (!existingRegistration) {
-      throw new Error("Registration not found");
-    }
-
-    // Check if registration is already verified or rejected
+    if (!existingRegistration) throw new Error("Registration not found");
     if (existingRegistration.status !== "PENDING") {
       throw new Error("Registration has already been processed");
     }
 
-    // Check if verifier exists
     const verifier = await prisma.user.findUnique({
       where: { user_id: verified_by },
     });
-    if (!verifier) {
-      throw new Error("Verifier not found");
-    }
+    if (!verifier) throw new Error("Verifier not found");
 
     const registration = await prisma.parentRegistration.update({
       where: { pr_id },
-      data: {
-        status,
-        remarks,
-        verified_by,
-        verified_at: new Date(),
-      },
+      data: { status, remarks, verified_by, verified_at: new Date() },
       include: {
         parent: {
           select: {
@@ -280,15 +216,10 @@ const parentsService = {
             account_status: true,
           },
         },
-        students: {
-          include: {
-            student: true,
-          },
-        },
+        students: { include: { student: true } },
       },
     });
 
-    // If the registration was approved, activate the parent account
     if (status === "VERIFIED" && registration.parent) {
       await prisma.user.update({
         where: { user_id: registration.parent.user_id },
@@ -300,97 +231,61 @@ const parentsService = {
   },
 
   async getMyChildren(parentId) {
-    // Check if parent exists
     const parent = await prisma.user.findUnique({
       where: { user_id: parentId },
     });
-    if (!parent) {
-      throw new Error("Parent not found");
-    }
+    if (!parent) throw new Error("Parent not found");
 
     const verifiedRegistrations = await prisma.parentRegistration.findMany({
-      where: {
-        parent_id: parentId,
-        status: "VERIFIED",
-      },
+      where: { parent_id: parentId, status: "VERIFIED" },
       include: {
         students: {
-          include: {
-            student: {
-              include: {
-                grade_level: true,
-              },
-            },
-          },
+          include: { student: { include: { grade_level: true } } },
         },
       },
     });
 
-    const children = verifiedRegistrations.flatMap((reg) =>
+    return verifiedRegistrations.flatMap((reg) =>
       reg.students.map((s) => s.student),
     );
-
-    return children;
   },
 
   async getChildGrades({ parent_id, student_id }) {
-    // Verify parent has access to this child
     const hasAccess = await prisma.parentRegistration.findFirst({
       where: {
         parent_id,
         status: "VERIFIED",
-        students: {
-          some: { student_id },
-        },
+        students: { some: { student_id } },
       },
     });
-    if (!hasAccess) {
-      throw new Error("Access denied to this student record");
-    }
+    if (!hasAccess) throw new Error("Access denied to this student record");
 
-    const grades = await prisma.subjectRecordStudent.findMany({
+    return prisma.subjectRecordStudent.findMany({
       where: { student_id },
       include: {
         subject_record: {
           include: {
-            teacher: {
-              select: {
-                user_id: true,
-                fname: true,
-                lname: true,
-              },
-            },
+            teacher: { select: { user_id: true, fname: true, lname: true } },
           },
         },
       },
     });
-
-    return grades;
   },
 
   async getChildAttendance({ parent_id, student_id }) {
-    // Verify parent has access to this child
     const hasAccess = await prisma.parentRegistration.findFirst({
       where: {
         parent_id,
         status: "VERIFIED",
-        students: {
-          some: { student_id },
-        },
+        students: { some: { student_id } },
       },
     });
-    if (!hasAccess) {
-      throw new Error("Access denied to this student record");
-    }
+    if (!hasAccess) throw new Error("Access denied to this student record");
 
-    const attendance = await prisma.attendanceRecord.findMany({
+    return prisma.attendanceRecord.findMany({
       where: { student_id },
-      orderBy: {
-        month: "asc",
-      },
+      orderBy: { month: "asc" },
     });
-
-    return attendance;
   },
 };
 

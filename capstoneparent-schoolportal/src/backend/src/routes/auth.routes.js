@@ -79,21 +79,6 @@ router.post(
   validate,
   authController.verifyOTP,
 );
-router.post(
-  "/send-email-otp",
-  [body("email").isEmail().normalizeEmail()],
-  validate,
-  authController.sendOTP,
-);
-router.post(
-  "/verify-email-otp",
-  [
-    body("email").isEmail().normalizeEmail(),
-    body("otpCode").isLength({ min: 6, max: 6 }),
-  ],
-  validate,
-  authController.verifyOTP,
-);
 
 // ─── Authenticated routes ────────────────────────────────────────────────────
 

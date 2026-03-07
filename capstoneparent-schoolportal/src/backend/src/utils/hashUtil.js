@@ -17,7 +17,7 @@ const comparePassword = async (password, hashedPassword) => {
 };
 
 /**
- * Generate device token
+ * Generate a cryptographically random device token (SHA-256 hex)
  */
 const generateDeviceToken = () => {
   const token = crypto.randomBytes(32).toString("hex");
@@ -31,17 +31,9 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-/**
- * Hash device token using SHA-256
- */
-const hashDeviceToken = (token) => {
-  return crypto.createHash("sha256").update(token).digest("hex");
-};
-
 module.exports = {
   hashPassword,
   comparePassword,
   generateDeviceToken,
   generateOTP,
-  hashDeviceToken,
 };
