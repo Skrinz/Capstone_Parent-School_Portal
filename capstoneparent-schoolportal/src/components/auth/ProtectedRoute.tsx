@@ -1,4 +1,5 @@
 import { Navigate, useLocation } from "react-router-dom";
+import type { ReactElement } from "react";
 import {
   getAuthUser,
   getDefaultRouteForRole,
@@ -7,7 +8,7 @@ import {
 } from "@/lib/auth";
 
 interface ProtectedRouteProps {
-  children: JSX.Element;
+  children: ReactElement;
   allowedRoles?: UserRole[];
 }
 

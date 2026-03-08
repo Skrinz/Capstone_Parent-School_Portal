@@ -93,38 +93,40 @@ export const ManageCategories = () => {
             </button>
           </div>
 
-          <div className="w-full max-w-md">
+          <div className="mx-auto w-full max-w-md">
             <Input
               placeholder="Search category..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-md focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="rounded-md border border-gray-300 px-4 py-2 text-center focus-visible:ring-2 focus-visible:ring-blue-500"
             />
             <div className="mt-4 bg-white rounded-lg border border-gray-200 overflow-hidden">
                 {filtered.map((c) => (
                   <div
                     key={c}
-                    className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 last:border-b-0"
+                    className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 last:border-b-0"
                   >
-                    <span>{c}</span>
-                    <button
-                      type="button"
-                      onClick={() => openEditCategoryModal(c)}
-                      className="rounded-md bg-(--button-green) px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-(--button-hover-green)"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteCategory(c)}
-                      className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-red-700"
-                    >
-                      Delete
-                    </button>
+                    <span className="min-w-32 text-left">{c}</span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => openEditCategoryModal(c)}
+                        className="rounded-md bg-(--button-green) px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-(--button-hover-green)"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCategory(c)}
+                        className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-red-700"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 ))}
                 {filtered.length === 0 && (
-                  <div className="p-4 text-gray-500">
+                  <div className="p-4 text-center text-gray-500">
                     No categories found.
                   </div>
                 )}

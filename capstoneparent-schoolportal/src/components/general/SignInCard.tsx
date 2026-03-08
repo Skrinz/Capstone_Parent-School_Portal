@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Link, useNavigate } from "react-router-dom"
+import { setAuthUser } from "@/lib/auth"
 
 type DummyRole = "admin" | "teacher" | "librarian" | "parent"
 
@@ -21,9 +22,9 @@ const dummyAccounts: DummyAccount[] = [
 ]
 
 const roleRedirectPath: Record<DummyRole, string> = {
-	admin: "/staffview",
-	teacher: "/staffview",
-	librarian: "/staffview",
+	admin: "/adminview",
+	teacher: "/teacherview",
+	librarian: "/librarianview",
 	parent: "/parentview",
 }
 
@@ -58,14 +59,11 @@ export const SignInCard = () => {
 		}
 
 		setErrorMessage("")
-		localStorage.setItem(
-			"dummyAuthUser",
-			JSON.stringify({
-				email: matchedAccount.email,
-				name: matchedAccount.name,
-				role: matchedAccount.role,
-			}),
-		)
+		setAuthUser({
+			email: matchedAccount.email,
+			name: matchedAccount.name,
+			role: matchedAccount.role,
+		})
 
 		navigate(roleRedirectPath[matchedAccount.role])
 	}

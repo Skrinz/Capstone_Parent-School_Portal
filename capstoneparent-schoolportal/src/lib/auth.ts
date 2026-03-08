@@ -7,6 +7,13 @@ export interface AuthUser {
 }
 
 const AUTH_STORAGE_KEY = "dummyAuthUser";
+const VALID_USER_ROLES: UserRole[] = [
+  "admin",
+  "teacher",
+  "librarian",
+  "parent",
+  "staff",
+];
 
 export const setAuthUser = (user: AuthUser): void => {
   localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
@@ -22,16 +29,21 @@ export const getAuthUser = (): AuthUser | null => {
 
   try {
     const parsedUser = JSON.parse(rawAuthUser) as Partial<AuthUser>;
+    const normalizedRole = String(parsedUser.role ?? "").toLowerCase();
     if (
       !parsedUser ||
       !parsedUser.email ||
       !parsedUser.name ||
-      !parsedUser.role
+      !VALID_USER_ROLES.includes(normalizedRole as UserRole)
     ) {
       return null;
     }
 
-    return parsedUser as AuthUser;
+    return {
+      email: parsedUser.email,
+      name: parsedUser.name,
+      role: normalizedRole as UserRole,
+    };
   } catch {
     return null;
   }
