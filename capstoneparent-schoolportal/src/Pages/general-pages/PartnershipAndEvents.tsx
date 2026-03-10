@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/general/Navbar";
+import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
 import { partnershipEvents } from "@/lib/partnershipEvents";
 import { ArrowUpRight, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -69,7 +69,7 @@ export const PartnershipAndEvents = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <Navbar />
+      <RoleAwareNavbar />
       <main className="max-w-7xl mx-auto py-10 px-4">
         <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>

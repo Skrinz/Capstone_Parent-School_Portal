@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { NavbarStaff } from "@/components/staff/NavbarStaff"
+import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar"
 import { AnnouncementNavbar } from "@/components/staff/AnnouncementNavbar"
 import { AnnouncementPostFeed, type AnnouncementPostItem } from "@/components/staff/AnnouncementPostFeed"
 import { CreateAnnouncementModal } from "@/components/staff/CreateAnnouncementModal"
@@ -26,7 +26,7 @@ export const EditMemorandumAnnouncement = () => {
 
 	return (
 		<div className="min-h-screen bg-white">
-			<NavbarStaff />
+			<RoleAwareNavbar />
 			<AnnouncementNavbar />
 			<AnnouncementPostFeed
 				posts={posts}

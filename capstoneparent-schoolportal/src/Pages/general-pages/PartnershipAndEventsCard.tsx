@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/general/Navbar";
+import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
 import {
 	getPartnershipEventBySlug,
 	partnershipEvents,
@@ -55,7 +55,7 @@ export const PartnershipAndEventsCard = () => {
 	if (!event) {
 		return (
 			<div className="min-h-screen bg-white">
-				<Navbar />
+				<RoleAwareNavbar />
 				<main className="mx-auto max-w-3xl px-4 py-16">
 					<section className="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-black/5">
 						<h1 className="text-3xl font-bold text-gray-900">Event not found</h1>
@@ -77,7 +77,7 @@ export const PartnershipAndEventsCard = () => {
 
 	return (
 		<div className="min-h-screen bg-white">
-			<Navbar />
+			<RoleAwareNavbar />
 
 			<main className="mx-auto max-w-7xl px-4 py-10">
 				<div className="mb-6">
