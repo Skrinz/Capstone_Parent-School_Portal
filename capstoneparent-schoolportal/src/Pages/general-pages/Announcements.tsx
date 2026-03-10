@@ -11,7 +11,6 @@ export const Announcements = () => {
   const isStaffAnnouncementUser =
     normalizedRole === "admin" ||
     normalizedRole === "teacher" ||
-    normalizedRole === "librarian" ||
     normalizedRole === "staff" ||
     normalizedRole === "principal";
 

@@ -181,7 +181,7 @@ const App = () => {
       <Route
         path="/generalannouncement"
         element={
-          <ProtectedRoute allowedRoles={["admin", "teacher", "librarian", "staff"]}>
+          <ProtectedRoute allowedRoles={["admin", "teacher", "staff"]}>
             <EditGeneralAnnouncement />
           </ProtectedRoute>
         }
@@ -189,7 +189,7 @@ const App = () => {
       <Route
         path="/staffannouncement"
         element={
-          <ProtectedRoute allowedRoles={["admin", "teacher", "librarian", "staff"]}>
+          <ProtectedRoute allowedRoles={["admin", "teacher", "staff"]}>
             <EditStaffAnnouncement />
           </ProtectedRoute>
         }
@@ -197,7 +197,7 @@ const App = () => {
       <Route
         path="/memorandumannouncement"
         element={
-          <ProtectedRoute allowedRoles={["admin", "teacher", "librarian", "staff"]}>
+          <ProtectedRoute allowedRoles={["admin", "teacher", "staff"]}>
             <EditMemorandumAnnouncement />
           </ProtectedRoute>
         }
