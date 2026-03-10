@@ -31,6 +31,12 @@ router.post(
         "Principal",
         "Vice_Principal",
       ]),
+    body("student_ids")
+      .optional()
+      .customSanitizer((value) => {
+        if (Array.isArray(value)) return value;
+        return [value];
+      }),
     body("student_ids").optional().isArray({ min: 1 }),
     body("student_ids.*").optional().isInt(),
   ],
@@ -42,6 +48,17 @@ router.post(
 // Response includes the first deviceToken — client must store it
 router.post(
   "/verify-registration-otp",
+  [
+    body("email").isEmail().normalizeEmail(),
+    body("otpCode").isLength({ min: 6, max: 6 }),
+  ],
+  validate,
+  authController.verifyRegistrationOTP,
+);
+
+// Alias for clients using verify-otp-code naming
+router.post(
+  "/verify-otp-code",
   [
     body("email").isEmail().normalizeEmail(),
     body("otpCode").isLength({ min: 6, max: 6 }),

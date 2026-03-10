@@ -1,30 +1,32 @@
+import { Link } from "react-router-dom";
+
 export const RecordsDropdown = () => {
   return (
     <div className="absolute mt-2 w-48 bg-(--navbar-bg) border border-gray-200 rounded-md shadow-lg z-10">
-      <a
-        href="/record1"
+      <Link
+        to="/generalannouncement"
         className="block px-4 py-2 text-gray-800 hover:bg-gray-100"
       >
-        record 1
-      </a>
-      <a
-        href="/record2"
+        General Announcements
+      </Link>
+      <Link
+        to="/staffannouncement"
         className="block px-4 py-2 text-gray-800 hover:bg-gray-100"
       >
-        record 2
-      </a>
-      <a
-        href="/record3"
+        Staff Announcements
+      </Link>
+      <Link
+        to="/memorandumannouncement"
         className="block px-4 py-2 text-gray-800 hover:bg-gray-100"
       >
-        record 3
-        </a>
-      <a
-        href="/record4"
+        Memorandums
+      </Link>
+      <Link
+        to="/staffview"
         className="block px-4 py-2 text-gray-800 hover:bg-gray-100"
       >
-        record 4
-      </a>
+        Staff Dashboard
+      </Link>
     </div>
   );
 };

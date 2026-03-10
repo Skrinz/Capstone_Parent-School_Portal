@@ -8,6 +8,7 @@ import { ForgotPassword } from "./Pages/general-pages/ForgotPassword";
 import { HomePage } from "./Pages/general-pages/HomePage";
 import { Login } from "./Pages/general-pages/Login";
 import { PartnershipAndEvents } from "./Pages/general-pages/PartnershipAndEvents";
+import { PartnershipAndEventsCard } from "./Pages/general-pages/PartnershipAndEventsCard";
 import { Register } from "./Pages/general-pages/Register";
 
 {/*General Sub Pages */}
@@ -37,9 +38,9 @@ import { ClassList } from "./Pages/teacher-pages/ClassList";
 
 {/*Staff Sub Pages */}
 import { StaffView } from "./Pages/staff-pages/StaffView";
-import { GeneralAnnouncement } from "./Pages/staff-pages/announcement-pages/GeneralAnnouncement";
-import { StaffAnnouncement } from "./Pages/staff-pages/announcement-pages/StaffAnnouncement";
-import { MemorandumAnnouncement } from "./Pages/staff-pages/announcement-pages/MemorandumAnnouncemnt";
+import { EditGeneralAnnouncement } from "./Pages/staff-pages/edit-announcement-pages/EditGeneralAnnouncement";
+import { EditStaffAnnouncement } from "./Pages/staff-pages/edit-announcement-pages/EditStaffAnnoucement";
+import { EditMemorandumAnnouncement } from "./Pages/staff-pages/edit-announcement-pages/EditMemorandumAnnouncement";
 
 {/*Librarian Sub Pages */}
 import { LibrarianView } from "./Pages/librarian-pages/LibrarianView";
@@ -64,6 +65,7 @@ const App = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/partnership&events" element={<PartnershipAndEvents />} />
+      <Route path="/partnership&events/:eventSlug" element={<PartnershipAndEventsCard />} />
 
       {/*General Sub Pages */}
       <Route path="/contactus" element={<ContactUs />} />
@@ -179,24 +181,24 @@ const App = () => {
       <Route
         path="/generalannouncement"
         element={
-          <ProtectedRoute allowedRoles={["admin", "teacher", "librarian", "staff"]}>
-            <GeneralAnnouncement />
+          <ProtectedRoute allowedRoles={["admin", "teacher", "staff"]}>
+            <EditGeneralAnnouncement />
           </ProtectedRoute>
         }
       />
       <Route
         path="/staffannouncement"
         element={
-          <ProtectedRoute allowedRoles={["admin", "teacher", "librarian", "staff"]}>
-            <StaffAnnouncement />
+          <ProtectedRoute allowedRoles={["admin", "teacher", "staff"]}>
+            <EditStaffAnnouncement />
           </ProtectedRoute>
         }
       />
       <Route
         path="/memorandumannouncement"
         element={
-          <ProtectedRoute allowedRoles={["admin", "teacher", "librarian", "staff"]}>
-            <MemorandumAnnouncement />
+          <ProtectedRoute allowedRoles={["admin", "teacher", "staff"]}>
+            <EditMemorandumAnnouncement />
           </ProtectedRoute>
         }
       />

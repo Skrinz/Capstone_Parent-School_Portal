@@ -1,29 +1,51 @@
-import { useState } from "react";
-import { CreateAnnouncementModal } from "@/components/staff/CreateAnnouncementModal";
-import { NavbarStaff } from "@/components/staff/NavbarStaff";
-import { AnnouncementNavbar } from "@/components/staff/AnnouncementNavbar";
-import { Button } from "@/components/ui/button";
+import { useState } from "react"
+import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar"
+import { AnnouncementNavbar } from "@/components/staff/AnnouncementNavbar"
+import { AnnouncementPostFeed, type AnnouncementPostItem } from "@/components/staff/AnnouncementPostFeed"
+import { CreateAnnouncementModal } from "@/components/staff/CreateAnnouncementModal"
+import { EditAnnouncementModal } from "@/components/staff/EditAnnouncementModal"
+import { useAnnouncementPosts } from "@/hooks/useAnnouncementPosts"
 
 export const EditStaffAnnouncement = () => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const { posts, createPost } = useAnnouncementPosts("staffs")
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
-    const handleCreate = (data: { title: string; content: string; category: string }) => {
-        console.log("New announcement created:", data);
-        // TODO: Implement API call or state update to save the announcement
-    };
+    const handleCreate = (data: {
+        title: string
+        content: string
+        category: "general" | "staffs" | "memorandum"
+    }) => {
+        createPost(data)
+    }
+
+    const handleOpenEdit = (post: AnnouncementPostItem) => {
+        console.log("Edit staff announcement:", post)
+        setIsEditModalOpen(true)
+    }
 
     return (
-        <div>
-            <NavbarStaff />
+        <div className="min-h-screen bg-white">
+            <RoleAwareNavbar />
             <AnnouncementNavbar />
-            <div className="p-6">
-                <Button onClick={() => setIsModalOpen(true)}>Add</Button>
-            </div>
+            <AnnouncementPostFeed
+                posts={posts}
+                onAdd={() => setIsCreateModalOpen(true)}
+                onEdit={handleOpenEdit}
+            />
+
             <CreateAnnouncementModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
                 onCreate={handleCreate}
             />
+
+            <EditAnnouncementModal
+                isOpen={isEditModalOpen}
+                onClose={() => {
+                    setIsEditModalOpen(false)
+                }}
+            />
         </div>
-    );
-};
+    )
+}

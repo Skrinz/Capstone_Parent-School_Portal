@@ -7,6 +7,7 @@ export const Navbar = () => {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const location = useLocation();
   const isRegisterPage = location.pathname === "/register";
+  const isPartnershipAndEventsRoute = location.pathname.startsWith("/partnership&events");
   const aboutRoutes = [
     "/contactus",
     "/history",
@@ -74,7 +75,7 @@ export const Navbar = () => {
             <Link
               to="/partnership&events"
               className={`text-gray-900 hover:text-gray-700 transition-colors ${
-                location.pathname === "/partnership&events"
+                isPartnershipAndEventsRoute
                   ? "text-xl font-bold"
                   : "text-lg font-medium"
               }`}

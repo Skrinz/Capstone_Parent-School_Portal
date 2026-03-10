@@ -7,6 +7,18 @@ import { useLocation, Link } from "react-router-dom";
 export const NavbarAdmin = () => {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const location = useLocation();
+  const isRecordsRoute = [
+    "/manageparentverification",
+    "/managesections",
+    "/managestaffaccounts",
+    "/managestudents",
+  ].includes(location.pathname);
+  const isAnnouncementRoute = [
+    "/announcements",
+    "/generalannouncement",
+    "/staffannouncement",
+    "/memorandumannouncement",
+  ].includes(location.pathname);
   const navRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -58,11 +70,11 @@ export const NavbarAdmin = () => {
             <div className="relative">
               <Link
                 className={`text-gray-900 hover:text-gray-700 transition-colors cursor-pointer ${
-                  location.pathname === "/announcements"
+                  isAnnouncementRoute
                     ? "text-xl font-bold"
                     : "text-lg font-medium"
                 }`}
-                to="/announcements"
+                to="/generalannouncement"
               >
                 Announcements
               </Link>
@@ -80,7 +92,7 @@ export const NavbarAdmin = () => {
             <div className="relative">
               <a
                 className={`text-gray-900 hover:text-gray-700 transition-colors cursor-pointer ${
-                  openDropdown === "records"
+                  openDropdown === "records" || isRecordsRoute
                     ? "text-xl font-bold"
                     : "text-lg font-medium"
                 }`}

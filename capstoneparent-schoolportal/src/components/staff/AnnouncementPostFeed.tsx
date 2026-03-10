@@ -32,17 +32,19 @@ export const AnnouncementPostFeed = ({
               className="absolute left-0 top-8 h-14 w-14 rounded-full border-2 border-gray-300 bg-white object-cover"
             />
 
-            <div className="relative overflow-hidden rounded-2xl border border-gray-300 bg-gradient-to-r from-gray-100 to-gray-200 p-8 shadow-sm">
-              <button
-                type="button"
-                aria-label="Edit announcement"
-                onClick={() => onEdit?.(post)}
-                className="absolute right-6 top-6 flex h-12 w-12 items-center justify-center rounded-full bg-(--button-green) text-white shadow-md transition-colors hover:bg-(--button-hover-green)"
-              >
-                <Pencil size={22} />
-              </button>
+            <div className="relative overflow-hidden rounded-2xl border border-gray-300 bg-linear-to-r from-gray-100 to-gray-200 p-8 shadow-sm">
+              {onEdit && (
+                <button
+                  type="button"
+                  aria-label="Edit announcement"
+                  onClick={() => onEdit(post)}
+                  className="absolute right-6 top-6 flex h-12 w-12 items-center justify-center rounded-full bg-(--button-green) text-white shadow-md transition-colors hover:bg-(--button-hover-green)"
+                >
+                  <Pencil size={22} />
+                </button>
+              )}
 
-              <div className="pr-16">
+              <div className={onEdit ? "pr-16" : ""}>
                 <p className="text-4xl font-semibold uppercase tracking-wide text-blue-600">
                   {post.author}
                 </p>
@@ -74,14 +76,16 @@ export const AnnouncementPostFeed = ({
         ))}
       </div>
 
-      <button
-        type="button"
-        aria-label="Create announcement"
-        onClick={onAdd}
-        className="fixed bottom-8 right-8 z-20 flex h-16 w-16 items-center justify-center rounded-full bg-(--button-green) text-white shadow-lg transition-colors hover:bg-(--button-hover-green)"
-      >
-        <Plus size={32} strokeWidth={3} />
-      </button>
+      {onAdd && (
+        <button
+          type="button"
+          aria-label="Create announcement"
+          onClick={onAdd}
+          className="fixed bottom-8 right-8 z-20 flex h-16 w-16 items-center justify-center rounded-full bg-(--button-green) text-white shadow-lg transition-colors hover:bg-(--button-hover-green)"
+        >
+          <Plus size={32} strokeWidth={3} />
+        </button>
+      )}
     </section>
   );
 };

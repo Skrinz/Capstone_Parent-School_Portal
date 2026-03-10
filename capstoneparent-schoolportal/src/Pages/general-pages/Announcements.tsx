@@ -1,25 +1,26 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
-import { AnnouncementNavbar } from "@/components/staff/AnnouncementNavbar";
+import { AnnouncementPostFeed } from "@/components/staff/AnnouncementPostFeed";
 import { getAuthUser } from "@/lib/auth";
+import { useAnnouncementPosts } from "@/hooks/useAnnouncementPosts";
+import { Navigate } from "react-router-dom";
 
 export const Announcements = () => {
+  const { posts } = useAnnouncementPosts("general");
   const authUser = getAuthUser();
   const normalizedRole = authUser?.role?.toLowerCase();
-  const isStaffAnnouncementUser =
+  const isAnnouncementEditor =
     normalizedRole === "admin" ||
     normalizedRole === "teacher" ||
-    normalizedRole === "librarian" ||
-    normalizedRole === "staff" ||
-    normalizedRole === "principal";
+    normalizedRole === "staff";
+
+  if (isAnnouncementEditor) {
+    return <Navigate to="/generalannouncement" replace />;
+  }
 
   return (
-    <div className="text-center">
+    <div className="min-h-screen bg-white">
       <RoleAwareNavbar />
-      {isStaffAnnouncementUser && <AnnouncementNavbar />}
-      <div className="max-w-4xl mx-auto py-6 px-4">
-        <h1 className="text-3xl font-bold mb-4">General Announcements</h1>
-        <p>This is the General announcement page.</p>
-      </div>
+      <AnnouncementPostFeed posts={posts} />
     </div>
   );
 

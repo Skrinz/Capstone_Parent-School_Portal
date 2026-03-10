@@ -48,7 +48,9 @@ export const usePageTitle = () => {
   const location = useLocation()
 
   useEffect(() => {
-    const title = pageTitles[location.pathname] || 'Pagsabungan Elementary School | Parent-School Portal'
+    const title = location.pathname.startsWith('/partnership&events/')
+      ? 'Event Details | Parent-School Portal'
+      : pageTitles[location.pathname] || 'Pagsabungan Elementary School | Parent-School Portal'
     document.title = title
   }, [location.pathname])
 }
