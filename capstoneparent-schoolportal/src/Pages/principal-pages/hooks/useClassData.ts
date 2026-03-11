@@ -1,17 +1,22 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { ClassItem, SubjectItem, Student } from '@/Pages/teacher-pages/types';
-import type { SectionItem } from '@/Pages/principal-pages/types';
-import { fetchClasses, fetchSubjects, fetchStudents } from '@/Pages/teacher-pages/services/api';
+import { 
+  fetchClasses, 
+  fetchSubjects, 
+  fetchStudents
+} from '@/Pages/principal-pages/services/api';
+import type { SectionItem, TeacherItem } from '@/Pages/principal-pages/types';
+import {
+  fetchSections,
+  fetchTeachers
+} from '@/Pages/principal-pages/services/api'
 import {
   filterClasses,
   filterSubjects,
   filterStudents,
   getStudentCountByClass,
   getStudentsForClass,
-} from '@/Pages/teacher-pages/utils/filters';
-import {
-  fetchSections,
-} from '@/Pages/teacher-pages/services/api'
+} from '@/Pages/principal-pages/utils/filters';
 
 export const useClassData = () => {
   // Loading states
@@ -19,14 +24,14 @@ export const useClassData = () => {
   const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [isLoadingSections, setIsLoadingSections] = useState(false);
-
+  const [isLoadingTeachers, setIsLoadingTeachers] = useState(false);
 
   // Data
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [sections, setSections] = useState<SectionItem[]>([]);
-  
+  const [teachers, setTeachers] = useState<TeacherItem[]>([]);
 
   // Load data on mount
   useEffect(() => {
@@ -34,6 +39,7 @@ export const useClassData = () => {
     loadSubjects();
     loadStudents();
     loadSections();
+    loadTeachers();
   }, []);
 
   const loadClasses = async () => {
@@ -58,11 +64,18 @@ export const useClassData = () => {
   };
 
   const loadSections = async () => {
-      setIsLoadingSections(true);
-      const data = await fetchSections();
-      setSections(data);
-      setIsLoadingSections(false);
-    };
+    setIsLoadingSections(true);
+    const data = await fetchSections();
+    setSections(data);
+    setIsLoadingSections(false);
+  };
+
+  const loadTeachers = async () => {
+    setIsLoadingTeachers(true);
+    const data = await fetchTeachers();
+    setTeachers(data);
+    setIsLoadingTeachers(false);
+  };
 
   // Calculate student counts
   const studentCountByClass = useMemo(
@@ -70,19 +83,27 @@ export const useClassData = () => {
     [allStudents]
   );
 
+  // Reload function for after adding/editing classes
+  const reloadClasses = async () => {
+    await loadClasses();
+  };
+
   return {
     classes,
     subjects,
-    sections,
     allStudents,
+    sections,
+    teachers,
     isLoadingClasses,
     isLoadingSubjects,
     isLoadingStudents,
+    isLoadingSections,
+    isLoadingTeachers,
     studentCountByClass,
     filterClasses,
     filterSubjects,
     filterStudents,
     getStudentsForClass,
+    reloadClasses,
   };
 };
-

@@ -45,7 +45,6 @@ export const ClassList = () => {
   // Use custom hook for data management
   const {
     classes,
-    sections,
     subjects,
     allStudents,
     isLoadingClasses,
@@ -73,15 +72,6 @@ export const ClassList = () => {
     () => selectedClass ? getStudentsForClass(allStudents, selectedClass.id) : [],
     [selectedClass, allStudents]
   );
-
-  // Generate unique school years from existing classes
-  const schoolYears = useMemo(() => {
-    const yearsSet = new Set<string>();
-    classes.forEach(c => {
-      yearsSet.add(`${c.start_year}-${c.end_year}`);
-    });
-    return Array.from(yearsSet).sort().reverse();
-  }, [classes]);
 
   // Students for selected subject (filtered by grade/section/year)
   const studentsForSelectedSubject = useMemo(() => {
@@ -188,12 +178,9 @@ export const ClassList = () => {
                          <SelectValue placeholder="Section" />
                        </SelectTrigger>
                        <SelectContent className="bg-(--navbar-bg) border-none font-semibold">
-                          <SelectItem value="all">All Sections</SelectItem>
-                         {sections.map((sec) => (
-                            <SelectItem key={sec.id} value={sec.name}>
-                              {sec.name}
-                            </SelectItem>
-                         ))}
+                         <SelectItem value="all">All Sections</SelectItem>
+                         <SelectItem value="a">Section A</SelectItem>
+                         <SelectItem value="b">Section B</SelectItem>
                        </SelectContent>
                      </Select>
 
@@ -203,11 +190,8 @@ export const ClassList = () => {
                        </SelectTrigger>
                        <SelectContent className="bg-(--navbar-bg) border-none font-semibold">
                          <SelectItem value="all">All Years</SelectItem>
-                         {schoolYears.map((yr) => (
-                            <SelectItem key={yr} value={yr}>
-                              {yr}
-                            </SelectItem>
-                          ))}
+                         <SelectItem value="2024-2025">2024 - 2025</SelectItem>
+                         <SelectItem value="2023-2024">2023 - 2024</SelectItem>
                        </SelectContent>
                      </Select>
 
@@ -300,11 +284,8 @@ export const ClassList = () => {
                       </SelectTrigger>
                       <SelectContent className="bg-(--navbar-bg) border-none font-semibold">
                         <SelectItem value="all">All Sections</SelectItem>
-                        {sections.map((sec) => (
-                            <SelectItem key={sec.id} value={sec.name}>
-                              {sec.name}
-                            </SelectItem>
-                         ))}
+                        <SelectItem value="a">Section A</SelectItem>
+                        <SelectItem value="b">Section B</SelectItem>
                       </SelectContent>
                     </Select>
 
@@ -314,11 +295,8 @@ export const ClassList = () => {
                       </SelectTrigger>
                       <SelectContent className="bg-(--navbar-bg) border-none font-semibold">
                         <SelectItem value="all">All Years</SelectItem>
-                        {schoolYears.map((yr) => (
-                            <SelectItem key={yr} value={yr}>
-                              {yr}
-                            </SelectItem>
-                          ))}
+                        <SelectItem value="2024-2025">2024 - 2025</SelectItem>
+                        <SelectItem value="2023-2024">2023 - 2024</SelectItem>
                       </SelectContent>
                     </Select>
 

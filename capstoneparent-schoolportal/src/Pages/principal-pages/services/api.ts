@@ -1,9 +1,23 @@
+import type { SectionItem, TeacherItem } from '@/Pages/principal-pages/types';
 import type { ClassItem, SubjectItem, Student } from '@/Pages/teacher-pages/types';
-import type { SectionItem } from '@/Pages/principal-pages/types';
 
 const API_BASE_URL = '/api';
 
-// Sample data for fallback
+// Sample sections data
+const SAMPLE_SECTIONS: SectionItem[] = [
+  { id: 1, name: 'Section A'},
+  { id: 2, name: 'Section B'},
+  { id: 3, name: 'Section C'},
+  { id: 4, name: 'Section D'},
+];
+
+// Sample teachers data
+const SAMPLE_TEACHERS: TeacherItem[] = [
+  { id: 1, name: 'Dominique Enriquez'},
+  { id: 2, name: 'Maria Santos'},
+  { id: 3, name: 'Juan Dela Cruz'},
+];
+
 const SAMPLE_CLASSES: ClassItem[] = [
   {
     id: 1,
@@ -477,12 +491,74 @@ const SAMPLE_STUDENTS: Student[] = [
   },
 ];
 
-const SAMPLE_SECTIONS: SectionItem[] = [
-  { id: 1, name: 'Section A'},
-  { id: 2, name: 'Section B'},
-  { id: 3, name: 'Section C'},
-  { id: 4, name: 'Section D'},
-];
+export const fetchSections = async (): Promise<SectionItem[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/sections`);
+    if (!response.ok) throw new Error('Failed to fetch sections');
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching sections:', error);
+    return SAMPLE_SECTIONS;
+  }
+};
+
+export const fetchTeachers = async (): Promise<TeacherItem[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/teachers`);
+    if (!response.ok) throw new Error('Failed to fetch teachers');
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching teachers:', error);
+    return SAMPLE_TEACHERS;
+  }
+};
+
+// Add class to backend
+export const addClass = async (classData: {
+  grade: string;
+  section: string;
+  start_year: number;
+  end_year: number;
+  teacher_id?: number;
+}): Promise<ClassItem> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/classes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(classData),
+    });
+    if (!response.ok) throw new Error('Failed to add class');
+    return await response.json();
+  } catch (error) {
+    console.error('Error adding class:', error);
+    throw error;
+  }
+};
+
+// Update class in backend
+export const updateClass = async (
+  classId: number,
+  classData: {
+    grade: string;
+    section: string;
+    start_year: number;
+    end_year: number;
+    teacher_id?: number;
+  }
+): Promise<ClassItem> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/classes/${classId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(classData),
+    });
+    if (!response.ok) throw new Error('Failed to update class');
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating class:', error);
+    throw error;
+  }
+};
 
 export const fetchClasses = async (): Promise<ClassItem[]> => {
   try {
@@ -514,16 +590,5 @@ export const fetchStudents = async (): Promise<Student[]> => {
   } catch (error) {
     console.error('Error fetching students:', error);
     return SAMPLE_STUDENTS;
-  }
-};
-
-export const fetchSections = async (): Promise<SectionItem[]> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/sections`);
-    if (!response.ok) throw new Error('Failed to fetch sections');
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching sections:', error);
-    return SAMPLE_SECTIONS;
   }
 };

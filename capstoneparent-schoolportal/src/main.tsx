@@ -49,6 +49,9 @@ import { ManageLearningResources } from "./Pages/librarian-pages/ManageLearningR
 import { BorrowedResources } from "./Pages/librarian-pages/BorrowedResources";
 import { ManageCategories } from "./Pages/librarian-pages/ManageCategories";
 
+{/*Principal Pages*/}
+import { ManageClassLists } from "./Pages/principal-pages/ManageClassLists";
+
 import { usePageTitle } from "./hooks/usePageTitle";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import "./styles/index.css";
@@ -119,17 +122,19 @@ const App = () => {
         }
       />
       <Route
+      // Also acessible by teachers
         path="/manageparentverification"
         element={
-          <ProtectedRoute allowedRoles={["admin"]}>
+          <ProtectedRoute allowedRoles={["admin", "teacher"]}>
             <ManageParentVerification />
           </ProtectedRoute>
         }
       />
       <Route
+        // Also acessible by teachers
         path="/managestudents"
         element={
-          <ProtectedRoute allowedRoles={["admin"]}>
+          <ProtectedRoute allowedRoles={["admin", "teacher"]}>
             <ManageStudents />
           </ProtectedRoute>
         }
@@ -163,9 +168,9 @@ const App = () => {
       <Route
         path="/classlist"
         element={
-          <ProtectedRoute allowedRoles={["teacher"]}>
+          // <ProtectedRoute allowedRoles={["teacher"]}>
             <ClassList />
-          </ProtectedRoute>
+          // </ProtectedRoute>
         }
       />
 
@@ -242,6 +247,14 @@ const App = () => {
           <ProtectedRoute allowedRoles={["librarian"]}>
             <ManageCategories />
           </ProtectedRoute>
+        }
+      />
+
+      {/* Principal Pages */}
+      <Route
+        path="/manageclasslists"
+        element={
+          <ManageClassLists />
         }
       />
     </Routes>
