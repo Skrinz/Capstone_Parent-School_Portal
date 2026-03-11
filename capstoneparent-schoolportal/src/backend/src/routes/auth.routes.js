@@ -21,16 +21,17 @@ router.post(
     body("lname").notEmpty().trim(),
     body("contact_num").notEmpty(),
     body("address").notEmpty(),
-    body("role")
+    // roles: optional array of non-Parent roles
+    // Parent is automatically added when student_ids is present
+    body("roles")
       .optional()
-      .isIn([
-        "Parent",
-        "Librarian",
-        "Teacher",
-        "Admin",
-        "Principal",
-        "Vice_Principal",
-      ]),
+      .isArray({ min: 1 })
+      .withMessage("roles must be a non-empty array"),
+    body("roles.*")
+      .isIn(["Librarian", "Teacher", "Admin", "Principal", "Vice_Principal"])
+      .withMessage(
+        "Each role must be one of: Librarian, Teacher, Admin, Principal, Vice_Principal",
+      ),
     body("student_ids")
       .optional()
       .customSanitizer((value) => {

@@ -77,26 +77,30 @@ const authService = {
    * Step 1 of registration: validate uniqueness, store pending data
    * (including multer temp file paths), and send a verification OTP.
    * The user record is NOT written to the DB yet.
+   *
+   * Role resolution rules:
+   *   - `roles` field accepts non-Parent roles only (Teacher, Librarian, etc.)
+   *   - Parent role is automatically added when `student_ids` is present
+   *   - A user can hold multiple roles (e.g. Teacher + Parent)
    */
   async initiateRegistration(userData, files = []) {
-    const {
-      email,
-      password,
-      fname,
-      lname,
-      contact_num,
-      address,
-      role,
-      student_ids,
-    } = userData;
+    const { email, password, fname, lname, contact_num, address, student_ids } =
+      userData;
 
-    const resolvedRole = role || (student_ids ? "Parent" : undefined);
+    // Strip any accidental "Parent" from the roles array — Parent is derived
+    // from student_ids, not set directly by the client
+    const nonParentRoles = (userData.roles || []).filter((r) => r !== "Parent");
 
-    if (resolvedRole === "Parent") {
-      if (!student_ids || student_ids.length === 0) {
-        throw new Error("Parents must provide at least one student ID");
-      }
+    const isParent = !!(student_ids && student_ids.length > 0);
+
+    // Merge: non-parent roles + Parent (if student_ids provided)
+    const resolvedRoles = isParent
+      ? [...nonParentRoles, "Parent"]
+      : nonParentRoles;
+
+    if (isParent) {
       if (!files || files.length === 0) {
+        cleanupTempFiles({ filePaths: files.map((f) => ({ path: f.path })) });
         throw new Error("Parents must upload at least one supporting document");
       }
     }
@@ -125,7 +129,7 @@ const authService = {
       lname,
       contact_num,
       address,
-      role: resolvedRole,
+      roles: resolvedRoles,
       student_ids,
       otpCode,
       otpExpiresAt,
@@ -203,13 +207,22 @@ const authService = {
       },
     });
 
-    if (pending.role) {
-      await prisma.userRole_Model.create({
-        data: { user_id: user.user_id, role: pending.role },
+    // Create all role records in one query
+    if (pending.roles && pending.roles.length > 0) {
+      await prisma.userRole_Model.createMany({
+        data: pending.roles.map((role) => ({
+          user_id: user.user_id,
+          role,
+        })),
       });
     }
 
-    if (pending.role === "Parent" && pending.student_ids && parentsService) {
+    // Submit parent registration if applicable
+    if (
+      pending.roles?.includes("Parent") &&
+      pending.student_ids &&
+      parentsService
+    ) {
       let file_ids;
       if (pending.filePaths && pending.filePaths.length > 0) {
         const created = await parentsService.createFiles(
@@ -250,23 +263,6 @@ const authService = {
    *
    * Requires email + password + deviceToken.
    * Always returns a JWT when all three are valid.
-   *
-   * ┌─────────────────────────────────────────────────────────────────────┐
-   * │  FIRST LOGIN / NEW DEVICE (no deviceToken yet)                      │
-   * │                                                                     │
-   * │  1. POST /auth/send-otp   { email }                                 │
-   * │  2. POST /auth/verify-otp { email, otpCode }                        │
-   * │     ← returns { token, user, deviceToken }                          │
-   * │  3. Store deviceToken in the client (localStorage / secure store)   │
-   * │  4. All future logins use POST /auth/login with that deviceToken     │
-   * └─────────────────────────────────────────────────────────────────────┘
-   *
-   * Errors:
-   *   "Invalid email or password"            — wrong credentials
-   *   "Account is inactive"                  — not yet activated by admin
-   *   "Device token is required"             — field missing from body
-   *   "Unrecognized device. Please complete OTP verification."
-   *                                          — token not in trusted table
    */
   async login(email, password, deviceToken) {
     // 1. Validate credentials

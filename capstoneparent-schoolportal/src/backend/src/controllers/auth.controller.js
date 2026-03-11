@@ -17,9 +17,8 @@ const authController = {
       const files = req.files || [];
       const userData = req.body;
 
-      if (userData.student_ids && !userData.role) {
-        userData.role = "Parent";
-      }
+      // Parent role is automatically injected by the service when student_ids
+      // is present. No manual role override is needed here.
 
       const result = await authService.initiateRegistration(userData, files);
       res.status(200).json({ message: result.message });
@@ -92,21 +91,6 @@ const authController = {
    * first complete:
    *   POST /auth/send-otp  →  POST /auth/verify-otp
    * which returns a JWT + fresh deviceToken to persist.
-   *
-   * Success response (200):
-   *   {
-   *     "message": "Login successful",
-   *     "data": {
-   *       "token": "<jwt>",
-   *       "user": { ... }
-   *     }
-   *   }
-   *
-   * Error responses:
-   *   401 — invalid credentials
-   *   403 — account inactive
-   *   400 — deviceToken missing
-   *   401 — unrecognized device (go through OTP flow)
    */
   async login(req, res, next) {
     try {
@@ -165,19 +149,6 @@ const authController = {
   /**
    * POST /auth/verify-otp
    * Verifies the OTP, issues a JWT, and registers this device as trusted.
-   *
-   * Success response (200):
-   *   {
-   *     "message": "OTP verified successfully",
-   *     "data": {
-   *       "token": "<jwt>",
-   *       "user": { ... },
-   *       "deviceToken": "<raw 64-char token — store this on the client>"
-   *     }
-   *   }
-   *
-   * The client MUST persist deviceToken and send it in all future
-   * POST /auth/login requests to bypass OTP.
    */
   async verifyOTP(req, res, next) {
     try {
