@@ -220,33 +220,33 @@ const App = () => {
       <Route
         path="/managebooks"
         element={
-          <ProtectedRoute allowedRoles={["librarian"]}>
+          // <ProtectedRoute allowedRoles={["librarian"]}>
             <ManageBooks />
-          </ProtectedRoute>
+          // </ProtectedRoute>
         }
       />
       <Route
         path="/managelearningresources"
         element={
-          <ProtectedRoute allowedRoles={["librarian"]}>
+          // <ProtectedRoute allowedRoles={["librarian"]}>
             <ManageLearningResources />
-          </ProtectedRoute>
+          // </ProtectedRoute>
         }
       />
       <Route
         path="/borrowedresources"
         element={
-          <ProtectedRoute allowedRoles={["librarian"]}>
+          // <ProtectedRoute allowedRoles={["librarian"]}>
             <BorrowedResources />
-          </ProtectedRoute>
+          // </ProtectedRoute>
         }
       />
       <Route
         path="/managecategories"
         element={
-          <ProtectedRoute allowedRoles={["librarian"]}>
+          // <ProtectedRoute allowedRoles={["librarian"]}>
             <ManageCategories />
-          </ProtectedRoute>
+          // </ProtectedRoute>
         }
       />
 

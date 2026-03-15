@@ -1,6 +1,11 @@
 import { NavbarLibrarian } from "@/components/librarian/NavbarLibrarian";
 import AddBookModal from "@/components/librarian/AddBookModal";
 import EditBookModal from "@/components/librarian/EditBookModal";
+import BookCopyModal from "@/components/librarian/BookCopyModal";
+import {
+  getLibraryCategories,
+  subscribeLibraryCategories,
+} from "@/lib/libraryCategories";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +16,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Search, Pencil } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface Book {
   id: string;
@@ -34,10 +39,24 @@ export const ManageBooks = () => {
   const [gradeFilter, setGradeFilter] = useState<string>("all");
   const [isAddBookModalOpen, setIsAddBookModalOpen] = useState(false);
   const [isEditBookModalOpen, setIsEditBookModalOpen] = useState(false);
+  const [isBookCopyModalOpen, setIsBookCopyModalOpen] = useState(false);
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
   const [books, setBooks] = useState<Book[]>(booksData);
+  const [categoryOptions, setCategoryOptions] = useState<string[]>(() => getLibraryCategories());
 
-  const subjects = ["all", "Sibika", "English", "Filipino", "Math", "Science"];
+  useEffect(() => {
+    setCategoryOptions(getLibraryCategories());
+    return subscribeLibraryCategories(() => setCategoryOptions(getLibraryCategories()));
+  }, []);
+
+  const subjects = useMemo(() => {
+    const mergedSubjects = Array.from(
+      new Set([...categoryOptions, ...books.map((book) => book.subject)])
+    ).sort((left, right) => left.localeCompare(right));
+
+    return ["all", ...mergedSubjects];
+  }, [books, categoryOptions]);
+
   const grades = ["all", "Grade 1", "Grade 2", "Grade 3", "Grade 4"];
 
   const filteredBooks = books.filter((b) => {
@@ -50,17 +69,22 @@ export const ManageBooks = () => {
     return matchesSearch && matchesSubject && matchesGrade;
   });
 
-  const handleAddBooks = (numberOfCopies: number) => {
+  const handleAddBooks = (newBook: {
+    title: string;
+    author: string;
+    subject: string;
+    gradeLevel: string;
+  }) => {
     setBooks((previousBooks) => {
-      const nextBookNumber = previousBooks.length + 1;
-      const newBooks = Array.from({ length: numberOfCopies }, (_, index) => ({
-        id: `${Date.now()}-${index}`,
-        title: `New Book ${nextBookNumber + index}`,
-        subject: "Science",
-        gradeLevel: "Grade 1",
-      }));
-
-      return [...previousBooks, ...newBooks];
+      return [
+        ...previousBooks,
+        {
+          id: `${Date.now()}`,
+          title: newBook.title,
+          subject: newBook.subject,
+          gradeLevel: newBook.gradeLevel,
+        },
+      ];
     });
   };
 
@@ -166,7 +190,8 @@ export const ManageBooks = () => {
               {filteredBooks.map((book) => (
                 <div
                   key={book.id}
-                  className="flex items-center justify-between px-4 py-4 border-b border-gray-200 last:border-b-0 hover:bg-gray-50"
+                  className="flex items-center justify-between px-4 py-4 border-b border-gray-200 last:border-b-0 hover:bg-gray-50 cursor-pointer"
+                  onClick={() => { setSelectedBookId(book.id); setIsBookCopyModalOpen(true); }}
                 >
                   <span className="text-lg font-medium">{book.title}</span>
                   <div className="flex items-center gap-2">
@@ -177,7 +202,7 @@ export const ManageBooks = () => {
                       {book.gradeLevel}
                     </span>
                     <Pencil
-                      onClick={() => handleOpenEditBookModal(book.id)}
+                      onClick={(e) => { e.stopPropagation(); handleOpenEditBookModal(book.id); }}
                       className="cursor-pointer text-(--button-green) hover:text-(--button-hover-green)"
                       size={18}
                     />
@@ -196,6 +221,7 @@ export const ManageBooks = () => {
         <AddBookModal
           onClose={() => setIsAddBookModalOpen(false)}
           onAdd={handleAddBooks}
+          subjectOptions={subjects.filter((subject) => subject !== "all")}
         />
       )}
 
@@ -203,12 +229,21 @@ export const ManageBooks = () => {
         <EditBookModal
           onClose={handleCloseEditBookModal}
           onSave={handleSaveEditedBook}
+          subjectOptions={subjects.filter((subject) => subject !== "all")}
           initialBook={{
             title: selectedBook.title,
             author: "",
             subject: selectedBook.subject,
             gradeLevel: selectedBook.gradeLevel,
           }}
+        />
+      )}
+
+      {isBookCopyModalOpen && (
+        <BookCopyModal
+          bookTitle={books.find((b) => b.id === selectedBookId)?.title}
+          bookSubject={books.find((b) => b.id === selectedBookId)?.subject}
+          onClose={() => { setIsBookCopyModalOpen(false); setSelectedBookId(null); }}
         />
       )}
     </>

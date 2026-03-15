@@ -1,6 +1,11 @@
 import { NavbarLibrarian } from "@/components/librarian/NavbarLibrarian";
 import AddLearningResourceModal from "@/components/librarian/AddLearningResourceModal";
 import EditLearningResourceModal from "@/components/librarian/EditLearningResourceModal";
+import LearningResourceCopyModal from "@/components/librarian/LearningResourceCopyModal";
+import {
+  getLibraryCategories,
+  subscribeLibraryCategories,
+} from "@/lib/libraryCategories";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +16,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Search, Pencil } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface Resource {
   id: string;
@@ -20,12 +25,6 @@ interface Resource {
   gradeLevel: string;
 }
 
-interface CategoryResponse {
-  category_id: number;
-  category_name: string;
-}
-
-const FALLBACK_CATEGORY_OPTIONS = ["Map", "Game", "Infographic"];
 const GRADE_OPTIONS = ["Grade 1", "Grade 2", "Grade 3", "Grade 4"];
 
 const resourcesData: Resource[] = [
@@ -42,43 +41,25 @@ export const ManageLearningResources = () => {
   const [gradeFilter, setGradeFilter] = useState<string>("all");
   const [isAddLearningResourceModalOpen, setIsAddLearningResourceModalOpen] = useState(false);
   const [isEditLearningResourceModalOpen, setIsEditLearningResourceModalOpen] = useState(false);
+  const [isLearningResourceCopyModalOpen, setIsLearningResourceCopyModalOpen] = useState(false);
   const [selectedResourceId, setSelectedResourceId] = useState<string | null>(null);
   const [resources, setResources] = useState<Resource[]>(resourcesData);
-  const [categoryOptions, setCategoryOptions] = useState<string[]>(FALLBACK_CATEGORY_OPTIONS);
-
-  const categories = ["all", ...categoryOptions];
-  const grades = ["all", ...GRADE_OPTIONS];
+  const [categoryOptions, setCategoryOptions] = useState<string[]>(() => getLibraryCategories());
 
   useEffect(() => {
-    let isMounted = true;
-
-    const loadCategories = async () => {
-      try {
-        const response = await fetch("/api/library/categories");
-        if (!response.ok) {
-          return;
-        }
-
-        const payload: { data?: CategoryResponse[] } = await response.json();
-        const backendCategories = (payload.data ?? [])
-          .map((item) => item.category_name?.trim())
-          .filter((name): name is string => Boolean(name));
-
-        const uniqueCategories = Array.from(new Set(backendCategories));
-        if (isMounted && uniqueCategories.length > 0) {
-          setCategoryOptions(uniqueCategories);
-        }
-      } catch {
-        // Keep fallback categories on error.
-      }
-    };
-
-    loadCategories();
-
-    return () => {
-      isMounted = false;
-    };
+    setCategoryOptions(getLibraryCategories());
+    return subscribeLibraryCategories(() => setCategoryOptions(getLibraryCategories()));
   }, []);
+
+  const categories = useMemo(() => {
+    const mergedCategories = Array.from(
+      new Set([...categoryOptions, ...resources.map((resource) => resource.category)])
+    ).sort((left, right) => left.localeCompare(right));
+
+    return ["all", ...mergedCategories];
+  }, [categoryOptions, resources]);
+
+  const grades = ["all", ...GRADE_OPTIONS];
 
   const filteredResources = resources.filter((r) => {
     const matchesSearch =
@@ -197,7 +178,11 @@ export const ManageLearningResources = () => {
               {filteredResources.map((res) => (
                 <div
                   key={res.id}
-                  className="flex items-center justify-between px-4 py-4 border-b border-gray-200 last:border-b-0 hover:bg-gray-50"
+                  className="flex items-center justify-between px-4 py-4 border-b border-gray-200 last:border-b-0 hover:bg-gray-50 cursor-pointer"
+                  onClick={() => {
+                    setSelectedResourceId(res.id);
+                    setIsLearningResourceCopyModalOpen(true);
+                  }}
                 >
                   <span className="text-lg font-medium">{res.title}</span>
                   <div className="flex items-center gap-2">
@@ -208,7 +193,10 @@ export const ManageLearningResources = () => {
                       {res.gradeLevel}
                     </span>
                     <Pencil
-                      onClick={() => handleOpenEditLearningResourceModal(res.id)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleOpenEditLearningResourceModal(res.id);
+                      }}
                       className="cursor-pointer text-(--button-green) hover:text-(--button-hover-green)"
                       size={18}
                     />
@@ -227,7 +215,7 @@ export const ManageLearningResources = () => {
         <AddLearningResourceModal
           onClose={() => setIsAddLearningResourceModalOpen(false)}
           onAdd={handleAddResources}
-          categoryOptions={categoryOptions}
+          categoryOptions={categories.filter((category) => category !== "all")}
           gradeOptions={GRADE_OPTIONS}
         />
       )}
@@ -241,8 +229,19 @@ export const ManageLearningResources = () => {
             category: selectedResource.category,
             gradeLevel: selectedResource.gradeLevel,
           }}
-          categoryOptions={categoryOptions}
+          categoryOptions={categories.filter((category) => category !== "all")}
           gradeOptions={GRADE_OPTIONS}
+        />
+      )}
+
+      {isLearningResourceCopyModalOpen && selectedResource && (
+        <LearningResourceCopyModal
+          onClose={() => {
+            setIsLearningResourceCopyModalOpen(false);
+            setSelectedResourceId(null);
+          }}
+          resourceTitle={selectedResource.title}
+          resourceCategory={selectedResource.category}
         />
       )}
     </>

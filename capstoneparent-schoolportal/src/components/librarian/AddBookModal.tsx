@@ -4,21 +4,27 @@ import { Button } from '../ui/button';
 
 interface AddBookModalProps {
 	onClose: () => void;
-	onAdd?: (numberOfCopies: number) => void;
+	onAdd?: (book: { title: string; author: string; subject: string; gradeLevel: string }) => void;
+	subjectOptions: string[];
 }
 
-const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd }) => {
+const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, subjectOptions }) => {
 	const [bookTitle, setBookTitle] = React.useState('');
 	const [authorName, setAuthorName] = React.useState('');
 	const [subject, setSubject] = React.useState('SUBJECT');
 	const [gradeLevel, setGradeLevel] = React.useState('GRADE LEVEL');
 
 	const handleAdd = () => {
-		if (!bookTitle.trim()) {
+		if (!bookTitle.trim() || subject === 'SUBJECT' || gradeLevel === 'GRADE LEVEL') {
 			return;
 		}
 
-		onAdd?.(1);
+		onAdd?.({
+			title: bookTitle.trim(),
+			author: authorName.trim(),
+			subject,
+			gradeLevel,
+		});
 		onClose();
 	};
 
@@ -46,11 +52,11 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd }) => {
 						className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
 					>
 						<option value="SUBJECT">SUBJECT</option>
-						<option value="Science">Science</option>
-						<option value="Math">Math</option>
-						<option value="English">English</option>
-						<option value="Filipino">Filipino</option>
-						<option value="Sibika">Sibika</option>
+						{subjectOptions.map((option) => (
+							<option key={option} value={option}>
+								{option}
+							</option>
+						))}
 					</select>
 					<select
 						value={gradeLevel}

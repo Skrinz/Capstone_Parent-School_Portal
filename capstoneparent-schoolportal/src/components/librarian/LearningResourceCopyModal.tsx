@@ -2,59 +2,131 @@ import React from 'react';
 import { Plus, ChevronDown } from 'lucide-react';
 import { Modal } from '../ui/modal';
 import { Button } from '../ui/button';
+import AddLearningResourceCopyModal from './AddLearningResourceCopyModal';
+import BorrowerDetailsModal from './BorrowerDetailsModal';
+import { setBorrowedResourceStatus, type BorrowedResourceItem, type CopyStatus } from '@/lib/borrowedResources';
+
+interface LearningResourceCopyItem {
+	id: number;
+	title: string;
+	status: CopyStatus;
+	borrower: string | null;
+	timeBorrowed: string | null;
+	dueDate: string;
+	dueColor: string;
+	gradeLevel: string;
+	section: string;
+}
 
 interface LearningResourceCopyModalProps {
 	onClose: () => void;
+	resourceTitle?: string;
+	resourceCategory?: string;
 }
 
-const LearningResourceCopyModal: React.FC<LearningResourceCopyModalProps> = ({ onClose }) => {
+const LearningResourceCopyModal: React.FC<LearningResourceCopyModalProps> = ({
+	onClose,
+	resourceTitle = 'Learning Resource',
+	resourceCategory = 'Science',
+}) => {
 	const [filterStatus, setFilterStatus] = React.useState<string>('Status');
-	const [copyStatuses, setCopyStatuses] = React.useState<Record<number, string>>({});
+	const [copyStatuses, setCopyStatuses] = React.useState<Record<number, CopyStatus>>({});
+	const [isAddCopyModalOpen, setIsAddCopyModalOpen] = React.useState(false);
+	const [selectedCopy, setSelectedCopy] = React.useState<LearningResourceCopyItem | null>(null);
 
-	const copies = [
+	const copies: LearningResourceCopyItem[] = [
 		{
 			id: 1,
-			title: 'Learning Resource 1',
+			title: `${resourceTitle} 1`,
 			status: 'AVAILABLE',
 			borrower: null,
-			timeBorrowed: 'N/A',
+			timeBorrowed: null,
 			dueDate: 'N/A',
 			dueColor: 'text-gray-400',
+			gradeLevel: 'Grade 1',
+			section: 'Pearl',
 		},
 		{
 			id: 2,
-			title: 'Learning Resource 2',
+			title: `${resourceTitle} 2`,
 			status: 'BORROWED',
 			borrower: 'Pedro Parker',
-			timeBorrowed: null,
+			timeBorrowed: '04/02/25 10:00 AM',
 			dueDate: '04/09/25 10:00 AM',
 			dueColor: 'text-green-500',
+			gradeLevel: 'Grade 2',
+			section: 'Daisy',
 		},
 		{
 			id: 3,
-			title: 'Learning Resource 3',
+			title: `${resourceTitle} 3`,
 			status: 'BORROWED',
 			borrower: 'Bill Nye',
-			timeBorrowed: null,
+			timeBorrowed: '03/31/25 01:15 PM',
 			dueDate: '04/05/25 10:00 PM',
 			dueColor: 'text-red-500',
+			gradeLevel: 'Grade 3',
+			section: 'Orchid',
 		},
 	];
 
+	const getDateAndTime = (value?: string | null) => {
+		if (!value || value === 'N/A') {
+			return { date: 'N/A', time: 'N/A' };
+		}
+
+		const [date, ...timeParts] = value.split(' ');
+		return {
+			date,
+			time: timeParts.join(' ') || 'N/A',
+		};
+	};
+
+	const syncBorrowedResource = (copy: LearningResourceCopyItem, status: CopyStatus) => {
+		const borrowedAt = getDateAndTime(copy.timeBorrowed);
+		const borrowedItem: BorrowedResourceItem = {
+			id: `learning-resource:${resourceTitle}:${copy.id}`,
+			title: copy.title,
+			borrower: copy.borrower ?? 'N/A',
+			section: copy.section,
+			subject: resourceCategory,
+			gradeLevel: copy.gradeLevel,
+			status,
+			borrowedDate: borrowedAt.date,
+			borrowedTime: borrowedAt.time,
+			dueDate: copy.dueDate === 'N/A' ? undefined : copy.dueDate,
+			isOverdue: copy.dueColor.includes('red'),
+		};
+
+		setBorrowedResourceStatus(borrowedItem, status);
+	};
+
+	React.useEffect(() => {
+		copies.forEach((copy) => {
+			const currentStatus = copyStatuses[copy.id] || copy.status;
+			syncBorrowedResource(copy, currentStatus);
+		});
+	}, [resourceTitle, resourceCategory, copyStatuses]);
+
 	return (
+		<>
 		<Modal isOpen={true} onClose={onClose} title="Learning Resource Copies">
 			<div className="space-y-4">
 				<div className="flex flex-wrap items-center justify-between gap-3">
 					<div className="rounded-md bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
-						Name: Learning Resource
+						Name: {resourceTitle}
 					</div>
 					<div className="rounded-md bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
-						Subject: Science
+						Category: {resourceCategory}
 					</div>
 				</div>
 
 				<div className="flex flex-wrap items-center justify-between gap-3">
-					<Button type="button" className="bg-(--button-green) hover:bg-(--button-hover-green) text-white">
+					<Button
+						type="button"
+						onClick={() => setIsAddCopyModalOpen(true)}
+						className="bg-(--button-green) hover:bg-(--button-hover-green) text-white"
+					>
 						<Plus className="h-4 w-4" />
 						Add Copy
 					</Button>
@@ -73,7 +145,11 @@ const LearningResourceCopyModal: React.FC<LearningResourceCopyModalProps> = ({ o
 					{copies.map((copy, index) => {
 						const currentStatus = copyStatuses[copy.id] || copy.status;
 						return (
-							<div key={copy.id} className="border border-gray-200 rounded-md p-4">
+							<div
+								key={copy.id}
+								className="border border-gray-200 rounded-md p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+								onClick={() => setSelectedCopy({ ...copy, status: currentStatus })}
+							>
 								<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 									<div>
 										<p className="font-semibold text-gray-900">Copy {index + 1}: {copy.title}</p>
@@ -85,7 +161,12 @@ const LearningResourceCopyModal: React.FC<LearningResourceCopyModalProps> = ({ o
 										<div className="relative">
 											<select
 												value={currentStatus}
-												onChange={(e) => setCopyStatuses({ ...copyStatuses, [copy.id]: e.target.value })}
+												onChange={(e) => {
+													const nextStatus = e.target.value as CopyStatus;
+													setCopyStatuses({ ...copyStatuses, [copy.id]: nextStatus });
+													syncBorrowedResource(copy, nextStatus);
+												}}
+												onClick={(e) => e.stopPropagation()}
 												className="appearance-none rounded-full border border-gray-300 px-4 py-1 pr-8 text-sm font-semibold"
 											>
 												<option value="AVAILABLE">AVAILABLE</option>
@@ -103,6 +184,34 @@ const LearningResourceCopyModal: React.FC<LearningResourceCopyModalProps> = ({ o
 				</div>
 			</div>
 		</Modal>
+
+		{isAddCopyModalOpen && (
+			<AddLearningResourceCopyModal onClose={() => setIsAddCopyModalOpen(false)} />
+		)}
+
+		{selectedCopy && (
+			<BorrowerDetailsModal
+				onClose={() => setSelectedCopy(null)}
+				itemName={selectedCopy.title}
+				status={selectedCopy.status}
+				onStatusChange={(nextStatus) => {
+					setCopyStatuses((previousStatuses) => ({
+						...previousStatuses,
+						[selectedCopy.id]: nextStatus,
+					}));
+					syncBorrowedResource(selectedCopy, nextStatus);
+					setSelectedCopy((previousCopy) => (previousCopy ? { ...previousCopy, status: nextStatus } : previousCopy));
+				}}
+				borrowedDate={getDateAndTime(selectedCopy.timeBorrowed).date}
+				borrowedTime={getDateAndTime(selectedCopy.timeBorrowed).time}
+				dueDate={getDateAndTime(selectedCopy.dueDate).date}
+				dueTime={getDateAndTime(selectedCopy.dueDate).time}
+				borrowerName={selectedCopy.borrower ?? 'N/A'}
+				gradeLevel={selectedCopy.gradeLevel}
+				section={selectedCopy.section}
+			/>
+		)}
+		</>
 	);
 };
 

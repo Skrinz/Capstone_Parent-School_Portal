@@ -1,73 +1,13 @@
 import React from 'react';
 import { ChevronDown, Search } from 'lucide-react';
 import BorrowerDetailsModal from './BorrowerDetailsModal';
-
-type CopyStatus = 'BORROWED' | 'AVAILABLE' | 'LOST' | 'GIVEN';
-
-interface BorrowedCopyItem {
-	id: number;
-	title: string;
-	borrower: string;
-	section: string;
-	subject: string;
-	gradeLevel: string;
-	status: CopyStatus;
-	borrowedDate: string;
-	borrowedTime: string;
-	dueDate?: string;
-	isOverdue?: boolean;
-}
-
-const initialItems: BorrowedCopyItem[] = [
-	{
-		id: 1,
-		title: 'Chess Board 2',
-		borrower: 'Elsa Frost',
-		section: 'Pearl',
-		subject: 'Game',
-		gradeLevel: 'Grade 1',
-		status: 'BORROWED',
-		borrowedDate: '04/02/25',
-		borrowedTime: '10:00 AM',
-		dueDate: '04/09/25 10:00 AM',
-	},
-	{
-		id: 2,
-		title: 'Chess Board 3',
-		borrower: 'Alexander Santos',
-		section: 'Sampaguita',
-		subject: 'Game',
-		gradeLevel: 'Grade 2',
-		status: 'BORROWED',
-		borrowedDate: '04/01/25',
-		borrowedTime: '09:30 AM',
-		dueDate: '04/05/25 10:00 PM',
-		isOverdue: true,
-	},
-	{
-		id: 3,
-		title: 'The New Science Links 2',
-		borrower: 'Pedro Parker',
-		section: 'Daisy',
-		subject: 'Science',
-		gradeLevel: 'Grade 2',
-		status: 'BORROWED',
-		borrowedDate: '04/02/25',
-		borrowedTime: '10:00 AM',
-		dueDate: '04/09/25 10:00 AM',
-	},
-	{
-		id: 4,
-		title: 'The New Science Links 3',
-		borrower: 'Bill Nye',
-		section: 'Orchid',
-		subject: 'Science',
-		gradeLevel: 'Grade 3',
-		status: 'BORROWED',
-		borrowedDate: '03/31/25',
-		borrowedTime: '01:15 PM',
-	},
-];
+import {
+	getBorrowedResources,
+	setBorrowedResourceStatus,
+	subscribeBorrowedResources,
+	type BorrowedResourceItem,
+	type CopyStatus,
+} from '@/lib/borrowedResources';
 
 const statusOptions: CopyStatus[] = ['BORROWED', 'AVAILABLE', 'LOST', 'GIVEN'];
 
@@ -87,24 +27,39 @@ const statusBgClass = (status: CopyStatus) => {
 const BorrowedCopyModal: React.FC = () => {
 	const [searchTerm, setSearchTerm] = React.useState('');
 	const [statusFilter, setStatusFilter] = React.useState<string>('All');
-	const [subjectFilter, setSubjectFilter] = React.useState<string>('Subject');
-	const [gradeFilter, setGradeFilter] = React.useState<string>('Grade Level');
-	const [items, setItems] = React.useState<BorrowedCopyItem[]>(initialItems);
-	const [openStatusForId, setOpenStatusForId] = React.useState<number | null>(null);
-	const [selectedItem, setSelectedItem] = React.useState<BorrowedCopyItem | null>(null);
+	const [subjectFilter, setSubjectFilter] = React.useState<string>('All');
+	const [gradeFilter, setGradeFilter] = React.useState<string>('All');
+	const [items, setItems] = React.useState<BorrowedResourceItem[]>(() => getBorrowedResources());
+	const [openStatusForId, setOpenStatusForId] = React.useState<string | null>(null);
+	const [selectedItem, setSelectedItem] = React.useState<BorrowedResourceItem | null>(null);
+
+	React.useEffect(() => {
+		setItems(getBorrowedResources());
+		return subscribeBorrowedResources(() => setItems(getBorrowedResources()));
+	}, []);
 
 	const filteredItems = items.filter((item) => {
 		const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
 		const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
-		const matchesSubject = subjectFilter === 'Subject' || item.subject === subjectFilter;
-		const matchesGrade = gradeFilter === 'Grade Level' || item.gradeLevel === gradeFilter;
+		const matchesSubject = subjectFilter === 'All' || item.subject === subjectFilter;
+		const matchesGrade = gradeFilter === 'All' || item.gradeLevel === gradeFilter;
 
 		return matchesSearch && matchesStatus && matchesSubject && matchesGrade;
 	});
 
-	const updateItemStatus = (id: number, status: CopyStatus) => {
-		setItems((previousItems) => previousItems.map((item) => (item.id === id ? { ...item, status } : item)));
+	const updateItemStatus = (id: string, status: CopyStatus) => {
+		const targetItem = items.find((item) => item.id === id);
+		if (!targetItem) {
+			return;
+		}
+
+		setBorrowedResourceStatus(targetItem, status);
 		setSelectedItem((currentItem) => (currentItem && currentItem.id === id ? { ...currentItem, status } : currentItem));
+
+		if (status !== 'BORROWED') {
+			setSelectedItem((currentItem) => (currentItem && currentItem.id === id ? null : currentItem));
+		}
+
 		setOpenStatusForId(null);
 	};
 
@@ -118,6 +73,16 @@ const BorrowedCopyModal: React.FC = () => {
 			date,
 			time: timeParts.join(' ') || 'N/A',
 		};
+	};
+
+	const subjectOptions = Array.from(new Set(items.map((item) => item.subject))).sort();
+	const gradeOptions = Array.from(new Set(items.map((item) => item.gradeLevel))).sort();
+
+	const handleClearFilters = () => {
+		setSearchTerm('');
+		setStatusFilter('All');
+		setSubjectFilter('All');
+		setGradeFilter('All');
 	};
 
 	return (
@@ -135,48 +100,59 @@ const BorrowedCopyModal: React.FC = () => {
 						/>
 					</div>
 
-					<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-						<div className="relative">
-							<select
-								value={statusFilter}
-								onChange={(event) => setStatusFilter(event.target.value)}
-								className="w-full appearance-none px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
-							>
-								<option>All</option>
-								<option>BORROWED</option>
-								<option>AVAILABLE</option>
-								<option>LOST</option>
-								<option>GIVEN</option>
-							</select>
-							<ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+						<div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-3">
+							<div className="relative">
+								<select
+									value={statusFilter}
+									onChange={(event) => setStatusFilter(event.target.value)}
+									className="w-full appearance-none px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+								>
+									<option>All</option>
+									<option>BORROWED</option>
+									<option>AVAILABLE</option>
+									<option>LOST</option>
+									<option>GIVEN</option>
+								</select>
+								<ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+							</div>
+
+							<div className="relative">
+								<select
+									value={subjectFilter}
+									onChange={(event) => setSubjectFilter(event.target.value)}
+									className="w-full appearance-none px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+								>
+									<option>All</option>
+									{subjectOptions.map((subject) => (
+										<option key={subject}>{subject}</option>
+									))}
+								</select>
+								<ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+							</div>
+
+							<div className="relative">
+								<select
+									value={gradeFilter}
+									onChange={(event) => setGradeFilter(event.target.value)}
+									className="w-full appearance-none px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+								>
+									<option>All</option>
+									{gradeOptions.map((grade) => (
+										<option key={grade}>{grade}</option>
+									))}
+								</select>
+								<ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+							</div>
 						</div>
 
-						<div className="relative">
-							<select
-								value={subjectFilter}
-								onChange={(event) => setSubjectFilter(event.target.value)}
-								className="w-full appearance-none px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
-							>
-								<option>Subject</option>
-								<option>Science</option>
-								<option>Game</option>
-							</select>
-							<ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-						</div>
-
-						<div className="relative">
-							<select
-								value={gradeFilter}
-								onChange={(event) => setGradeFilter(event.target.value)}
-								className="w-full appearance-none px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
-							>
-								<option>Grade Level</option>
-								<option>Grade 1</option>
-								<option>Grade 2</option>
-								<option>Grade 3</option>
-							</select>
-							<ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-						</div>
+						<button
+							type="button"
+							onClick={handleClearFilters}
+							className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 sm:shrink-0"
+						>
+							Clear Filter
+						</button>
 					</div>
 
 					<div className="space-y-3">

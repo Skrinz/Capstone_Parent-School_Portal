@@ -2,7 +2,14 @@ import { NavbarLibrarian } from "@/components/librarian/NavbarLibrarian";
 import AddCategoryModal from "@/components/librarian/AddCategoryModal";
 import EditCategoryModal from "@/components/librarian/EditCategoryModal";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import {
+  addLibraryCategory,
+  deleteLibraryCategory,
+  getLibraryCategories,
+  subscribeLibraryCategories,
+  updateLibraryCategory,
+} from "@/lib/libraryCategories";
+import { useEffect, useState } from "react";
 
 export const ManageCategories = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -10,23 +17,15 @@ export const ManageCategories = () => {
   const [showEditCategoryModal, setShowEditCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
 
-  const [categories, setCategories] = useState([
-    "Mathematics",
-    "Science",
-    "Games",
-    "History",
-  ]);
+  const [categories, setCategories] = useState<string[]>(() => getLibraryCategories());
+
+  useEffect(() => {
+    setCategories(getLibraryCategories());
+    return subscribeLibraryCategories(() => setCategories(getLibraryCategories()));
+  }, []);
 
   const handleAddCategory = (newCategory: string) => {
-    const categoryExists = categories.some(
-      (category) => category.toLowerCase() === newCategory.toLowerCase()
-    );
-
-    if (categoryExists) {
-      return;
-    }
-
-    setCategories((prevCategories) => [...prevCategories, newCategory]);
+    addLibraryCategory(newCategory);
   };
 
   const openEditCategoryModal = (categoryName: string) => {
@@ -44,29 +43,13 @@ export const ManageCategories = () => {
       return;
     }
 
-    const categoryExists = categories.some(
-      (category) =>
-        category.toLowerCase() === updatedCategory.toLowerCase() &&
-        category.toLowerCase() !== editingCategory.toLowerCase()
-    );
-
-    if (categoryExists) {
-      return;
-    }
-
-    setCategories((prevCategories) =>
-      prevCategories.map((category) =>
-        category === editingCategory ? updatedCategory : category
-      )
-    );
+    updateLibraryCategory(editingCategory, updatedCategory);
 
     closeEditCategoryModal();
   };
 
   const handleDeleteCategory = (categoryToDelete: string) => {
-    setCategories((prevCategories) =>
-      prevCategories.filter((category) => category !== categoryToDelete)
-    );
+    deleteLibraryCategory(categoryToDelete);
 
     if (editingCategory === categoryToDelete) {
       closeEditCategoryModal();
