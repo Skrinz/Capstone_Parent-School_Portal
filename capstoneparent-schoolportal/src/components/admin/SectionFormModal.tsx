@@ -4,8 +4,6 @@ import { Modal } from "../ui/modal";
 
 interface SectionFormData {
   name: string;
-  adviser: string;
-  students: number;
 }
 
 interface SectionFormModalProps {
@@ -35,25 +33,6 @@ export const SectionFormModal = ({
           placeholder="Section name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green) placeholder-gray-400"
-        />
-        <input
-          type="text"
-          placeholder="Adviser name"
-          value={formData.adviser}
-          onChange={(e) => setFormData({ ...formData, adviser: e.target.value })}
-          className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green) placeholder-gray-400"
-        />
-        <input
-          type="number"
-          placeholder="Number of students"
-          value={formData.students || ""}
-          onChange={(e) =>
-            setFormData({
-              ...formData,
-              students: parseInt(e.target.value) || 0,
-            })
-          }
           className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green) placeholder-gray-400"
         />
         <div className="flex justify-end">
