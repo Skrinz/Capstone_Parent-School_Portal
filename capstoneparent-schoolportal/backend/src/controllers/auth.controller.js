@@ -8,10 +8,7 @@ const COOKIE_OPTIONS = {
 };
 
 const authController = {
-  /**
-   * POST /auth/register
-   * Validates data and sends a verification OTP. Does NOT write to the DB yet.
-   */
+  //http://localhost:5000/api/auth/register
   async register(req, res, next) {
     try {
       const files = req.files || [];
@@ -36,11 +33,7 @@ const authController = {
     }
   },
 
-  /**
-   * POST /auth/verify-registration-otp
-   * Verifies OTP and finalises account creation (status: Inactive).
-   * Returns the first deviceToken — client must store this for future logins.
-   */
+  //http://localhost:5000/api/auth/verify-registration-otp
   async verifyRegistrationOTP(req, res, next) {
     try {
       const { email, otpCode } = req.body;
@@ -81,17 +74,7 @@ const authController = {
     }
   },
 
-  /**
-   * POST /auth/login
-   *
-   * Requires email, password, AND deviceToken.
-   * Returns a JWT immediately when all three are valid.
-   *
-   * If the client has no deviceToken yet (first login / new device), it must
-   * first complete:
-   *   POST /auth/send-otp  →  POST /auth/verify-otp
-   * which returns a JWT + fresh deviceToken to persist.
-   */
+  //http://localhost:5000/api/auth/login
   async login(req, res, next) {
     try {
       const { email, password, deviceToken } = req.body;
@@ -125,11 +108,7 @@ const authController = {
     }
   },
 
-  /**
-   * POST /auth/send-otp
-   * Sends a 6-digit OTP to the user's email.
-   * Used when the client has no deviceToken (first login or new device).
-   */
+  //http://localhost:5000/api/auth/send-otp
   async sendOTP(req, res, next) {
     try {
       const { email } = req.body;
@@ -146,10 +125,7 @@ const authController = {
     }
   },
 
-  /**
-   * POST /auth/verify-otp
-   * Verifies the OTP, issues a JWT, and registers this device as trusted.
-   */
+  //http://localhost:5000/api/auth/verify-otp
   async verifyOTP(req, res, next) {
     try {
       const { email, otpCode } = req.body;
@@ -174,7 +150,7 @@ const authController = {
       next(error);
     }
   },
-
+  //http://localhost:5000/api/auth/logout
   async logout(req, res, next) {
     try {
       res.clearCookie("token");
@@ -184,38 +160,7 @@ const authController = {
     }
   },
 
-  async getCurrentUser(req, res, next) {
-    try {
-      res.status(200).json({ data: req.user });
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async getTrustedDevices(req, res, next) {
-    try {
-      const devices = await authService.getTrustedDevices(req.user.user_id);
-      res.status(200).json({ data: devices });
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async removeTrustedDevice(req, res, next) {
-    try {
-      const tdId = parseInt(req.params.id, 10);
-      await authService.removeTrustedDevice(req.user.user_id, tdId);
-      res.status(200).json({ message: "Trusted device removed" });
-    } catch (error) {
-      if (error.message === "Trusted device not found") {
-        return res.status(404).json({ message: error.message });
-      }
-      next(error);
-    }
-  },
-
-  // ─── Password Reset ────────────────────────────────────────────────────────
-
+  //http://localhost:5000/api/auth/forgot-password
   async forgotPassword(req, res, next) {
     try {
       const { email } = req.body;
@@ -232,6 +177,7 @@ const authController = {
     }
   },
 
+  //http://localhost:5000/api/auth/reset-password
   async resetPassword(req, res, next) {
     try {
       const { token, newPassword } = req.body;
@@ -245,19 +191,6 @@ const authController = {
       }
       if (error.message === "User not found") {
         return res.status(404).json({ message: error.message });
-      }
-      next(error);
-    }
-  },
-
-  async getResetPasswordInfo(req, res, next) {
-    try {
-      const { token } = req.query;
-      const result = await authService.getResetPasswordInfo(token);
-      res.status(200).json({ data: result });
-    } catch (error) {
-      if (error.message === "Invalid or expired reset token") {
-        return res.status(401).json({ message: error.message });
       }
       next(error);
     }

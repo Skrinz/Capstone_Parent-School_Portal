@@ -74,16 +74,7 @@ function signToken(user) {
 // ─── Auth Service ────────────────────────────────────────────────────────────
 
 const authService = {
-  /**
-   * Step 1 of registration: validate uniqueness, store pending data
-   * (including multer temp file paths), and send a verification OTP.
-   * The user record is NOT written to the DB yet.
-   *
-   * Role resolution rules:
-   *   - `roles` field accepts non-Parent roles only (Teacher, Librarian, etc.)
-   *   - Parent role is automatically added when `student_ids` is present
-   *   - A user can hold multiple roles (e.g. Teacher + Parent)
-   */
+  //http://localhost:5000/api/auth/register
   async initiateRegistration(userData, files = []) {
     const { email, password, fname, lname, contact_num, address, student_ids } =
       userData;
@@ -155,15 +146,7 @@ const authService = {
     };
   },
 
-  /**
-   * Step 2 of registration: verify OTP then finalise account creation.
-   *
-   * Returns the raw deviceToken so the client can store it and pass it
-   * on every future POST /login request — skipping OTP on known devices.
-   *
-   * File uploads are handled via usersService.createFiles, which owns all
-   * file-related DB operations regardless of the registering user's role.
-   */
+  //http://localhost:5000/api/auth/verify-registration-otp
   async verifyRegistrationOTP(email, otpCode, parentsService) {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -264,13 +247,7 @@ const authService = {
     };
   },
 
-  // ─── Login ─────────────────────────────────────────────────────────────────
-  /**
-   * POST /auth/login
-   *
-   * Requires email + password + deviceToken.
-   * Always returns a JWT when all three are valid.
-   */
+  //http://localhost:5000/api/auth/login
   async login(email, password, deviceToken) {
     // 1. Validate credentials
     const user = await prisma.user.findUnique({
@@ -323,11 +300,7 @@ const authService = {
     return { token, user: userWithoutPassword };
   },
 
-  // ─── OTP — New Device Registration ──────────────────────────────────────────
-  /**
-   * Step 1: Send OTP to the user's email.
-   * Used when the client has no deviceToken (first login or new device).
-   */
+  //http://localhost:5000/api/auth/send-otp
   async sendOTP(email) {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
@@ -349,13 +322,7 @@ const authService = {
     return true;
   },
 
-  /**
-   * Step 2: Verify OTP, issue JWT, and register this as a trusted device.
-   *
-   * Returns { token, user, deviceToken }.
-   * The client MUST persist the raw deviceToken and include it in all
-   * future POST /auth/login requests.
-   */
+  //http://localhost:5000/api/auth/verify-otp
   async verifyOTP(email, otpCode) {
     const user = await prisma.user.findUnique({
       where: { email },
@@ -398,8 +365,7 @@ const authService = {
     return { token, user: userWithoutPassword, deviceToken: rawToken };
   },
 
-  // ─── Password Reset ────────────────────────────────────────────────────────
-
+  //http://localhost:5000/api/auth/forgot-password
   async forgotPassword(email) {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return true; // silent — do not reveal whether email exists
@@ -423,6 +389,8 @@ const authService = {
 
     return true;
   },
+
+  //http://localhost:5000/api/auth/reset-password
   async resetPassword(token, newPassword) {
     const entry = passwordResetTokens.get(token);
 
@@ -454,45 +422,6 @@ const authService = {
     passwordResetTokens.delete(token);
     passwordResetByEmail.delete(entry.email);
 
-    return true;
-  },
-  async getResetPasswordInfo(token) {
-    const entry = passwordResetTokens.get(token);
-
-    if (!entry || Date.now() > entry.expiresAt) {
-      throw new Error("Invalid or expired reset token");
-    }
-
-    const [local, domain] = entry.email.split("@");
-
-    let maskedLocal;
-
-    if (local.length <= 2) {
-      maskedLocal = local[0] + "*".repeat(local.length - 1);
-    } else {
-      maskedLocal = local.slice(0, 2) + "*".repeat(local.length - 2);
-    }
-    return { maskedEmail: `${maskedLocal}@${domain}` };
-  },
-
-  // ─── Trusted Devices ──────────────────────────────────────────────────────
-
-  async getTrustedDevices(userId) {
-    return prisma.userTrustedDevice.findMany({
-      where: { user_id: userId },
-      orderBy: { last_used_at: "desc" },
-    });
-  },
-
-  async removeTrustedDevice(userId, tdId) {
-    const device = await prisma.userTrustedDevice.findFirst({
-      where: { td_id: tdId, user_id: userId },
-    });
-    if (!device) throw new Error("Trusted device not found");
-
-    await prisma.userTrustedDevice.delete({
-      where: { td_id: tdId, user_id: userId },
-    });
     return true;
   },
 };

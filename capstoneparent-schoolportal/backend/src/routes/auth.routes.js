@@ -8,9 +8,7 @@ const multer = require("multer");
 const upload = multer({ dest: process.env.UPLOAD_PATH || "uploads/" });
 const router = express.Router();
 
-// ─── Registration (2-step: initiate → verify) ──────────────────────────────
-
-// Step 1: Validate data, store pending, send OTP — no DB write yet
+//http://localhost:5000/api/auth/register
 router.post(
   "/register",
   upload.array("attachments", 10),
@@ -42,15 +40,8 @@ router.post(
   validate,
   authController.register,
 );
-router.get(
-  "/reset-password-info",
-  [query("token").notEmpty().isHexadecimal().isLength({ min: 64, max: 64 })],
-  validate,
-  authController.getResetPasswordInfo,
-);
 
-// Step 2: Verify OTP → create account as Inactive
-// Response includes the first deviceToken — client must store it
+//http://localhost:5000/api/auth/verify-registration-otp
 router.post(
   "/verify-registration-otp",
   [
@@ -61,23 +52,7 @@ router.post(
   authController.verifyRegistrationOTP,
 );
 
-// Alias for clients using verify-otp-code naming
-router.post(
-  "/verify-otp-code",
-  [
-    body("email").isEmail().normalizeEmail(),
-    body("otpCode").isLength({ min: 6, max: 6 }),
-  ],
-  validate,
-  authController.verifyRegistrationOTP,
-);
-
-// ─── Login ──────────────────────────────────────────────────────────────────
-// Requires email + password + deviceToken.
-// Returns a JWT immediately when all three are valid.
-//
-// No deviceToken yet? Complete the OTP flow first:
-//   POST /send-otp → POST /verify-otp → store the returned deviceToken
+//http://localhost:5000/api/auth/login
 router.post(
   "/login",
   [
@@ -98,8 +73,7 @@ router.post(
   authController.login,
 );
 
-// ─── OTP — New Device / First Login ─────────────────────────────────────────
-// Step 1: Request OTP (email must belong to an existing account)
+//http://localhost:5000/api/auth/send-otp
 router.post(
   "/send-otp",
   [
@@ -112,8 +86,7 @@ router.post(
   authController.sendOTP,
 );
 
-// Step 2: Verify OTP → get JWT + fresh deviceToken
-// Store the returned deviceToken — it is required for POST /login
+//http://localhost:5000/api/auth/verify-otp
 router.post(
   "/verify-otp",
   [
@@ -129,9 +102,7 @@ router.post(
   authController.verifyOTP,
 );
 
-// ─── Password Reset (public — no auth required) ──────────────────────────────
-
-// Request a reset link
+//http://localhost:5000/api/auth/forgot-password
 router.post(
   "/forgot-password",
   [
@@ -144,7 +115,7 @@ router.post(
   authController.forgotPassword,
 );
 
-// Submit new password using the token from the reset link
+//http://localhost:5000/api/auth/reset-password
 router.post(
   "/reset-password",
   [
@@ -163,17 +134,7 @@ router.post(
   authController.resetPassword,
 );
 
-// ─── Authenticated routes ────────────────────────────────────────────────────
-
+//http://localhost:5000/api/auth/logout
 router.post("/logout", authenticate, authController.logout);
-router.get("/me", authenticate, authController.getCurrentUser);
-router.get("/trusted-devices", authenticate, authController.getTrustedDevices);
-router.delete(
-  "/trusted-devices/:id",
-  authenticate,
-  param("id").isInt(),
-  validate,
-  authController.removeTrustedDevice,
-);
 
 module.exports = router;
