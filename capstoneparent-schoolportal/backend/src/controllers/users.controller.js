@@ -57,17 +57,24 @@ const usersController = {
     }
   },
 
-  async updateUserStatus(req, res, next) {
+  /**
+   * PATCH /users/:id/account
+   * Update a user's account_status and/or roles in one request.
+   * Body: { "account_status": "Active", "roles": ["Teacher", "Parent"] }
+   * Both fields are optional — supply one or both.
+   */
+  async updateAccountSettings(req, res, next) {
     try {
       const { id } = req.params;
-      const { account_status } = req.body;
-      const user = await usersService.updateUserStatus(
-        parseInt(id),
+      const { account_status, roles } = req.body;
+
+      const user = await usersService.updateAccountSettings(parseInt(id), {
         account_status,
-      );
+        roles,
+      });
 
       res.status(200).json({
-        message: "User status updated successfully",
+        message: "User account settings updated successfully",
         data: user,
       });
     } catch (error) {
@@ -76,30 +83,6 @@ const usersController = {
       }
       if (error.message.startsWith("User account is already")) {
         return res.status(409).json({ message: error.message });
-      }
-      next(error);
-    }
-  },
-
-  /**
-   * PUT /users/:id/roles
-   * Replaces all roles for a user in one request.
-   * Body: { "roles": ["Teacher", "Parent"] }
-   */
-  async updateRoles(req, res, next) {
-    try {
-      const { id } = req.params;
-      const { roles } = req.body;
-
-      const updatedRoles = await usersService.updateRoles(parseInt(id), roles);
-
-      res.status(200).json({
-        message: "Roles updated successfully",
-        data: updatedRoles,
-      });
-    } catch (error) {
-      if (error.message === "User not found") {
-        return res.status(404).json({ message: error.message });
       }
       next(error);
     }

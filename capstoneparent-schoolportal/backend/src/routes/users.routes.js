@@ -9,13 +9,13 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticate);
 
-// Get all users (Admin only)
+// Get all users (Admin, Principal only)
 router.get("/", authorize("Admin", "Principal"), usersController.getAllUsers);
 
 // Get user by ID
 router.get("/:id", param("id").isInt(), validate, usersController.getUserById);
 
-// Update user
+// Update user profile fields (fname, lname, contact_num, address)
 router.put(
   "/:id",
   [
@@ -29,26 +29,24 @@ router.put(
   usersController.updateUser,
 );
 
-// Update user status (Admin only)
+// Update account_status and/or roles in one request (Admin, Principal only)
+// Body: { "account_status": "Active", "roles": ["Teacher", "Parent"] }
+// Both fields are optional — supply one or both.
 router.patch(
-  "/:id/status",
-  authorize("Admin", "Principal"),
-  [param("id").isInt(), body("account_status").isIn(["Active", "Inactive"])],
-  validate,
-  usersController.updateUserStatus,
-);
-
-// Bulk replace all roles for a user (Admin, Principal only)
-// Accepts a full roles array and replaces the user's current roles in one shot
-router.put(
-  "/:id/roles",
+  "/:id/account",
   authorize("Admin", "Principal"),
   [
     param("id").isInt(),
+    body("account_status")
+      .optional()
+      .isIn(["Active", "Inactive"])
+      .withMessage("account_status must be Active or Inactive"),
     body("roles")
+      .optional()
       .isArray({ min: 1 })
       .withMessage("roles must be a non-empty array"),
     body("roles.*")
+      .optional()
       .isIn([
         "Parent",
         "Librarian",
@@ -62,7 +60,7 @@ router.put(
       ),
   ],
   validate,
-  usersController.updateRoles,
+  usersController.updateAccountSettings,
 );
 
 // Assign a single role (Admin, Principal only)
