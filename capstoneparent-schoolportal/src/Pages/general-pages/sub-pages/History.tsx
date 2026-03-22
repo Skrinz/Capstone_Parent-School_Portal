@@ -27,7 +27,7 @@ export const History = () => {
         </h1>
 
         <img
-          src="../../../../public/History_Pic.jpg"
+          src="/History_Pic.jpg"
           alt="Pagsabungan Elementary School"
           className="w-full h-80 object-cover mb-8"
         />
