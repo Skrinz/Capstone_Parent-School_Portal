@@ -19,6 +19,17 @@ router.post(
     body("lname").notEmpty().trim(),
     body("contact_num").notEmpty().isNumeric(),
     body("address").notEmpty(),
+    body("date_of_birth")
+      .notEmpty()
+      .withMessage("Date of birth is required")
+      .isISO8601()
+      .withMessage("Date of birth must be a valid date (YYYY-MM-DD)")
+      .custom((value) => {
+        const dob = new Date(value);
+        const today = new Date();
+        if (dob >= today) throw new Error("Date of birth must be in the past");
+        return true;
+      }),
     body("roles")
       .optional()
       .isArray({ min: 1 })

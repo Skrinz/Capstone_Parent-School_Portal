@@ -96,6 +96,7 @@ model User {
   lname                        String
   contact_num                  String
   address                      String
+  date_of_birth                DateTime?              @db.Date
   account_status               AccountStatus         @default(Active)
   created_at                   DateTime              @default(now())
   updated_at                   DateTime              @updatedAt

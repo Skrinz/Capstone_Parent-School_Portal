@@ -76,8 +76,16 @@ function signToken(user) {
 const authService = {
   //http://localhost:5000/api/auth/register
   async initiateRegistration(userData, files = []) {
-    const { email, password, fname, lname, contact_num, address, student_ids } =
-      userData;
+    const {
+      email,
+      password,
+      fname,
+      lname,
+      contact_num,
+      address,
+      date_of_birth,
+      student_ids,
+    } = userData;
 
     // Strip any accidental "Parent" from the roles array — Parent is derived
     // from student_ids, not set directly by the client
@@ -121,6 +129,7 @@ const authService = {
       lname,
       contact_num,
       address,
+      date_of_birth,
       roles: resolvedRoles,
       student_ids,
       otpCode,
@@ -180,6 +189,9 @@ const authService = {
         lname: pending.lname,
         contact_num: pending.contact_num,
         address: pending.address,
+        date_of_birth: pending.date_of_birth
+          ? new Date(pending.date_of_birth)
+          : null,
         account_status: "Inactive",
       },
       select: {
@@ -189,6 +201,7 @@ const authService = {
         lname: true,
         contact_num: true,
         address: true,
+        date_of_birth: true,
         account_status: true,
         created_at: true,
       },
@@ -205,8 +218,6 @@ const authService = {
     }
 
     // Submit parent registration if applicable.
-    // File upload is delegated to usersService.createFiles — file handling
-    // is a user-level concern, not specific to parent registration.
     if (
       pending.roles?.includes("Parent") &&
       pending.student_ids &&
@@ -227,8 +238,7 @@ const authService = {
       });
     }
 
-    // Issue the first trusted device token — client stores this raw value
-    // and sends it with every POST /login going forward
+    // Issue the first trusted device token
     const rawToken = generateDeviceToken();
     await prisma.userTrustedDevice.create({
       data: {
@@ -249,7 +259,6 @@ const authService = {
 
   //http://localhost:5000/api/auth/login
   async login(email, password, deviceToken) {
-    // 1. Validate credentials
     const user = await prisma.user.findUnique({
       where: { email },
       include: { roles: true },
@@ -270,12 +279,10 @@ const authService = {
       throw new Error("Invalid email or password");
     }
 
-    // 2. Require a device token — clients without one must go through OTP first
     if (!deviceToken) {
       throw new Error("Device token is required");
     }
 
-    // 3. Verify the device token against trusted devices
     const hashedToken = hashDeviceToken(deviceToken);
     const trustedDevice = await prisma.userTrustedDevice.findFirst({
       where: { user_id: user.user_id, device_token: hashedToken },
@@ -287,13 +294,11 @@ const authService = {
       );
     }
 
-    // 4. Refresh last_used_at timestamp
     await prisma.userTrustedDevice.update({
       where: { td_id: trustedDevice.td_id },
       data: { last_used_at: new Date() },
     });
 
-    // 5. Issue and return JWT
     const token = signToken(user);
     const { password: _, ...userWithoutPassword } = user;
 
@@ -349,7 +354,6 @@ const authService = {
       data: { used: true },
     });
 
-    // Register this device as trusted
     const rawToken = generateDeviceToken();
     await prisma.userTrustedDevice.create({
       data: {
@@ -368,7 +372,7 @@ const authService = {
   //http://localhost:5000/api/auth/forgot-password
   async forgotPassword(email) {
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return true; // silent — do not reveal whether email exists
+    if (!user) return true;
 
     invalidateResetToken(email);
 

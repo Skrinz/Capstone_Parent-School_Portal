@@ -62,6 +62,7 @@ export const RegisterCard = () => {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
+    dateOfBirth: "",
     contact: "",
     address: "",
     email: "",
@@ -81,7 +82,6 @@ export const RegisterCard = () => {
       showDropdown: false,
     },
   ]);
-
   const [uploadedFiles, setUploadedFiles] = useState<
     { id: number; file: File }[]
   >([]);
@@ -107,7 +107,6 @@ export const RegisterCard = () => {
       );
       return;
     }
-
     setStudentRows((prev) =>
       prev.map((r) =>
         r.rowId === rowId
@@ -115,7 +114,6 @@ export const RegisterCard = () => {
           : r,
       ),
     );
-
     try {
       const json = await studentsApi.searchByLrn(lrn);
       setStudentRows((prev) =>
@@ -174,7 +172,6 @@ export const RegisterCard = () => {
   const handleSelectStudent = (rowId: number, student: StudentSearchResult) => {
     if (selectedStudents.some((s) => s.student_id === student.student_id))
       return;
-
     setSelectedStudents((prev) => [
       ...prev,
       {
@@ -259,6 +256,8 @@ export const RegisterCard = () => {
   const handleInputChange = (field: string, value: string) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
 
+  const todayISO = new Date().toISOString().split("T")[0];
+
   // ─── Submit ──────────────────────────────────────────────────────────────────
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -268,6 +267,10 @@ export const RegisterCard = () => {
 
     if (formData.password !== formData.confirmPassword) {
       setErrorMessage("Passwords do not match");
+      return;
+    }
+    if (!formData.dateOfBirth) {
+      setErrorMessage("Please enter your date of birth");
       return;
     }
     if (selectedStudents.length === 0) {
@@ -284,18 +287,17 @@ export const RegisterCard = () => {
       const payload = new FormData();
       payload.append("fname", formData.firstName.trim());
       payload.append("lname", formData.lastName.trim());
+      payload.append("date_of_birth", formData.dateOfBirth);
       payload.append("contact_num", formData.contact.trim());
       payload.append("address", formData.address.trim());
       payload.append("email", formData.email.trim());
       payload.append("password", formData.password);
       payload.append("role", "Parent");
-
       for (const s of selectedStudents)
         payload.append("student_ids", String(s.student_id));
       for (const f of uploadedFiles) payload.append("attachments", f.file);
 
       const result = await authApi.register(payload);
-
       setPendingEmail(formData.email.trim().toLowerCase());
       setStep("otp");
       setOtpCode("");
@@ -319,18 +321,14 @@ export const RegisterCard = () => {
       setErrorMessage("OTP code must be exactly 6 digits");
       return;
     }
-
     setIsVerifyingOtp(true);
     try {
       const otpResult = await authApi.verifyRegistrationOtp(
         pendingEmail,
         otpCode,
       );
-
-      if (otpResult.data?.deviceToken) {
+      if (otpResult.data?.deviceToken)
         setDeviceToken(otpResult.data.deviceToken);
-      }
-
       setStep("complete");
       setInfoMessage(otpResult.message || "Email verified successfully");
     } catch (error) {
@@ -376,50 +374,101 @@ export const RegisterCard = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {(
-                    [
-                      {
-                        placeholder: "First Name",
-                        field: "firstName",
-                        type: "text",
-                      },
-                      {
-                        placeholder: "Last Name",
-                        field: "lastName",
-                        type: "text",
-                      },
-                      {
-                        placeholder: "Contact Number",
-                        field: "contact",
-                        type: "tel",
-                      },
-                      {
-                        placeholder: "Address",
-                        field: "address",
-                        type: "text",
-                      },
-                      { placeholder: "Email", field: "email", type: "email" },
-                      {
-                        placeholder: "Password",
-                        field: "password",
-                        type: "password",
-                      },
-                      {
-                        placeholder: "Confirm Password",
-                        field: "confirmPassword",
-                        type: "password",
-                      },
-                    ] as const
-                  ).map(({ placeholder, field, type }) => (
-                    <Input
-                      key={field}
-                      type={type}
-                      placeholder={placeholder}
-                      value={formData[field]}
-                      onChange={(e) => handleInputChange(field, e.target.value)}
-                      className="h-14 rounded-full border-2 border-gray-900 bg-white px-6 text-lg placeholder:text-gray-500"
+                  <Input
+                    type="text"
+                    placeholder="First Name"
+                    value={formData.firstName}
+                    onChange={(e) =>
+                      handleInputChange("firstName", e.target.value)
+                    }
+                    className="h-14 rounded-full border-2 border-gray-900 bg-white px-6 text-lg placeholder:text-gray-500"
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Last Name"
+                    value={formData.lastName}
+                    onChange={(e) =>
+                      handleInputChange("lastName", e.target.value)
+                    }
+                    className="h-14 rounded-full border-2 border-gray-900 bg-white px-6 text-lg placeholder:text-gray-500"
+                  />
+
+                  {/*
+                    ── Date of Birth ──────────────────────────────────────────
+                    Root cause of the overlap: type="date" renders its own
+                    "mm/dd/yyyy" text that floats on top of any CSS-positioned
+                    label inside the same box.
+
+                    Fix: wrap both the static label text AND the bare <input>
+                    inside a <label> element styled as the pill. The label
+                    sits on the left as plain inline text; the date input fills
+                    the remaining space. They never overlap because they are
+                    separate inline siblings, not stacked via position:absolute.
+                  */}
+                  <label
+                    htmlFor="dob-input"
+                    className="flex h-14 w-full items-center rounded-full border-2 border-gray-900 bg-white px-6 gap-3 cursor-pointer"
+                  >
+                    <span className="shrink-0 text-lg text-gray-500 whitespace-nowrap">
+                      Date of Birth
+                    </span>
+                    {/* Vertical separator — matches the pill border colour */}
+                    <span className="h-6 w-px bg-gray-300 shrink-0" />
+                    <input
+                      id="dob-input"
+                      type="date"
+                      max={todayISO}
+                      value={formData.dateOfBirth}
+                      onChange={(e) =>
+                        handleInputChange("dateOfBirth", e.target.value)
+                      }
+                      className="flex-1 min-w-0 bg-transparent text-lg text-gray-900 focus:outline-none [color-scheme:light]"
                     />
-                  ))}
+                  </label>
+
+                  <Input
+                    type="tel"
+                    placeholder="Contact Number"
+                    value={formData.contact}
+                    onChange={(e) =>
+                      handleInputChange("contact", e.target.value)
+                    }
+                    className="h-14 rounded-full border-2 border-gray-900 bg-white px-6 text-lg placeholder:text-gray-500"
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Address"
+                    value={formData.address}
+                    onChange={(e) =>
+                      handleInputChange("address", e.target.value)
+                    }
+                    className="h-14 rounded-full border-2 border-gray-900 bg-white px-6 text-lg placeholder:text-gray-500"
+                  />
+                  <Input
+                    type="email"
+                    placeholder="Email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    className="h-14 rounded-full border-2 border-gray-900 bg-white px-6 text-lg placeholder:text-gray-500"
+                  />
+                  <Input
+                    type="password"
+                    placeholder="Password"
+                    value={formData.password}
+                    onChange={(e) =>
+                      handleInputChange("password", e.target.value)
+                    }
+                    className="h-14 rounded-full border-2 border-gray-900 bg-white px-6 text-lg placeholder:text-gray-500"
+                  />
+                  <Input
+                    type="password"
+                    placeholder="Confirm Password"
+                    value={formData.confirmPassword}
+                    onChange={(e) =>
+                      handleInputChange("confirmPassword", e.target.value)
+                    }
+                    className="h-14 rounded-full border-2 border-gray-900 bg-white px-6 text-lg placeholder:text-gray-500"
+                  />
                 </div>
               </div>
 
@@ -552,12 +601,11 @@ export const RegisterCard = () => {
                                   onClick={() =>
                                     handleSelectStudent(row.rowId, student)
                                   }
-                                  className={`w-full flex items-center justify-between px-5 py-3 text-left transition-colors
-                                    ${
-                                      alreadySelected
-                                        ? "opacity-40 cursor-not-allowed bg-gray-50"
-                                        : "hover:bg-green-50 cursor-pointer"
-                                    }`}
+                                  className={`w-full flex items-center justify-between px-5 py-3 text-left transition-colors ${
+                                    alreadySelected
+                                      ? "opacity-40 cursor-not-allowed bg-gray-50"
+                                      : "hover:bg-green-50 cursor-pointer"
+                                  }`}
                                 >
                                   <div>
                                     <p className="font-semibold text-gray-900">
