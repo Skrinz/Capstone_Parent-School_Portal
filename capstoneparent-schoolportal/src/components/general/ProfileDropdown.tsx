@@ -11,7 +11,7 @@ import { MyProfileModal } from "./MyProfileModal";
 import { ManageAccountModal } from "./ManageAccountModal";
 import { ChangePasswordModal } from "./ChangePasswordModal";
 import { LogoutConfirmationModal } from "./LogoutConfirmationModal";
-import { authApi } from "@/lib/api";
+import { authApi, usersApi } from "@/lib/api";
 
 type ActiveProfileModal =
   | "my-profile"
@@ -24,6 +24,8 @@ export const ProfileDropdown = () => {
   const [activeModal, setActiveModal] = useState<ActiveProfileModal>(null);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
 
@@ -54,28 +56,73 @@ export const ProfileDropdown = () => {
   const openModal = (modalType: Exclude<ActiveProfileModal, null>) => {
     setActiveModal(modalType);
     setIsOpen(false);
+    setSuccessMsg(null);
   };
 
-  const closeModal = () => setActiveModal(null);
+  const closeModal = () => {
+    setActiveModal(null);
+    setSuccessMsg(null);
+  };
 
-  const handleSaveProfile = (
+  const handleSaveProfile = async (
     updatedProfileData: ProfileModalData,
-  ): { success: boolean; message: string } => {
+    profileFile?: File
+  ): Promise<{ success: boolean; message: string }> => {
     if (!updatedProfileData.email.includes("@")) {
       return { success: false, message: "Enter a valid email address." };
     }
 
-    setProfileData(updatedProfileData);
-    saveProfileModalData(updatedProfileData);
-
-    // Sync the display name in the store
-    if (user) {
-      useAuthStore.setState({
-        user: { ...user, name: updatedProfileData.fullName },
-      });
+    if (!user) {
+      return { success: false, message: "You are not logged in." };
     }
 
-    return { success: true, message: "Profile updated successfully." };
+    setIsSavingProfile(true);
+
+    try {
+      // 1. Update Profile Fields
+      const profilePayload = {
+        fname: updatedProfileData.fname,
+        lname: updatedProfileData.lname,
+        contact_num: updatedProfileData.contactNo,
+        address: updatedProfileData.address,
+        email: updatedProfileData.email,
+        date_of_birth: updatedProfileData.dateOfBirth,
+      };
+      
+      await usersApi.updateProfile(user.userId, profilePayload);
+
+      // 2. Upload Profile Picture if provided
+      if (profileFile) {
+        const photoRes = await usersApi.uploadProfilePicture(user.userId, profileFile);
+        if (photoRes.data?.photo_path) {
+          updatedProfileData.profilePicture = photoRes.data.photo_path;
+        }
+      }
+
+      setProfileData(updatedProfileData);
+      saveProfileModalData(updatedProfileData);
+
+      // Sync the display name and explicitly mapped profile fields in the store
+      useAuthStore.setState({
+        user: { 
+          ...user, 
+          name: `${updatedProfileData.fname} ${updatedProfileData.lname}`,
+          contact_num: updatedProfileData.contactNo,
+          address: updatedProfileData.address,
+          date_of_birth: updatedProfileData.dateOfBirth,
+          photo_path: updatedProfileData.profilePicture
+        },
+      });
+
+      setActiveModal("my-profile");
+      setSuccessMsg("Profile updated successfully.");
+
+      return { success: true, message: "Profile updated successfully." };
+    } catch (err: any) {
+      return { success: false, message: err.message || "An error occurred." };
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const handleChangePassword = (
@@ -198,6 +245,7 @@ export const ProfileDropdown = () => {
         isOpen={activeModal === "my-profile"}
         onClose={closeModal}
         profileData={profileData}
+        successMessage={successMsg}
       />
 
       <ManageAccountModal
@@ -205,6 +253,7 @@ export const ProfileDropdown = () => {
         onClose={closeModal}
         profileData={profileData}
         onSave={handleSaveProfile}
+        isSavingProfile={isSavingProfile}
       />
 
       <ChangePasswordModal

@@ -8,16 +8,19 @@ interface ManageAccountModalProps {
   isOpen: boolean;
   onClose: () => void;
   profileData: ProfileModalData;
-  onSave: (updatedProfileData: ProfileModalData) => { success: boolean; message: string };
+  isSavingProfile?: boolean;
+  onSave: (updatedProfileData: ProfileModalData, file?: File) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string };
 }
 
-export const ManageAccountModal = ({ isOpen, onClose, profileData, onSave }: ManageAccountModalProps) => {
+export const ManageAccountModal = ({ isOpen, onClose, profileData, isSavingProfile, onSave }: ManageAccountModalProps) => {
   const [formData, setFormData] = useState<ProfileModalData>(profileData);
+  const [profileFile, setProfileFile] = useState<File>();
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     setFormData(profileData);
+    setProfileFile(undefined);
     setStatus(null);
   }, [isOpen, profileData]);
 
@@ -30,6 +33,7 @@ export const ManageAccountModal = ({ isOpen, onClose, profileData, onSave }: Man
     if (!selectedFile) return;
 
     const fileReader = new FileReader();
+    setProfileFile(selectedFile);
     fileReader.onload = () => {
       if (typeof fileReader.result === "string") {
         setFormData((prev) => ({ ...prev, profilePicture: fileReader.result as string }));
@@ -38,38 +42,48 @@ export const ManageAccountModal = ({ isOpen, onClose, profileData, onSave }: Man
     fileReader.readAsDataURL(selectedFile);
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!formData.fullName.trim() || !formData.contactNo.trim() || !formData.email.trim()) {
-      setStatus({ type: "error", message: "Full Name, Contact No, and Email are required." });
+    if (!formData.fname.trim() || !formData.lname.trim() || !formData.contactNo.trim() || !formData.email.trim()) {
+      setStatus({ type: "error", message: "First Name, Last Name, Contact No, and Email are required." });
       return;
     }
 
-    const saveResult = onSave({
+    const saveResult = await onSave({
       ...formData,
-      fullName: formData.fullName.trim(),
+      fname: formData.fname.trim(),
+      lname: formData.lname.trim(),
       contactNo: formData.contactNo.trim(),
       dateOfBirth: formData.dateOfBirth.trim(),
       address: formData.address.trim(),
       email: formData.email.trim(),
-    });
+    }, profileFile);
 
-    setStatus({
-      type: saveResult.success ? "success" : "error",
-      message: saveResult.message,
-    });
+    if (!saveResult.success) {
+      setStatus({ type: "error", message: saveResult.message });
+    }
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Manage Account" contentClassName="max-w-5xl">
       <form className="space-y-3 px-1 pb-2 pt-1" onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-[180px_1fr] md:items-center">
-          <label htmlFor="full-name" className="text-lg font-medium text-gray-900">Full Name:</label>
+          <label htmlFor="first-name" className="text-lg font-medium text-gray-900">First Name:</label>
           <Input
-            id="full-name"
-            value={formData.fullName}
-            onChange={(event) => handleFieldChange("fullName", event.target.value)}
+            id="first-name"
+            value={formData.fname}
+            onChange={(event) => handleFieldChange("fname", event.target.value)}
+            className="h-12 rounded-md border border-gray-300 bg-white px-4 text-lg font-semibold text-gray-900"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-[180px_1fr] md:items-center">
+          <label htmlFor="last-name" className="text-lg font-medium text-gray-900">Last Name:</label>
+          <Input
+            id="last-name"
+            value={formData.lname}
+            onChange={(event) => handleFieldChange("lname", event.target.value)}
             className="h-12 rounded-md border border-gray-300 bg-white px-4 text-lg font-semibold text-gray-900"
           />
         </div>
@@ -141,8 +155,8 @@ export const ManageAccountModal = ({ isOpen, onClose, profileData, onSave }: Man
         ) : null}
 
         <div className="flex justify-end pt-2">
-          <Button type="submit" className="h-12 rounded-full bg-(--button-green) px-8 text-xl font-semibold text-white hover:bg-(--button-hover-green)">
-            Save Changes
+          <Button type="submit" disabled={isSavingProfile} className="h-12 rounded-full bg-(--button-green) px-8 text-xl font-semibold text-white hover:bg-(--button-hover-green)">
+            {isSavingProfile ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </form>

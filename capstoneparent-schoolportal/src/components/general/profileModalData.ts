@@ -1,7 +1,8 @@
-import type { AuthUser } from "@/lib/auth";
+import type { SessionUser } from "../../lib/store/authStore";
 
 export interface ProfileModalData {
-  fullName: string;
+  fname: string;
+  lname: string;
   contactNo: string;
   dateOfBirth: string;
   address: string;
@@ -10,23 +11,34 @@ export interface ProfileModalData {
 }
 
 const defaultProfileModalData: ProfileModalData = {
-  fullName: "Jane Doe",
-  contactNo: "09874125689",
-  dateOfBirth: "02/15/1987",
-  address: "Sitio Pajak, Mandaue, Cebu",
-  email: "janedoe@gmail.com",
-  profilePicture: "/Logo.png",
+  fname: "",
+  lname: "",
+  contactNo: "",
+  dateOfBirth: "",
+  address: "",
+  email: "",
+  profilePicture: "",
 };
 
-const PROFILE_STORAGE_KEY = "dummyProfileData";
+const PROFILE_STORAGE_KEY = "userProfileData";
 
-export const buildProfileModalData = (authUser: AuthUser | null): ProfileModalData => ({
-  ...defaultProfileModalData,
-  fullName: authUser?.name ?? defaultProfileModalData.fullName,
-  email: authUser?.email ?? defaultProfileModalData.email,
-});
+export const buildProfileModalData = (authUser: SessionUser | null): ProfileModalData => {
+  const [fname = "", ...rest] = (authUser?.name ?? "").split(" ");
+  const lname = rest.join(" ");
 
-export const loadProfileModalData = (authUser: AuthUser | null): ProfileModalData => {
+  return {
+    ...defaultProfileModalData,
+    fname: authUser?.name ? fname : defaultProfileModalData.fname,
+    lname: authUser?.name ? lname : defaultProfileModalData.lname,
+    email: authUser?.email ?? defaultProfileModalData.email,
+    contactNo: authUser?.contact_num ?? defaultProfileModalData.contactNo,
+    address: authUser?.address ?? defaultProfileModalData.address,
+    dateOfBirth: authUser?.date_of_birth ? authUser.date_of_birth.substring(0, 10) : defaultProfileModalData.dateOfBirth,
+    profilePicture: authUser?.photo_path ?? defaultProfileModalData.profilePicture,
+  };
+};
+
+export const loadProfileModalData = (authUser: SessionUser | null): ProfileModalData => {
   const fallback = buildProfileModalData(authUser);
   const rawProfileData = localStorage.getItem(PROFILE_STORAGE_KEY);
 
@@ -37,7 +49,8 @@ export const loadProfileModalData = (authUser: AuthUser | null): ProfileModalDat
     return {
       ...fallback,
       ...parsed,
-      fullName: parsed.fullName?.trim() || fallback.fullName,
+      fname: parsed.fname?.trim() || fallback.fname,
+      lname: parsed.lname?.trim() || fallback.lname,
       email: parsed.email?.trim() || fallback.email,
     };
   } catch {
