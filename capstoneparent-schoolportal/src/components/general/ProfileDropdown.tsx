@@ -125,11 +125,12 @@ export const ProfileDropdown = () => {
     }
   };
 
-  const handleChangePassword = (
+  const handleChangePassword = async (
     currentPassword: string,
     newPassword: string,
     confirmPassword: string,
-  ): { success: boolean; message: string } => {
+  ): Promise<{ success: boolean; message: string }> => {
+    // --- front-end validation (fast, no round-trip needed) ---
     if (
       !currentPassword.trim() ||
       !newPassword.trim() ||
@@ -159,10 +160,22 @@ export const ProfileDropdown = () => {
       };
     }
 
-    // TODO: wire to usersApi.changePassword({ currentPassword, newPassword })
-    // when the PATCH /api/users/me/password endpoint is implemented.
-    return { success: false, message: "Password change is not yet available." };
+    if (!user) {
+      return { success: false, message: "You are not logged in." };
+    }
+
+    // --- API call ---
+    try {
+      await usersApi.changePassword(user.userId, currentPassword, newPassword);
+      return { success: true, message: "Password changed successfully." };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err.message || "An error occurred. Please try again.",
+      };
+    }
   };
+
 
   const handleLogout = async () => {
     setIsLoggingOut(true);

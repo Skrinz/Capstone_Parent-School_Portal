@@ -157,6 +157,39 @@ const usersController = {
       next(error);
     }
   },
+
+  /**
+   * PATCH /users/:id/password
+   * Body: { currentPassword, newPassword }
+   */
+  async changePassword(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res
+          .status(400)
+          .json({ message: "currentPassword and newPassword are required." });
+      }
+
+      await usersService.changePassword(
+        parseInt(id),
+        currentPassword,
+        newPassword,
+      );
+
+      res.status(200).json({ message: "Password changed successfully." });
+    } catch (error) {
+      if (error.message === "User not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message === "Current password is incorrect") {
+        return res.status(401).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
 };
 
 module.exports = usersController;

@@ -10,10 +10,7 @@ interface ChangePasswordModalProps {
     currentPassword: string,
     newPassword: string,
     confirmPassword: string,
-  ) => {
-    success: boolean;
-    message: string;
-  };
+  ) => Promise<{ success: boolean; message: string }>;
 }
 
 export const ChangePasswordModal = ({
@@ -24,6 +21,7 @@ export const ChangePasswordModal = ({
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<{
     type: "success" | "error";
     message: string;
@@ -37,9 +35,12 @@ export const ChangePasswordModal = ({
     setStatus(null);
   }, [isOpen]);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const result = onChangePassword(
+    setIsLoading(true);
+    setStatus(null);
+
+    const result = await onChangePassword(
       currentPassword,
       newPassword,
       confirmPassword,
@@ -55,6 +56,8 @@ export const ChangePasswordModal = ({
       setNewPassword("");
       setConfirmPassword("");
     }
+
+    setIsLoading(false);
   };
 
   return (
@@ -74,6 +77,7 @@ export const ChangePasswordModal = ({
             value={currentPassword}
             onChange={(event) => setCurrentPassword(event.target.value)}
             className="h-11 rounded-md border border-gray-300 bg-white"
+            disabled={isLoading}
           />
         </div>
 
@@ -91,6 +95,7 @@ export const ChangePasswordModal = ({
             value={newPassword}
             onChange={(event) => setNewPassword(event.target.value)}
             className="h-11 rounded-md border border-gray-300 bg-white"
+            disabled={isLoading}
           />
         </div>
 
@@ -108,6 +113,7 @@ export const ChangePasswordModal = ({
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
             className="h-11 rounded-md border border-gray-300 bg-white"
+            disabled={isLoading}
           />
         </div>
 
@@ -126,9 +132,10 @@ export const ChangePasswordModal = ({
         <div className="flex justify-end pt-1">
           <Button
             type="submit"
-            className="h-11 rounded-full bg-(--button-green) px-8 text-base font-semibold text-white hover:bg-(--button-hover-green)"
+            disabled={isLoading}
+            className="h-11 rounded-full bg-(--button-green) px-8 text-base font-semibold text-white hover:bg-(--button-hover-green) disabled:opacity-60"
           >
-            Save
+            {isLoading ? "Saving…" : "Save"}
           </Button>
         </div>
       </form>

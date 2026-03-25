@@ -105,4 +105,21 @@ router.delete(
   usersController.removeRole,
 );
 
+// Change own password (authenticated user)
+router.patch(
+  "/:id/password",
+  [
+    param("id").isInt(),
+    body("currentPassword")
+      .notEmpty()
+      .withMessage("currentPassword is required"),
+    body("newPassword")
+      .isLength({ min: 8 })
+      .withMessage("newPassword must be at least 8 characters"),
+  ],
+  validate,
+  usersController.changePassword,
+);
+
 module.exports = router;
+

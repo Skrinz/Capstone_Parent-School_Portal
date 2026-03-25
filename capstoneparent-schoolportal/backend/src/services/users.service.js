@@ -1,6 +1,7 @@
 const prisma = require("../config/database");
 const { uploadFiles } = require("../utils/supabaseStorage");
 const { findOrThrow } = require("../utils/findOrThrow");
+const { hashPassword, comparePassword } = require("../utils/hashUtil");
 
 const usersService = {
   /**
@@ -251,6 +252,37 @@ const usersService = {
 
     return true;
   },
+
+  /**
+   * Change a user's password after verifying the current one.
+   * @param {number} userId
+   * @param {string} currentPassword  Plain-text current password
+   * @param {string} newPassword      Plain-text new password
+   */
+  async changePassword(userId, currentPassword, newPassword) {
+    const user = await prisma.user.findUnique({
+      where: { user_id: userId },
+      select: { user_id: true, password: true },
+    });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const isMatch = await comparePassword(currentPassword, user.password);
+    if (!isMatch) {
+      throw new Error("Current password is incorrect");
+    }
+
+    const hashed = await hashPassword(newPassword);
+    await prisma.user.update({
+      where: { user_id: userId },
+      data: { password: hashed },
+    });
+
+    return true;
+  },
 };
 
 module.exports = usersService;
+
