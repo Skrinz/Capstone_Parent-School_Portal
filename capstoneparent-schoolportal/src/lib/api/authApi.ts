@@ -6,9 +6,17 @@ import { apiFetch } from "./base";
 import type { ApiMessage, ApiData, AuthUser } from "./types";
 
 export const authApi = {
-  // POST /api/auth/register
-  register(formData: FormData) {
-    return apiFetch<ApiMessage>("/auth/register", {
+  // POST /api/auth/register/parent
+  register(formData: FormData) { // keeping name `register` to avoid breaking frontend immediately
+    return apiFetch<ApiMessage>("/auth/register/parent", {
+      method: "POST",
+      body: formData,
+    });
+  },
+
+  // POST /api/auth/register/employee
+  registerEmployee(formData: FormData) {
+    return apiFetch<ApiMessage>("/auth/register/employee", {
       method: "POST",
       body: formData,
     });

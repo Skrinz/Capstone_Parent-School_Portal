@@ -74,8 +74,8 @@ function signToken(user) {
 // ─── Auth Service ────────────────────────────────────────────────────────────
 
 const authService = {
-  //http://localhost:5000/api/auth/register
-  async initiateRegistration(userData, files = []) {
+  //http://localhost:5000/api/auth/register/parent
+  async initiateParentRegistration(userData, files = []) {
     const {
       email,
       password,
@@ -87,22 +87,11 @@ const authService = {
       student_ids,
     } = userData;
 
-    // Strip any accidental "Parent" from the roles array — Parent is derived
-    // from student_ids, not set directly by the client
-    const nonParentRoles = (userData.roles || []).filter((r) => r !== "Parent");
+    const resolvedRoles = ["Parent"];
 
-    const isParent = !!(student_ids && student_ids.length > 0);
-
-    // Merge: non-parent roles + Parent (if student_ids provided)
-    const resolvedRoles = isParent
-      ? [...nonParentRoles, "Parent"]
-      : nonParentRoles;
-
-    if (isParent) {
-      if (!files || files.length === 0) {
-        cleanupTempFiles({ filePaths: files.map((f) => ({ path: f.path })) });
-        throw new Error("Parents must upload at least one supporting document");
-      }
+    if (!files || files.length === 0) {
+      cleanupTempFiles({ filePaths: files.map((f) => ({ path: f.path })) });
+      throw new Error("Parents must upload at least one supporting document");
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -132,6 +121,75 @@ const authService = {
       date_of_birth,
       roles: resolvedRoles,
       student_ids,
+      otpCode,
+      otpExpiresAt,
+      filePaths: files.map((f) => ({
+        originalname: f.originalname,
+        path: f.path,
+        mimetype: f.mimetype,
+        size: f.size,
+      })),
+    });
+
+    const emailSent = await sendOTPEmail(email, otpCode);
+    if (!emailSent) {
+      cleanupTempFiles(getPendingRegistration(email));
+      clearPendingRegistration(email);
+      throw new Error("Failed to send OTP email");
+    }
+
+    return {
+      message:
+        "Verification OTP sent. Please verify your email to complete registration.",
+    };
+  },
+
+  //http://localhost:5000/api/auth/register/employee
+  async initiateEmployeeRegistration(userData, files = []) {
+    const {
+      email,
+      password,
+      fname,
+      lname,
+      contact_num,
+      address,
+      date_of_birth,
+      roles,
+    } = userData;
+
+    const resolvedRoles = (roles || []).filter((r) => r !== "Parent");
+    if (resolvedRoles.length === 0) {
+      cleanupTempFiles({ filePaths: files.map((f) => ({ path: f.path })) });
+      throw new Error("Employee must have at least one valid role");
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      cleanupTempFiles({ filePaths: files.map((f) => ({ path: f.path })) });
+      throw new Error("User with this email already exists");
+    }
+
+    if (getPendingRegistration(email)) {
+      cleanupTempFiles({ filePaths: files.map((f) => ({ path: f.path })) });
+      throw new Error(
+        "A verification email was already sent. Please check your inbox.",
+      );
+    }
+
+    const hashedPassword = await hashPassword(password);
+    const otpCode = generateOTP();
+    const otpExpiresAt = Date.now() + PENDING_TTL_MS;
+
+    storePendingRegistration(email, {
+      email,
+      hashedPassword,
+      fname,
+      lname,
+      contact_num,
+      address,
+      date_of_birth,
+      roles: resolvedRoles,
+      student_ids: null, // Employees don't have student_ids
       otpCode,
       otpExpiresAt,
       filePaths: files.map((f) => ({

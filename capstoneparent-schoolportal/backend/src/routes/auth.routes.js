@@ -8,9 +8,9 @@ const multer = require("multer");
 const upload = multer({ dest: process.env.UPLOAD_PATH || "uploads/" });
 const router = express.Router();
 
-//http://localhost:5000/api/auth/register
+//http://localhost:5000/api/auth/register/parent
 router.post(
-  "/register",
+  "/register/parent",
   upload.array("attachments", 10),
   [
     body("email").isEmail().normalizeEmail(),
@@ -30,15 +30,6 @@ router.post(
         if (dob >= today) throw new Error("Date of birth must be in the past");
         return true;
       }),
-    body("roles")
-      .optional()
-      .isArray({ min: 1 })
-      .withMessage("roles must be a non-empty array"),
-    body("roles.*")
-      .isIn(["Librarian", "Teacher", "Admin", "Principal", "Vice_Principal"])
-      .withMessage(
-        "Each role must be one of: Librarian, Teacher, Admin, Principal, Vice_Principal",
-      ),
     body("student_ids")
       .optional()
       .customSanitizer((value) => {
@@ -49,7 +40,42 @@ router.post(
     body("student_ids.*").optional().isInt(),
   ],
   validate,
-  authController.register,
+  authController.registerParent,
+);
+
+//http://localhost:5000/api/auth/register/employee
+router.post(
+  "/register/employee",
+  upload.array("attachments", 10), // Even if they don't upload attachments, multer handles it
+  [
+    body("email").isEmail().normalizeEmail(),
+    body("password").isLength({ min: 8 }),
+    body("fname").notEmpty().trim(),
+    body("lname").notEmpty().trim(),
+    body("contact_num").notEmpty().isNumeric(),
+    body("address").notEmpty(),
+    body("date_of_birth")
+      .notEmpty()
+      .withMessage("Date of birth is required")
+      .isISO8601()
+      .withMessage("Date of birth must be a valid date (YYYY-MM-DD)")
+      .custom((value) => {
+        const dob = new Date(value);
+        const today = new Date();
+        if (dob >= today) throw new Error("Date of birth must be in the past");
+        return true;
+      }),
+    body("roles")
+      .isArray({ min: 1 })
+      .withMessage("Employee must have at least one role"),
+    body("roles.*")
+      .isIn(["Librarian", "Teacher", "Admin", "Principal", "Vice_Principal"])
+      .withMessage(
+        "Each role must be one of: Librarian, Teacher, Admin, Principal, Vice_Principal",
+      ),
+  ],
+  validate,
+  authController.registerEmployee,
 );
 
 //http://localhost:5000/api/auth/verify-registration-otp

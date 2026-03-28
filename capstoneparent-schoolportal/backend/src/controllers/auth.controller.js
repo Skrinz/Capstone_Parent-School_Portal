@@ -8,16 +8,35 @@ const COOKIE_OPTIONS = {
 };
 
 const authController = {
-  //http://localhost:5000/api/auth/register
-  async register(req, res, next) {
+  //http://localhost:5000/api/auth/register/parent
+  async registerParent(req, res, next) {
     try {
       const files = req.files || [];
       const userData = req.body;
 
-      // Parent role is automatically injected by the service when student_ids
-      // is present. No manual role override is needed here.
+      const result = await authService.initiateParentRegistration(userData, files);
+      res.status(200).json({ message: result.message });
+    } catch (error) {
+      if (error.message === "User with this email already exists") {
+        return res.status(409).json({ message: error.message });
+      }
+      if (error.message.startsWith("A verification email was already sent")) {
+        return res.status(409).json({ message: error.message });
+      }
+      if (error.message === "Failed to send OTP email") {
+        return res.status(502).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
 
-      const result = await authService.initiateRegistration(userData, files);
+  //http://localhost:5000/api/auth/register/employee
+  async registerEmployee(req, res, next) {
+    try {
+      const files = req.files || [];
+      const userData = req.body;
+
+      const result = await authService.initiateEmployeeRegistration(userData, files);
       res.status(200).json({ message: result.message });
     } catch (error) {
       if (error.message === "User with this email already exists") {
