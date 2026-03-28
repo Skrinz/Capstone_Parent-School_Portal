@@ -1,4 +1,6 @@
-import { FileText, Pencil, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { FileText, Pencil, Plus, Loader2 } from "lucide-react";
+import { resolveMediaUrl } from "@/lib/api/base";
 
 export type AnnouncementAttachment = string | { name: string; url: string };
 
@@ -45,39 +47,108 @@ const resolveAttachmentLink = (attachment: AnnouncementAttachment) => {
 };
 
 export interface AnnouncementPostItem {
-  id: string;
-  author: string;
-  role: string;
-  date: string;
-  title: string;
-  content: string;
-  attachments?: AnnouncementAttachment[];
+  announcement_id: number;
+  announcement_title: string;
+  announcement_desc: string;
+  announcement_type: "General" | "Staff_only" | "Memorandum";
+  created_at: string;
+  user?: {
+    user_id: number;
+    fname: string;
+    lname: string;
+    photo_path?: string;
+  };
+  files?: Array<{
+    file: {
+      file_name: string;
+      file_path: string;
+    }
+  }>;
 }
 
 interface AnnouncementPostFeedProps {
   posts: AnnouncementPostItem[];
+  isLoading?: boolean;
   onAdd?: () => void;
   onEdit?: (post: AnnouncementPostItem) => void;
 }
 
+const authorAvatarClassName =
+  "mt-4 h-14 w-14 shrink-0 rounded-full border-2 border-gray-300 bg-white object-cover sm:h-16 sm:w-16";
+
+const getAuthorInitials = (user: NonNullable<AnnouncementPostItem["user"]>) => {
+  const a = user.fname?.trim()?.[0] ?? "";
+  const b = user.lname?.trim()?.[0] ?? "";
+  const raw = `${a}${b}`.toUpperCase();
+  return raw || "?";
+};
+
+const AnnouncementAuthorAvatar = ({ post }: { post: AnnouncementPostItem }) => {
+  const [imgFailed, setImgFailed] = useState(false);
+  const user = post.user;
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [post.announcement_id, user?.user_id, user?.photo_path]);
+
+  if (!user) {
+    return (
+      <div
+        className={`${authorAvatarClassName} flex items-center justify-center bg-gray-100 text-sm font-semibold uppercase text-gray-700 sm:text-base`}
+        aria-label="Author avatar"
+      >
+        ?
+      </div>
+    );
+  }
+
+  const rawPath = user.photo_path?.trim();
+  const photoUrl = rawPath ? resolveMediaUrl(rawPath) : null;
+
+  if (!photoUrl || imgFailed) {
+    return (
+      <div
+        className={`${authorAvatarClassName} flex items-center justify-center bg-gray-100 text-sm font-semibold uppercase text-gray-700 sm:text-base`}
+        aria-label="Author avatar"
+      >
+        {getAuthorInitials(user)}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={photoUrl}
+      alt=""
+      className={authorAvatarClassName}
+      onError={() => setImgFailed(true)}
+    />
+  );
+};
+
 export const AnnouncementPostFeed = ({
   posts,
+  isLoading,
   onAdd,
   onEdit,
 }: AnnouncementPostFeedProps) => {
+  if (isLoading) {
+    return (
+      <section className="mx-auto flex h-64 w-full max-w-330 items-center justify-center px-3 py-6 sm:px-5 lg:px-6">
+        <Loader2 className="h-10 w-10 animate-spin text-(--button-green)" />
+      </section>
+    );
+  }
+
   return (
     <section className="mx-auto w-full max-w-330 px-3 py-6 text-left sm:px-5 lg:px-6">
       <div className="space-y-5 sm:space-y-6">
         {posts.map((post) => (
           <article
-            key={post.id}
+            key={post.announcement_id}
             className="grid grid-cols-[56px_minmax(0,1fr)] gap-3 sm:grid-cols-[68px_minmax(0,1fr)] sm:gap-5"
           >
-            <img
-              src="/Logo.png"
-              alt="Author avatar"
-              className="mt-4 h-14 w-14 rounded-full border-2 border-gray-300 bg-white object-cover sm:h-16 sm:w-16"
-            />
+            <AnnouncementAuthorAvatar post={post} />
 
             <div className="relative w-full overflow-hidden rounded-2xl border border-gray-300 bg-linear-to-r from-gray-100 to-gray-200 p-5 shadow-sm sm:p-7 lg:p-8">
               {onEdit && (
@@ -93,27 +164,30 @@ export const AnnouncementPostFeed = ({
 
               <div className={onEdit ? "pr-0 sm:pr-14" : ""}>
                 <p className="text-xl font-semibold uppercase tracking-wide text-blue-600 sm:text-2xl">
-                  {post.author}
+                  {post.user ? `${post.user.fname} ${post.user.lname}` : "Admin"}
                 </p>
-                <p className="text-lg font-semibold text-gray-900 sm:text-xl">{post.role}</p>
-                <p className="text-sm text-gray-600 sm:text-base">{post.date}</p>
+                <p className="text-sm text-gray-600 sm:text-base">
+                  {new Date(post.created_at).toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </p>
 
                 <h2 className="mt-4 text-[clamp(1.65rem,3.4vw,3rem)] font-bold leading-tight text-gray-950">
-                  {post.title}
+                  {post.announcement_title}
                 </h2>
 
                 <p className="mt-4 whitespace-pre-line text-[clamp(1rem,1.45vw,1.4rem)] leading-relaxed text-gray-900">
-                  {post.content}
+                  {post.announcement_desc}
                 </p>
 
-                {!!post.attachments?.length && (
+                {!!post.files?.length && (
                   <div className="mt-5 flex flex-wrap gap-2 sm:gap-3">
-                    {post.attachments.map((attachment) => {
+                    {post.files.map(({ file }) => {
+                      const attachment = { name: file.file_name, url: file.file_path };
                       const resolvedAttachment = resolveAttachmentLink(attachment);
-                      const attachmentKey =
-                        typeof attachment === "string"
-                          ? attachment
-                          : `${attachment.name}-${attachment.url}`;
+                      const attachmentKey = `${attachment.name}-${attachment.url}`;
 
                       return (
                         <a

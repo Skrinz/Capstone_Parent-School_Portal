@@ -5,7 +5,7 @@ import { useAnnouncementPosts } from "@/hooks/useAnnouncementPosts";
 import { Navigate } from "react-router-dom";
 
 export const Announcements = () => {
-  const { posts } = useAnnouncementPosts("general");
+  const { posts, isLoading } = useAnnouncementPosts("general");
   const authUser = getAuthUser();
   const normalizedRole = authUser?.role?.toLowerCase();
   const isAnnouncementEditor =
@@ -20,7 +20,7 @@ export const Announcements = () => {
   return (
     <div className="min-h-screen bg-white">
       <RoleAwareNavbar />
-      <AnnouncementPostFeed posts={posts} />
+      <AnnouncementPostFeed posts={posts} isLoading={isLoading} />
     </div>
   );
 };

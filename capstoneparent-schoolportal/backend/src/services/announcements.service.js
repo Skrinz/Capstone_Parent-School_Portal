@@ -16,8 +16,8 @@ const announcementsService = {
     const where = {};
 
     if (type) {
-      // Validate announcement type
-      const validTypes = ['General', 'Academic', 'Event', 'Emergency'];
+      // Must match Prisma AnnouncementType enum and route validators
+      const validTypes = ['General', 'Staff_only', 'Memorandum'];
       if (!validTypes.includes(type)) {
         throw new Error(`Invalid announcement type. Must be one of: ${validTypes.join(', ')}`);
       }
@@ -42,7 +42,8 @@ const announcementsService = {
             select: {
               user_id: true,
               fname: true,
-              lname: true
+              lname: true,
+              photo_path: true
             }
           },
           files: {
@@ -81,7 +82,8 @@ const announcementsService = {
           select: {
             user_id: true,
             fname: true,
-            lname: true
+            lname: true,
+            photo_path: true
           }
         },
         files: {
@@ -151,7 +153,8 @@ const announcementsService = {
           select: {
             user_id: true,
             fname: true,
-            lname: true
+            lname: true,
+            photo_path: true
           }
         },
         files: {
@@ -194,7 +197,8 @@ const announcementsService = {
           select: {
             user_id: true,
             fname: true,
-            lname: true
+            lname: true,
+            photo_path: true
           }
         },
         files: {

@@ -27,9 +27,9 @@ router.get('/:id',
   announcementsController.getAnnouncementById
 );
 
-// Create announcement (Admin, Principal, Vice Principal only)
+// Create announcement 
 router.post('/',
-  authorize('Admin', 'Principal', 'Vice_Principal'),
+  authorize('Admin', 'Principal', 'Vice_Principal', 'Teacher', 'Librarian'),
   [
     body('announcement_title').notEmpty().trim(),
     body('announcement_desc').notEmpty(),
@@ -42,7 +42,7 @@ router.post('/',
 
 // Update announcement
 router.put('/:id',
-  authorize('Admin', 'Principal', 'Vice_Principal'),
+  authorize('Admin', 'Principal', 'Vice_Principal', 'Teacher', 'Librarian'),
   [
     param('id').isInt(),
     body('announcement_title').optional().trim(),
@@ -55,7 +55,7 @@ router.put('/:id',
 
 // Delete announcement
 router.delete('/:id',
-  authorize('Admin', 'Principal', 'Vice_Principal'),
+  authorize('Admin', 'Principal', 'Vice_Principal', 'Teacher', 'Librarian'),
   param('id').isInt(),
   validate,
   announcementsController.deleteAnnouncement

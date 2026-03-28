@@ -7,6 +7,21 @@ export const BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 /**
+ * Turns stored photo paths into usable image URLs. Absolute http(s), blob:,
+ * and data: URLs are unchanged. Relative paths are prefixed with the API host
+ * (trailing `/api` stripped from `BASE_URL`).
+ */
+export function resolveMediaUrl(path: string): string {
+  const trimmed = path.trim();
+  if (!trimmed) return trimmed;
+  if (/^(https?:\/\/|blob:|data:)/i.test(trimmed)) {
+    return trimmed;
+  }
+  const origin = BASE_URL.replace(/\/api\/?$/i, "");
+  return trimmed.startsWith("/") ? `${origin}${trimmed}` : `${origin}/${trimmed}`;
+}
+
+/**
  * Reads the JWT from the Zustand-persisted localStorage entry.
  * Used by authenticated endpoints as a Bearer token fallback alongside the
  * httpOnly cookie (cookie is preferred for browser; header covers Postman / mobile).
