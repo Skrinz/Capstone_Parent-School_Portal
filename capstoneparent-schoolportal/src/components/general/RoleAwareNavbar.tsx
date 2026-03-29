@@ -17,17 +17,12 @@ type NavConfig = React.ComponentProps<typeof AuthenticatedNavbar>;
 
 const LOGO_ALT = "Bayog Elementary National School Logo";
 
-const ANNOUNCEMENT_STAFF_PATHS = [
-  "/announcements",
-  "/generalannouncement",
-  "/staffannouncement",
-  "/memorandumannouncement",
-];
+const ANNOUNCEMENT_PATHS = ["/announcements"];
 
 const NAV_CONFIGS: Record<UserRole, NavConfig> = {
   admin: {
-    announcementPath: "/generalannouncement",
-    announcementActivePaths: ANNOUNCEMENT_STAFF_PATHS,
+    announcementPath: "/announcements",
+    announcementActivePaths: ANNOUNCEMENT_PATHS,
     recordsItems: [
       { label: "Manage Parent Verification", to: "/manageparentverification" },
       { label: "Manage Sections", to: "/managesections" },
@@ -45,7 +40,7 @@ const NAV_CONFIGS: Record<UserRole, NavConfig> = {
 
   principal: {
     announcementPath: "/announcements",
-    announcementActivePaths: ANNOUNCEMENT_STAFF_PATHS,
+    announcementActivePaths: ANNOUNCEMENT_PATHS,
     recordsItems: [
       { label: "Manage Class Lists", to: "/manageclasslists" },
       { label: "Manage Sections", to: "/managesections" },
@@ -57,7 +52,7 @@ const NAV_CONFIGS: Record<UserRole, NavConfig> = {
 
   vice_principal: {
     announcementPath: "/announcements",
-    announcementActivePaths: ANNOUNCEMENT_STAFF_PATHS,
+    announcementActivePaths: ANNOUNCEMENT_PATHS,
     recordsItems: [
       { label: "Manage Class Lists", to: "/manageclasslists" },
       { label: "Manage Sections", to: "/managesections" },
@@ -68,8 +63,8 @@ const NAV_CONFIGS: Record<UserRole, NavConfig> = {
   },
 
   teacher: {
-    announcementPath: "/generalannouncement",
-    announcementActivePaths: ANNOUNCEMENT_STAFF_PATHS,
+    announcementPath: "/announcements",
+    announcementActivePaths: ANNOUNCEMENT_PATHS,
     recordsItems: [
       { label: "Class Lists", to: "/classlist" },
       { label: "Manage Parent Verification", to: "/manageparentverification" },
@@ -86,7 +81,7 @@ const NAV_CONFIGS: Record<UserRole, NavConfig> = {
 
   librarian: {
     announcementPath: "/announcements",
-    announcementActivePaths: ["/announcements"],
+    announcementActivePaths: ANNOUNCEMENT_PATHS,
     recordsItems: [
       { label: "Manage Books", to: "/managebooks" },
       { label: "Manage Learning Resources", to: "/managelearningresources" },
@@ -103,24 +98,10 @@ const NAV_CONFIGS: Record<UserRole, NavConfig> = {
   },
 
   staff: {
-    announcementPath: "/generalannouncement",
-    announcementActivePaths: [
-      "/generalannouncement",
-      "/staffannouncement",
-      "/memorandumannouncement",
-    ],
-    recordsItems: [
-      { label: "General Announcements", to: "/generalannouncement" },
-      { label: "Staff Announcements", to: "/staffannouncement" },
-      { label: "Memorandums", to: "/memorandumannouncement" },
-      { label: "Staff Dashboard", to: "/staffview" },
-    ],
-    recordsActivePaths: [
-      "/staffview",
-      "/generalannouncement",
-      "/staffannouncement",
-      "/memorandumannouncement",
-    ],
+    announcementPath: "/announcements",
+    announcementActivePaths: ANNOUNCEMENT_PATHS,
+    recordsItems: [{ label: "Staff Dashboard", to: "/staffview" }],
+    recordsActivePaths: ["/staffview"],
     logoAlt: LOGO_ALT,
   },
 

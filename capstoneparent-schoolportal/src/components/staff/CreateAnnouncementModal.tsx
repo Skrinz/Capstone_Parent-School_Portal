@@ -13,24 +13,34 @@ interface CreateAnnouncementModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (data: AnnouncementData) => void;
+  defaultCategory?: AnnouncementData["category"];
 }
 
-export const CreateAnnouncementModal = ({ isOpen, onClose, onCreate }: CreateAnnouncementModalProps) => {
+export const CreateAnnouncementModal = ({
+  isOpen,
+  onClose,
+  onCreate,
+  defaultCategory = "general",
+}: CreateAnnouncementModalProps) => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [category, setCategory] = useState<AnnouncementData["category"]>("general");
+  const [category, setCategory] =
+    useState<AnnouncementData["category"]>("general");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      setCategory(defaultCategory);
+      setError(null);
+    } else {
       setTitle("");
       setContent("");
       setCategory("general");
       setError(null);
       setSubmitting(false);
     }
-  }, [isOpen]);
+  }, [isOpen, defaultCategory]);
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -47,7 +57,11 @@ export const CreateAnnouncementModal = ({ isOpen, onClose, onCreate }: CreateAnn
 
     setSubmitting(true);
     try {
-      const data: AnnouncementData = { title: title.trim(), content: content.trim(), category };
+      const data: AnnouncementData = {
+        title: title.trim(),
+        content: content.trim(),
+        category,
+      };
       // Caller handles API/save; provide data back
       await Promise.resolve();
       onCreate(data);
@@ -63,7 +77,9 @@ export const CreateAnnouncementModal = ({ isOpen, onClose, onCreate }: CreateAnn
     <Modal isOpen={isOpen} onClose={onClose} title="Create Announcement">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Title
+          </label>
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -73,7 +89,9 @@ export const CreateAnnouncementModal = ({ isOpen, onClose, onCreate }: CreateAnn
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Category
+          </label>
           <div className="flex gap-2">
             <button
               type="button"
@@ -100,7 +118,9 @@ export const CreateAnnouncementModal = ({ isOpen, onClose, onCreate }: CreateAnn
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Content
+          </label>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
@@ -113,7 +133,12 @@ export const CreateAnnouncementModal = ({ isOpen, onClose, onCreate }: CreateAnn
         {error && <div className="text-sm text-red-600">{error}</div>}
 
         <div className="flex justify-end gap-3">
-          <Button variant="outline" size="default" onClick={onClose} type="button">
+          <Button
+            variant="outline"
+            size="default"
+            onClick={onClose}
+            type="button"
+          >
             Cancel
           </Button>
           <Button type="submit" disabled={submitting}>

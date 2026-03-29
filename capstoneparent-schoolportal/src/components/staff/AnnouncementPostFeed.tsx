@@ -71,6 +71,8 @@ interface AnnouncementPostFeedProps {
   isLoading?: boolean;
   onAdd?: () => void;
   onEdit?: (post: AnnouncementPostItem) => void;
+  /** If set with onEdit, edit is shown only when this returns true (e.g. author or admin). */
+  canEditPost?: (post: AnnouncementPostItem) => boolean;
 }
 
 const authorAvatarClassName =
@@ -131,6 +133,7 @@ export const AnnouncementPostFeed = ({
   isLoading,
   onAdd,
   onEdit,
+  canEditPost,
 }: AnnouncementPostFeedProps) => {
   if (isLoading) {
     return (
@@ -143,7 +146,12 @@ export const AnnouncementPostFeed = ({
   return (
     <section className="mx-auto w-full max-w-330 px-3 py-6 text-left sm:px-5 lg:px-6">
       <div className="space-y-5 sm:space-y-6">
-        {posts.map((post) => (
+        {posts.map((post) => {
+          const mayEditPost =
+            onEdit != null &&
+            (canEditPost == null || canEditPost(post));
+
+          return (
           <article
             key={post.announcement_id}
             className="grid grid-cols-[56px_minmax(0,1fr)] gap-3 sm:grid-cols-[68px_minmax(0,1fr)] sm:gap-5"
@@ -151,7 +159,7 @@ export const AnnouncementPostFeed = ({
             <AnnouncementAuthorAvatar post={post} />
 
             <div className="relative w-full overflow-hidden rounded-2xl border border-gray-300 bg-linear-to-r from-gray-100 to-gray-200 p-5 shadow-sm sm:p-7 lg:p-8">
-              {onEdit && (
+              {mayEditPost && (
                 <button
                   type="button"
                   aria-label="Edit announcement"
@@ -162,7 +170,7 @@ export const AnnouncementPostFeed = ({
                 </button>
               )}
 
-              <div className={onEdit ? "pr-0 sm:pr-14" : ""}>
+              <div className={mayEditPost ? "pr-0 sm:pr-14" : ""}>
                 <p className="text-xl font-semibold uppercase tracking-wide text-blue-600 sm:text-2xl">
                   {post.user ? `${post.user.fname} ${post.user.lname}` : "Admin"}
                 </p>
@@ -210,7 +218,8 @@ export const AnnouncementPostFeed = ({
               </div>
             </div>
           </article>
-        ))}
+          );
+        })}
       </div>
 
       {onAdd && (
