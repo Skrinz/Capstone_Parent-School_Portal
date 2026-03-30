@@ -71,12 +71,7 @@ const usersController = {
         return res.status(400).json({ message: "No photo uploaded" });
       }
 
-      const { uploadFile } = require("../utils/supabaseStorage");
-      const signedUrl = await uploadFile(file);
-
-      const user = await usersService.updateUser(parseInt(id), {
-        photo_path: signedUrl,
-      });
+      const user = await usersService.replaceUserPhoto(parseInt(id), file);
 
       res.status(200).json({
         message: "Profile picture uploaded successfully",

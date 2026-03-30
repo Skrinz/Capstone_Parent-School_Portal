@@ -62,6 +62,32 @@ const getClient = () => {
   return _supabase;
 };
 
+const parseSupabaseStorageUrl = (fileUrl) => {
+  if (!fileUrl || typeof fileUrl !== "string") return null;
+
+  try {
+    const parsed = new URL(fileUrl);
+    const patterns = [
+      /\/storage\/v1\/object\/sign\/([^/]+)\/(.+)$/,
+      /\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/,
+      /\/storage\/v1\/object\/authenticated\/([^/]+)\/(.+)$/,
+      /\/storage\/v1\/object\/([^/]+)\/(.+)$/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = parsed.pathname.match(pattern);
+      if (!match) continue;
+      const bucket = decodeURIComponent(match[1]);
+      const key = decodeURIComponent(match[2]);
+      return { bucket, key };
+    }
+
+    return null;
+  } catch (_) {
+    return null;
+  }
+};
+
 /**
  * Upload a single multer file object to Supabase Storage and return a signed URL.
  *
@@ -143,4 +169,22 @@ const uploadFiles = async (files) => {
   return Promise.all(files.map((file) => uploadFile(file)));
 };
 
-module.exports = { uploadFile, uploadFiles };
+const deleteFileByUrl = async (fileUrl) => {
+  const supabase = getClient();
+  const parsedStorageRef = parseSupabaseStorageUrl(fileUrl);
+
+  if (!parsedStorageRef?.bucket || !parsedStorageRef?.key) {
+    return false;
+  }
+
+  const { error } = await supabase.storage
+    .from(parsedStorageRef.bucket)
+    .remove([parsedStorageRef.key]);
+  if (error) {
+    throw new Error(`Supabase file delete failed: ${error.message}`);
+  }
+
+  return true;
+};
+
+module.exports = { uploadFile, uploadFiles, deleteFileByUrl };
