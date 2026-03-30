@@ -44,6 +44,7 @@ import { EditContactUs } from "./Pages/admin-pages/edit-pages/EditContactUs";
 import { EditSchoolCalendar } from "./Pages/admin-pages/edit-pages/EditSchoolCalendar";
 import { EditOrganizationalChart } from "./Pages/admin-pages/edit-pages/EditOrganizationalChart";
 import { EditTransparency } from "./Pages/admin-pages/edit-pages/EditTransparency";
+import { EditHistory } from "./Pages/admin-pages/edit-pages/EditHistory";
 
 {
   /*Teacher Sub Pages */
@@ -219,6 +220,14 @@ const App = () => {
           <ProtectedRoute allowedRoles={["admin"]}>
             <EditTransparency />
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/edithistory"
+        element={
+          //<ProtectedRoute allowedRoles={["admin"]}>
+            <EditHistory />
+          //</ProtectedRoute>
         }
       />
 
