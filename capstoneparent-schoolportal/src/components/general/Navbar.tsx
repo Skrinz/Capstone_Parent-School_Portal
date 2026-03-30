@@ -3,8 +3,10 @@ import { NavbarMenu, type NavbarMenuItem } from "@/components/general/NavbarMenu
 import { useState, useRef, useEffect } from "react"
 import { AboutUsDropdown } from "./AboutUsDropdown";
 import { useLocation, Link } from "react-router-dom";
+import { useAuthStore } from "@/lib/store/authStore";
 
 export const Navbar = () => {
+  const { isAuthenticated } = useAuthStore();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const location = useLocation();
   const isRegisterPage = location.pathname === "/register";
@@ -42,12 +44,12 @@ export const Navbar = () => {
       onClick: () => setOpenDropdown(openDropdown === "about" ? null : "about"),
       dropdown: openDropdown === "about" ? <AboutUsDropdown /> : null,
     },
-    {
+    ...(isAuthenticated ? [{
       key: "announcements",
       label: "Announcements",
       to: "/announcements",
       isActive: location.pathname === "/announcements",
-    },
+    }] : []),
     {
       key: "events",
       label: "Partnership & Events",
