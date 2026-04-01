@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 
 const pageTitles: Record<string, string> = {
   "/": "Home | Parent-School Portal",
+  "/homepage": "Home | Parent-School Portal",
   "/announcements": "Announcements | Parent-School Portal",
   "/forgotpassword": "Forgot Password | Parent-School Portal",
   "/login": "Login | Parent-School Portal",

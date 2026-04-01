@@ -69,7 +69,7 @@ export const AuthenticatedNavbar = ({
         {/* Left: logo + nav links */}
         <div className="flex items-center gap-8">
           <Link
-            to="/"
+            to="/homepage"
             className="relative h-16 w-16 cursor-pointer transition-opacity hover:opacity-80"
           >
             <img src="/Logo.png" alt={logoAlt} className="object-contain" />

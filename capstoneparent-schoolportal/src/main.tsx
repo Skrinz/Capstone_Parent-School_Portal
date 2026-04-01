@@ -81,7 +81,8 @@ const App = () => {
   return (
     <Routes>
       {/*General Pages */}
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={<Navigate to="/homepage" replace />} />
+      <Route path="/homepage" element={<HomePage />} />
       <Route path="/announcements" element={<Announcements />} />
       <Route
         path="/generalannouncement"

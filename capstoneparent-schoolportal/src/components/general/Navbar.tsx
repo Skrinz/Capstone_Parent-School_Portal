@@ -68,7 +68,7 @@ export const Navbar = () => {
     <header className="bg-(--navbar-bg) px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link to="/" className="relative h-16 w-16 cursor-pointer hover:opacity-80 transition-opacity">
+          <Link to="/homepage" className="relative h-16 w-16 cursor-pointer hover:opacity-80 transition-opacity">
             <img
               src="/Logo.png"
               alt="Bayog Elementary National School Logo"
