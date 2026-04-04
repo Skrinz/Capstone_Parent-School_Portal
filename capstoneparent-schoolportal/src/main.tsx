@@ -163,7 +163,7 @@ const App = () => {
       <Route
         path="/managesections"
         element={
-          <ProtectedRoute allowedRoles={["admin"]}>
+          <ProtectedRoute allowedRoles={["admin", "principal", "vice_principal"]}>
             <ManageSection />
           </ProtectedRoute>
         }
@@ -244,7 +244,14 @@ const App = () => {
       />
 
       {/* Principal Pages */}
-      <Route path="/manageclasslists" element={<ManageClassLists />} />
+      <Route
+        path="/manageclasslists"
+        element={
+          <ProtectedRoute allowedRoles={["principal", "vice_principal"]}>
+            <ManageClassLists />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 };

@@ -26,23 +26,71 @@ const getBackendType = (
 export const useAnnouncementPosts = (category: AnnouncementCategory) => {
   const [posts, setPosts] = useState<AnnouncementPostItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [prevCategory, setPrevCategory] = useState(category)
+
+  // Reset state synchronously during render if category prop changes
+  // This prevents seeing stale data from the previous category even for one frame.
+  if (prevCategory !== category) {
+    setPrevCategory(category)
+    setPosts([])
+    setIsLoading(true)
+  }
+
+  const fetchPostsInternal = useCallback(async (
+    cat: AnnouncementCategory,
+    onSuccess: (data: AnnouncementPostItem[]) => void,
+    onFailure: (err: any) => void,
+    onStart?: () => void
+  ) => {
+    onStart?.()
+    try {
+      const type = getBackendType(cat)
+      const res = await getAnnouncements({ limit: 50, type })
+      onSuccess(res.data || [])
+    } catch (e) {
+      onFailure(e)
+    }
+  }, [])
 
   const reload = useCallback(async () => {
     setIsLoading(true)
-    try {
-      const type = getBackendType(category)
-      const res = await getAnnouncements({ limit: 50, type })
-      setPosts(res.data || [])
-    } catch (e) {
-      console.error("Failed to fetch announcements:", e)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [category])
+    await fetchPostsInternal(
+      category,
+      (data) => {
+        setPosts(data)
+        setIsLoading(false)
+      },
+      (err) => {
+        console.error("Failed to fetch announcements:", err)
+        setIsLoading(false)
+      }
+    )
+  }, [category, fetchPostsInternal])
 
   useEffect(() => {
-    reload()
-  }, [reload])
+    let ignore = false
+    fetchPostsInternal(
+      category,
+      (data) => {
+        if (!ignore) {
+          setPosts(data)
+          setIsLoading(false)
+        }
+      },
+      (err) => {
+        if (!ignore) {
+          console.error("Failed to fetch announcements:", err)
+          setIsLoading(false)
+        }
+      },
+      () => {
+        if (!ignore) setIsLoading(true)
+      }
+    )
+    return () => {
+      ignore = true
+    }
+  }, [category, fetchPostsInternal])
 
   const createPost = useCallback(
     async (data: {
