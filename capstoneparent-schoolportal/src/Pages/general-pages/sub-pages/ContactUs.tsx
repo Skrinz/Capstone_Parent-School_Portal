@@ -1,4 +1,5 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
+import { Loader } from "@/components/ui/Loader";
 import { getAuthUser } from "@/lib/auth";
 import { type ContactUsContent } from "@/lib/contactUsContent";
 import { pagesApi } from "@/lib/api/pagesApi";
@@ -10,22 +11,28 @@ export const ContactUs = () => {
   const user = getAuthUser();
   const isAdmin = user?.role === "admin" || user?.role === "principal";
   const [content, setContent] = useState<ContactUsContent | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    pagesApi.getContactUs().then(setContent).catch(console.error);
+    pagesApi
+      .getContactUs()
+      .then(setContent)
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
   }, []);
-
 
   return (
     <div>
       <RoleAwareNavbar />
       <div className="max-w-7xl mx-auto py-12 px-4">
-        {!content ? (
-          <div className="p-8 text-center">Loading...</div>
+        {isLoading ? (
+          <Loader />
+        ) : !content ? (
+          <p>No contact information available.</p>
         ) : (
           <>
             <h1 className="text-4xl font-bold mb-8">Contact us</h1>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Contact Information Box */}
               <div className="bg-(--button-green) text-white p-8 rounded-lg">
@@ -34,23 +41,23 @@ export const ContactUs = () => {
                     <h2 className="text-xl font-semibold mb-2">Principal's Office:</h2>
                     <p className="text-lg">{content.principalOffice || "Not set"}</p>
                   </div>
-                  
+
                   <div>
                     <h2 className="text-xl font-semibold mb-2">Library Office:</h2>
                     <p className="text-lg">{content.libraryOffice || "Not set"}</p>
                   </div>
-                  
+
                   <div>
                     <h2 className="text-xl font-semibold mb-2">Faculty Office:</h2>
                     <p className="text-lg">{content.facultyOffice || "Not set"}</p>
                   </div>
-                  
+
                   <div>
                     <h2 className="text-xl font-semibold mb-2">Facebook Page:</h2>
                     {content.facebookPageUrl ? (
-                      <a 
+                      <a
                         href={content.facebookPageUrl}
-                        target="_blank" 
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="text-yellow-300 text-lg hover:underline"
                       >
@@ -66,13 +73,13 @@ export const ContactUs = () => {
               {/* Map Box */}
               <div className="rounded-lg overflow-hidden shadow-lg h-100 md:h-auto">
                 {content.mapEmbedUrl ? (
-                  <iframe 
+                  <iframe
                     src={content.mapEmbedUrl}
-                    width="100%" 
-                    height="100%" 
-                    style={{ border: 0 }} 
-                    allowFullScreen 
-                    loading="lazy" 
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                    loading="lazy"
                     referrerPolicy="no-referrer-when-downgrade"
                     title="Pagsabungan Elementary School Location"
                   />

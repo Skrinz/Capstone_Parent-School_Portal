@@ -69,9 +69,23 @@ export const pagesApi = {
   getOrgCharts: async (): Promise<OrganizationalChartItem[]> => {
     return apiFetch<OrganizationalChartItem[]>("/pages/org-chart");
   },
-  updateOrgChart: async (data: Partial<OrganizationalChartItem>, asset?: File): Promise<OrganizationalChartItem> => {
+
+  /**
+   * @param data        The updated chart data (including the new year value)
+   * @param asset       Optional new image file
+   * @param originalYear The year that was used to originally fetch this record.
+   *                    Required when editing so the backend can find the right
+   *                    row even if the year field itself was changed.
+   */
+  updateOrgChart: async (
+    data: Partial<OrganizationalChartItem>,
+    asset?: File,
+    originalYear?: string,
+  ): Promise<OrganizationalChartItem> => {
     const formData = new FormData();
+    if (data.id) formData.append("id", data.id.toString());
     if (data.year) formData.append("year", data.year);
+    if (originalYear) formData.append("originalYear", originalYear);
     if (asset) formData.append("asset", asset);
     
     return apiFetch<OrganizationalChartItem>("/pages/org-chart", {
@@ -79,5 +93,5 @@ export const pagesApi = {
       headers: bearerHeaders(),
       body: formData
     });
-  }
+  },
 };

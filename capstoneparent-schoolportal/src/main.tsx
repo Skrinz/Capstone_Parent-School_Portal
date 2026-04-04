@@ -41,8 +41,6 @@ import { ManageSection } from "./Pages/admin-pages/ManageSection";
 import { ManageStaffAccounts } from "./Pages/admin-pages/ManageStaffAccounts";
 import { ManageStudents } from "./Pages/admin-pages/ManageStudents";
 import { EditContactUs } from "./Pages/admin-pages/edit-pages/EditContactUs";
-import { EditSchoolCalendar } from "./Pages/admin-pages/edit-pages/EditSchoolCalendar";
-import { EditTransparency } from "./Pages/admin-pages/edit-pages/EditTransparency";
 import { EditHistory } from "./Pages/admin-pages/edit-pages/EditHistory";
 
 {
@@ -199,24 +197,8 @@ const App = () => {
         }
       />
       <Route
-        path="/editschoolcalendar"
-        element={
-          <ProtectedRoute allowedRoles={["admin", "principal"]}>
-            <EditSchoolCalendar />
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/add-org-chart"
         element={<Navigate to="/orginizationalchart" replace />}
-      />
-      <Route
-        path="/edittransparency"
-        element={
-          <ProtectedRoute allowedRoles={["admin"]}>
-            <EditTransparency />
-          </ProtectedRoute>
-        }
       />
       <Route
         path="/edithistory"

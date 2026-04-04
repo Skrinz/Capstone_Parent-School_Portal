@@ -18,7 +18,7 @@ exports.getContactUs = async (req, res) => {
     res.json(JSON.parse(section.content));
   } catch (error) {
     console.error("Error fetching Contact Us:", error);
-    res.status(500).json({ error: "Failed to fetch Contact Us content" });
+    res.status(500).json({ message: "Failed to fetch Contact Us content" });
   }
 };
 
@@ -51,7 +51,7 @@ exports.updateContactUs = async (req, res) => {
         where: { page_id: section.page_id },
         data: {
           content: JSON.stringify(data),
-          updated_by: req.user?.user_id || 1 // fallback to 1 if no user from auth middleware
+          updated_by: req.user?.user_id || 1
         },
       });
     } else {
@@ -67,7 +67,7 @@ exports.updateContactUs = async (req, res) => {
     res.json(JSON.parse(section.content));
   } catch (error) {
     console.error("Error updating Contact Us:", error);
-    res.status(500).json({ error: "Failed to update Contact Us content" });
+    res.status(500).json({ message: "Failed to update Contact Us content" });
   }
 };
 
@@ -89,7 +89,7 @@ exports.getHistory = async (req, res) => {
     res.json(payload);
   } catch (error) {
     console.error("Error fetching History:", error);
-    res.status(500).json({ error: "Failed to fetch History content" });
+    res.status(500).json({ message: "Failed to fetch History content" });
   }
 };
 
@@ -134,7 +134,7 @@ exports.updateHistory = async (req, res) => {
     res.json(payload);
   } catch (error) {
     console.error("Error updating History:", error);
-    res.status(500).json({ error: "Failed to update History content" });
+    res.status(500).json({ message: "Failed to update History content" });
   }
 };
 
@@ -156,7 +156,7 @@ exports.getTransparency = async (req, res) => {
     res.json(payload);
   } catch (error) {
     console.error("Error fetching Transparency:", error);
-    res.status(500).json({ error: "Failed to fetch Transparency content" });
+    res.status(500).json({ message: "Failed to fetch Transparency content" });
   }
 };
 
@@ -194,7 +194,7 @@ exports.updateTransparency = async (req, res) => {
     res.json({ imageUrl: section.file_path, fileName: section.file_name });
   } catch (error) {
     console.error("Error updating Transparency:", error);
-    res.status(500).json({ error: "Failed to update Transparency content" });
+    res.status(500).json({ message: "Failed to update Transparency content" });
   }
 };
 
@@ -217,7 +217,7 @@ exports.getSchoolCalendars = async (req, res) => {
     res.json(mapped);
   } catch (error) {
     console.error("Error fetching School Calendars:", error);
-    res.status(500).json({ error: "Failed to fetch School Calendars" });
+    res.status(500).json({ message: "Failed to fetch School Calendars" });
   }
 };
 
@@ -267,7 +267,7 @@ exports.updateSchoolCalendar = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating School Calendar:", error);
-    res.status(500).json({ error: "Failed to update School Calendar" });
+    res.status(500).json({ message: "Failed to update School Calendar" });
   }
 };
 
@@ -281,28 +281,59 @@ exports.getOrgCharts = async (req, res) => {
       year: chart.school_year.toString(),
       imageUrl: chart.file_path ?? "",
       fileName: chart.file_name ?? "",
+      id: chart.chart_id,
+      chart_id: chart.chart_id,
     }));
     
     res.json(mapped);
   } catch (error) {
     console.error("Error fetching Org Charts:", error);
-    res.status(500).json({ error: "Failed to fetch Org Charts" });
+    res.status(500).json({ message: "Failed to fetch Org Charts" });
   }
 };
 
 exports.updateOrgChart = async (req, res) => {
   try {
-    const { year } = req.body;
+    const { year, originalYear, id } = req.body;
     let file = req.file;
+
+    const chart_id = id ? parseInt(id) : null;
+
+
     const school_year = parseInt(year);
 
-    let chart = await prisma.orgChart.findFirst({
-      where: { school_year },
-      orderBy: { chart_id: "desc" },
+    // Check if any record already exists with this year.
+    // Use chart_id for precise exclusion if we're in edit mode.
+    const existing = await prisma.orgChart.findFirst({
+      where: {
+        school_year: school_year,
+        ...(chart_id ? { NOT: { chart_id: chart_id } } : {})
+      }
     });
 
+    if (existing) {
+      return res.status(400).json({ 
+        message: "There is an organizational chart with that year. Please edit the year." 
+      });
+    }
+
+    // Try to find the existing chart by ID or by the original year
+    let chart = null;
+    if (chart_id) {
+      chart = await prisma.orgChart.findUnique({
+        where: { chart_id: chart_id }
+      });
+    } else if (originalYear) {
+      const lookup_year = parseInt(originalYear);
+      chart = await prisma.orgChart.findFirst({
+        where: { school_year: lookup_year },
+        orderBy: { chart_id: "desc" },
+      });
+    }
+
     const updateData = {
-      uploaded_by: req.user?.user_id || 1
+      school_year, // apply the (possibly changed) year
+      uploaded_by: req.user?.user_id || 1,
     };
 
     if (file) {
@@ -319,7 +350,7 @@ exports.updateOrgChart = async (req, res) => {
       chart = await prisma.orgChart.create({
         data: {
           school_year,
-          ...updateData
+          ...updateData,
         },
       });
     }
@@ -327,10 +358,11 @@ exports.updateOrgChart = async (req, res) => {
     res.json({
       year: chart.school_year.toString(),
       imageUrl: chart.file_path,
-      fileName: chart.file_name
+      fileName: chart.file_name,
+      id: chart.chart_id,
     });
   } catch (error) {
     console.error("Error updating Org Chart:", error);
-    res.status(500).json({ error: "Failed to update Org Chart" });
+    res.status(500).json({ message: "Failed to update Org Chart" });
   }
 };

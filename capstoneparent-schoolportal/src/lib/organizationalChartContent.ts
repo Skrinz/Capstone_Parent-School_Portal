@@ -1,4 +1,5 @@
 export interface OrganizationalChartItem {
+  id?: number;
   year: string;
   imageUrl: string;
   fileName?: string;

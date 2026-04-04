@@ -1,4 +1,5 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
+import { Loader } from "@/components/ui/Loader";
 import { getAuthUser } from "@/lib/auth";
 import { type HistoryContent } from "@/lib/historyContent";
 import { pagesApi } from "@/lib/api/pagesApi";
@@ -18,19 +19,24 @@ export const History = () => {
   const user = getAuthUser();
   const isAdmin = user?.role === "admin" || user?.role === "principal";
   const [content, setContent] = useState<HistoryContent | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    pagesApi.getHistory().then(setContent).catch(console.error);
+    pagesApi
+      .getHistory()
+      .then(setContent)
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
   }, []);
-
-
 
   return (
     <div>
       <RoleAwareNavbar />
       <div className="max-w-7xl mx-auto py-12 px-4">
-        {!content ? (
-          <div className="p-8 text-center">Loading...</div>
+        {isLoading ? (
+          <Loader />
+        ) : !content ? (
+          <p>No history content available.</p>
         ) : (
           <>
             <div className="mb-6 flex items-center justify-between gap-4">
@@ -54,9 +60,7 @@ export const History = () => {
                     .split(/\n\s*\n/)
                     .map((paragraph) => paragraph.trim())
                     .filter(Boolean)
-                    .map((paragraph, idx) => (
-                      <p key={idx}>{paragraph}</p>
-                    ))
+                    .map((paragraph, idx) => <p key={idx}>{paragraph}</p>)
                 : "No history content available."}
             </div>
           </>

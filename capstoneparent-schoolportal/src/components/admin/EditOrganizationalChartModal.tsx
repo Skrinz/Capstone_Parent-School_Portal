@@ -14,6 +14,8 @@ interface EditOrganizationalChartModalProps {
   charts: OrganizationalChartItem[];
   /** School year of the chart being edited (edit mode only) */
   editYear?: string;
+  /** Actual chart ID if editing a specific record */
+  editChartId?: number;
   onSave: (updatedChart: OrganizationalChartItem, file?: File) => void | Promise<void>;
 }
 
@@ -42,26 +44,37 @@ export const EditOrganizationalChartModal = ({
   mode,
   charts,
   editYear,
+  editChartId,
   onSave,
 }: EditOrganizationalChartModalProps) => {
   const [yearInput, setYearInput] = useState(currentYearString());
   const [previewImageUrl, setPreviewImageUrl] = useState("");
   const [fileName, setFileName] = useState("No file selected");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const chartForEdit = useMemo(() => {
-    if (mode !== "edit" || !editYear) {
+    if (mode !== "edit") {
       return null;
     }
-    return charts.find((c) => c.year === editYear) ?? null;
-  }, [mode, editYear, charts]);
+    if (editChartId) {
+      return charts.find((c) => c.id === editChartId) ?? null;
+    }
+    if (editYear) {
+      return charts.find((c) => c.year === editYear) ?? null;
+    }
+    return null;
+  }, [mode, editYear, editChartId, charts]);
 
   useEffect(() => {
     if (!isOpen) {
       return;
     }
+
+    setError(null);
 
     if (mode === "add") {
       setYearInput(currentYearString());
@@ -109,7 +122,9 @@ export const EditOrganizationalChartModal = ({
   };
 
   const handleSave = async () => {
+    setError(null);
     const base: OrganizationalChartItem = {
+      id: chartForEdit?.id,
       year: yearInput,
       imageUrl: previewImageUrl || chartForEdit?.imageUrl || "",
       fileName,
@@ -119,20 +134,31 @@ export const EditOrganizationalChartModal = ({
       return;
     }
 
-    await onSave(
-      {
-        ...base,
-        imageUrl: selectedFile ? previewImageUrl : base.imageUrl,
-      },
-      selectedFile || undefined,
-    );
+    try {
+      setIsSaving(true);
+      await onSave(
+        {
+          ...base,
+          imageUrl: selectedFile ? previewImageUrl : base.imageUrl,
+        },
+        selectedFile || undefined,
+      );
+    } catch (err: any) {
+      console.error("Save error:", err);
+      if (err.error) {
+        setError(err.error);
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError("Failed to save organizational chart. Please try again.");
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const title =
-    mode === "add" ? "Add organizational chart" : "Edit organizational chart";
-
-  const canSubmit =
-    mode === "edit" ? true : Boolean(selectedFile);
+  const title = mode === "add" ? "Add organizational chart" : "Edit organizational chart";
+  const canSubmit = isSaving ? false : mode === "edit" ? true : Boolean(selectedFile);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} contentClassName="max-w-3xl">
@@ -147,6 +173,12 @@ export const EditOrganizationalChartModal = ({
           </p>
         )}
 
+        {error && (
+          <div className="rounded-md bg-red-100 p-4 border border-red-400">
+            <p className="text-sm font-semibold text-red-700">{error}</p>
+          </div>
+        )}
+
         <div className="flex flex-col gap-2">
           <label htmlFor="org-chart-year" className="text-lg font-semibold">
             School year
@@ -156,7 +188,8 @@ export const EditOrganizationalChartModal = ({
             type="number"
             value={yearInput}
             onChange={(event) => setYearInput(event.target.value)}
-            className="w-full rounded-md border-2 border-black bg-white px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+            disabled={isSaving}
+            className="w-full rounded-md border-2 border-black bg-white px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-(--button-green) disabled:opacity-50"
             min={1900}
             max={2100}
           />
@@ -195,7 +228,8 @@ export const EditOrganizationalChartModal = ({
           <Button
             type="button"
             onClick={handleUploadClick}
-            className="h-auto rounded-md bg-(--navbar-bg) px-8 py-3 text-lg font-medium text-black hover:bg-yellow-300"
+            disabled={isSaving}
+            className="h-auto rounded-md bg-(--navbar-bg) px-8 py-3 text-lg font-medium text-black hover:bg-yellow-300 disabled:opacity-50"
           >
             Picture upload
             <Plus className="ml-2 h-6 w-6 text-black" strokeWidth={3} />
@@ -205,9 +239,12 @@ export const EditOrganizationalChartModal = ({
             type="button"
             onClick={handleSave}
             disabled={!canSubmit}
-            className="bg-(--button-green) hover:bg-(--button-hover-green) rounded-full px-8 py-3 text-lg text-white disabled:opacity-50"
+            className="bg-(--button-green) hover:bg-(--button-hover-green) rounded-full px-8 py-3 text-lg text-white disabled:opacity-50 inline-flex items-center gap-2"
           >
-            Save
+            {isSaving && (
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            )}
+            {isSaving ? "Saving..." : "Save"}
           </Button>
         </div>
       </div>

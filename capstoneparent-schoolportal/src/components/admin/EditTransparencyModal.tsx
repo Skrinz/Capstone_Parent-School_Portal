@@ -8,7 +8,7 @@ interface EditTransparencyModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialContent: TransparencyContent;
-  onSave: (content: TransparencyContent, file?: File) => void;
+  onSave: (content: TransparencyContent, file?: File) => void | Promise<void>;
 }
 
 function getReadableFileName(content: TransparencyContent): string {
@@ -37,6 +37,7 @@ export const EditTransparencyModal = ({
   const [previewImageUrl, setPreviewImageUrl] = useState(initialContent.imageUrl);
   const [fileName, setFileName] = useState(getReadableFileName(initialContent));
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export const EditTransparencyModal = ({
     if (!file) {
       return;
     }
-    
+
     setSelectedFile(file);
 
     const reader = new FileReader();
@@ -67,11 +68,19 @@ export const EditTransparencyModal = ({
     reader.readAsDataURL(file);
   };
 
-  const handleSave = () => {
-    onSave({
-      imageUrl: previewImageUrl || initialContent.imageUrl,
-      fileName,
-    }, selectedFile || undefined);
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      await onSave(
+        {
+          imageUrl: previewImageUrl || initialContent.imageUrl,
+          fileName,
+        },
+        selectedFile || undefined,
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -107,7 +116,8 @@ export const EditTransparencyModal = ({
           <Button
             type="button"
             onClick={handleUploadClick}
-            className="h-auto rounded-md bg-(--navbar-bg) px-8 py-3 text-lg font-medium text-black hover:bg-yellow-300"
+            disabled={isSaving}
+            className="h-auto rounded-md bg-(--navbar-bg) px-8 py-3 text-lg font-medium text-black hover:bg-yellow-300 disabled:opacity-50"
           >
             Upload New Transparency Picture
             <Plus className="ml-2 h-6 w-6 text-black" strokeWidth={3} />
@@ -118,9 +128,13 @@ export const EditTransparencyModal = ({
           <Button
             type="button"
             onClick={handleSave}
-            className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full"
+            disabled={isSaving}
+            className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full disabled:opacity-50 inline-flex items-center gap-2"
           >
-            Save Changes
+            {isSaving && (
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            )}
+            {isSaving ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </div>

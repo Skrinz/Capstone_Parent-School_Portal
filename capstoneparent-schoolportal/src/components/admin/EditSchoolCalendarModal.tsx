@@ -48,6 +48,7 @@ export const EditSchoolCalendarModal = ({
   const [previewImageUrl, setPreviewImageUrl] = useState("");
   const [fileName, setFileName] = useState("No file selected");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -121,20 +122,22 @@ export const EditSchoolCalendarModal = ({
       return;
     }
 
-    await onSave(
-      {
-        ...base,
-        imageUrl: selectedFile ? previewImageUrl : base.imageUrl,
-      },
-      selectedFile || undefined,
-    );
+    try {
+      setIsSaving(true);
+      await onSave(
+        {
+          ...base,
+          imageUrl: selectedFile ? previewImageUrl : base.imageUrl,
+        },
+        selectedFile || undefined,
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const title =
-    mode === "add" ? "Add school calendar" : "Edit school calendar";
-
-  const canSubmit =
-    mode === "edit" ? true : Boolean(selectedFile);
+  const title = mode === "add" ? "Add school calendar" : "Edit school calendar";
+  const canSubmit = isSaving ? false : mode === "edit" ? true : Boolean(selectedFile);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} contentClassName="max-w-3xl">
@@ -197,7 +200,8 @@ export const EditSchoolCalendarModal = ({
           <Button
             type="button"
             onClick={handleUploadClick}
-            className="h-auto rounded-md bg-(--navbar-bg) px-8 py-3 text-lg font-medium text-black hover:bg-yellow-300"
+            disabled={isSaving}
+            className="h-auto rounded-md bg-(--navbar-bg) px-8 py-3 text-lg font-medium text-black hover:bg-yellow-300 disabled:opacity-50"
           >
             Picture upload
             <Plus className="ml-2 h-6 w-6 text-black" strokeWidth={3} />
@@ -207,9 +211,12 @@ export const EditSchoolCalendarModal = ({
             type="button"
             onClick={handleSave}
             disabled={!canSubmit}
-            className="bg-(--button-green) hover:bg-(--button-hover-green) rounded-full px-8 py-3 text-lg text-white disabled:opacity-50"
+            className="bg-(--button-green) hover:bg-(--button-hover-green) rounded-full px-8 py-3 text-lg text-white disabled:opacity-50 inline-flex items-center gap-2"
           >
-            Save
+            {isSaving && (
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            )}
+            {isSaving ? "Saving..." : "Save"}
           </Button>
         </div>
       </div>

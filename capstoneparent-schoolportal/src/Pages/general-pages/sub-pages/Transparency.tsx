@@ -1,11 +1,12 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
+import { EditTransparencyModal } from "@/components/admin/EditTransparencyModal";
+import { Loader } from "@/components/ui/Loader";
 import { getAuthUser } from "@/lib/auth";
 import { type TransparencyContent } from "@/lib/transparencyContent";
 import { pagesApi } from "@/lib/api/pagesApi";
 import { resolveMediaUrl } from "@/lib/api/base";
 import { Pencil } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 
 const TransparencyPreview = ({ imageUrl }: { imageUrl: string }) => {
   const [hasImageError, setHasImageError] = useState(false);
@@ -37,38 +38,63 @@ export const Transparency = () => {
   const user = getAuthUser();
   const isAdmin = user?.role === "admin" || user?.role === "principal";
   const [content, setContent] = useState<TransparencyContent | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    pagesApi.getTransparency().then(setContent).catch(console.error);
+    pagesApi
+      .getTransparency()
+      .then(setContent)
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
   }, []);
 
-
+  const handleSave = async (updatedContent: TransparencyContent, file?: File) => {
+    try {
+      await pagesApi.updateTransparency(file);
+      const fresh = await pagesApi.getTransparency();
+      setContent(fresh);
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Failed to save transparency", error);
+    }
+  };
 
   return (
     <div>
       <RoleAwareNavbar />
       <div className="max-w-7xl mx-auto py-12 px-4">
-        {!content ? (
-          <div className="p-8 text-center">Loading...</div>
+        {isLoading ? (
+          <Loader />
+        ) : !content ? (
+          <p>No transparency data available.</p>
         ) : (
           <>
             <h1 className="text-4xl font-bold mb-8">Transparency & Monthly Budget Proposal</h1>
             <div className="w-full rounded-sm bg-gray-300 p-6">
               <TransparencyPreview imageUrl={content.imageUrl} />
             </div>
-
             {isAdmin && (
-              <Link
-                to="/edittransparency"
+              <button
+                onClick={() => setIsModalOpen(true)}
                 className="fixed bottom-8 right-8 inline-flex h-20 w-20 items-center justify-center rounded-full bg-(--button-green) text-white shadow-lg transition-transform hover:scale-105"
                 aria-label="Edit Transparency"
               >
                 <Pencil className="h-10 w-10" />
-              </Link>
+              </button>
             )}
           </>
         )}
       </div>
+
+      {isAdmin && content && (
+        <EditTransparencyModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          initialContent={content}
+          onSave={handleSave}
+        />
+      )}
     </div>
   );
 };
