@@ -181,17 +181,17 @@ const App = () => {
       <Route
         path="/managepartnershipandevents"
         element={
-          //<ProtectedRoute allowedRoles={["admin"]}>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <ManagePartnershipAndEvents />
-          //</ProtectedRoute>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/admin-edit-event/:eventId"
         element={
-          //<ProtectedRoute allowedRoles={["admin"]}>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <EditPartnershipAndEventsDetails />
-          //</ProtectedRoute>
+          </ProtectedRoute>
         }
       />
       <Route
