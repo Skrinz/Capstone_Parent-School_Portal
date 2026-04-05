@@ -1,6 +1,7 @@
+import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Download } from 'lucide-react';
-import type { AttendanceRecord, Student } from '@/Pages/teacher-pages/types';
+import type { Student } from '@/Pages/teacher-pages/types';
 
 interface StudentGradesProps {
   student: Student;
@@ -22,22 +23,36 @@ export const StudentGrades = ({ student, onBack }: StudentGradesProps) => {
 
   // Get subject grade data (from backend)
   const getSubjectData = (subjectName: string) => {
-    return student.subjectGrades?.find(sg => sg.subject === subjectName);
+    return student.subject_records?.find(sg => sg.subject_name === subjectName);
   };
 
   // Calculate attendance totals
-  const attendanceData = (student.attendance?.months || {}) as AttendanceRecord['months'];
-  const months = Object.keys(attendanceData);
+  const months = ['Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'];
   
-  const totalSchoolDays = Object.values(attendanceData).reduce(
-    (sum, m: any) => sum + m.schoolDays, 0
-  );
-  const totalPresent = Object.values(attendanceData).reduce(
-    (sum, m: any) => sum + m.present, 0
-  );
-  const totalAbsent = Object.values(attendanceData).reduce(
-    (sum, m: any) => sum + m.absent, 0
-  );
+  const attendanceMap = useMemo(() => {
+    const map: Record<string, { school_days: number; days_present: number; days_absent: number }> = {};
+    months.forEach(m => {
+       const record = student.attendance_records?.find(r => r.month === m);
+       map[m] = {
+         school_days: record?.school_days || 0,
+         days_present: record?.days_present || 0,
+         days_absent: record?.days_absent || 0,
+       };
+    });
+    return map;
+  }, [student.attendance_records]);
+
+  const totalSchoolDays = useMemo(() => 
+    Object.values(attendanceMap).reduce((sum, m) => sum + (m as any).school_days, 0)
+  , [attendanceMap]);
+
+  const totalPresent = useMemo(() => 
+    Object.values(attendanceMap).reduce((sum, m) => sum + (m as any).days_present, 0)
+  , [attendanceMap]);
+
+  const totalAbsent = useMemo(() => 
+    Object.values(attendanceMap).reduce((sum, m) => sum + (m as any).days_absent, 0)
+  , [attendanceMap]);
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -75,7 +90,7 @@ export const StudentGrades = ({ student, onBack }: StudentGradesProps) => {
                         Student Name
                         </span>
                         <span className="text-base font-semibold text-slate-900">
-                        {student.name}
+                        {student.name || `${student.fname} ${student.lname}`}
                         </span>
                     </div>
 
@@ -85,7 +100,7 @@ export const StudentGrades = ({ student, onBack }: StudentGradesProps) => {
                         LRN
                         </span>
                         <span className="text-base font-mono font-medium text-slate-700">
-                        {student.lrn}
+                        {student.lrn_number}
                         </span>
                     </div>
 
@@ -148,19 +163,19 @@ export const StudentGrades = ({ student, onBack }: StudentGradesProps) => {
                         {subject}
                       </td>
                       <td className="px-6 py-3 text-center border border-gray-300">
-                        {subjectData?.q1 ?? ''}
+                        {subjectData?.q1_grade ?? ''}
                       </td>
                       <td className="px-6 py-3 text-center border border-gray-300">
-                        {subjectData?.q2 ?? ''}
+                        {subjectData?.q2_grade ?? ''}
                       </td>
                       <td className="px-6 py-3 text-center border border-gray-300">
-                        {subjectData?.q3 ?? ''}
+                        {subjectData?.q3_grade ?? ''}
                       </td>
                       <td className="px-6 py-3 text-center border border-gray-300">
-                        {subjectData?.q4 ?? ''}
+                        {subjectData?.q4_grade ?? ''}
                       </td>
                       <td className="px-6 py-3 text-center border border-gray-300 font-semibold">
-                        {subjectData?.finalGrade ?? ''}
+                        {subjectData?.avg_grade ?? ''}
                       </td>
                       <td className="px-6 py-3 text-center border border-gray-300">
                         <span className={`font-semibold ${
@@ -229,7 +244,7 @@ export const StudentGrades = ({ student, onBack }: StudentGradesProps) => {
                   </td>
                   {months.map((month) => (
                     <td key={month} className="px-4 py-3 text-center border border-gray-300">
-                      {attendanceData[month as keyof typeof attendanceData]?.schoolDays || ''}
+                      {attendanceMap[month]?.school_days || ''}
                     </td>
                   ))}
                   <td className="px-4 py-3 text-center border border-gray-300 font-bold">
@@ -242,7 +257,7 @@ export const StudentGrades = ({ student, onBack }: StudentGradesProps) => {
                   </td>
                   {months.map((month) => (
                     <td key={month} className="px-4 py-3 text-center border border-gray-300">
-                      {attendanceData[month as keyof typeof attendanceData]?.present || ''}
+                      {attendanceMap[month]?.days_present || ''}
                     </td>
                   ))}
                   <td className="px-4 py-3 text-center border border-gray-300 font-bold">
@@ -255,7 +270,7 @@ export const StudentGrades = ({ student, onBack }: StudentGradesProps) => {
                   </td>
                   {months.map((month) => (
                     <td key={month} className="px-4 py-3 text-center border border-gray-300">
-                      {attendanceData[month as keyof typeof attendanceData]?.absent || ''}
+                      {attendanceMap[month]?.days_absent || ''}
                     </td>
                   ))}
                   <td className="px-4 py-3 text-center border border-gray-300 font-bold">

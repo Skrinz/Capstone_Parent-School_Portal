@@ -20,6 +20,98 @@ const classesController = {
     }
   },
 
+  async getTeacherClasses(req, res, next) {
+    try {
+      const teacherId = req.user.user_id;
+      const classes = await classesService.getTeacherClasses(teacherId);
+      res.status(200).json({ data: classes });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getTeacherSubjects(req, res, next) {
+    try {
+      const teacherId = req.user.user_id;
+      const subjects = await classesService.getTeacherSubjects(teacherId);
+      res.status(200).json({ data: subjects });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getAllSections(req, res, next) {
+    try {
+      const sections = await classesService.getAllSections();
+      res.status(200).json({ data: sections });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getAllGradeLevels(req, res, next) {
+    try {
+      const gradeLevels = await classesService.getAllGradeLevels();
+      res.status(200).json({ data: gradeLevels });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async createSection(req, res, next) {
+    try {
+      const { section_name } = req.body;
+      const section = await classesService.createSection(section_name);
+      res.status(201).json({
+        message: "Section created successfully",
+        data: section,
+      });
+    } catch (error) {
+      if (error.code === "P2002") {
+        return res.status(409).json({ message: "Section name already exists" });
+      }
+      next(error);
+    }
+  },
+
+  async updateSection(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { section_name } = req.body;
+      const section = await classesService.updateSection(parseInt(id), section_name);
+      res.status(200).json({
+        message: "Section updated successfully",
+        data: section,
+      });
+    } catch (error) {
+      if (error.code === "P2002") {
+        return res.status(409).json({ message: "Section name already exists" });
+      }
+      if (error.message === "Section not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
+
+  async deleteSection(req, res, next) {
+    try {
+      const { id } = req.params;
+      await classesService.deleteSection(parseInt(id));
+      res.status(200).json({
+        message: "Section deleted successfully",
+      });
+    } catch (error) {
+      if (error.message === "Section not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message.includes("is currently assigned to a class")) {
+        return res.status(400).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
+
   async getClassById(req, res, next) {
     try {
       const { id } = req.params;
@@ -46,6 +138,9 @@ const classesController = {
         data: newClass,
       });
     } catch (error) {
+      if (error.message === "Class adviser is required") {
+        return res.status(400).json({ message: error.message });
+      }
       if (error.message === "Grade level not found") {
         return res.status(404).json({ message: error.message });
       }
@@ -67,6 +162,9 @@ const classesController = {
       ) {
         return res.status(409).json({ message: error.message });
       }
+      if (error.code === "P2011") {
+        return res.status(400).json({ message: "Class adviser is required" });
+      }
       next(error);
     }
   },
@@ -83,6 +181,31 @@ const classesController = {
 
       res.status(200).json({
         message: "Class updated successfully",
+        data: updatedClass,
+      });
+    } catch (error) {
+      if (error.message === "Class not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
+
+  async uploadClassSchedule(req, res, next) {
+    try {
+      const { id } = req.params;
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const updatedClass = await classesService.uploadClassSchedule(
+        parseInt(id),
+        req.file,
+      );
+
+      res.status(200).json({
+        message: "Class schedule uploaded successfully",
         data: updatedClass,
       });
     } catch (error) {
@@ -150,6 +273,23 @@ const classesController = {
     }
   },
 
+  async getAllSubjects(req, res, next) {
+    try {
+      const { page = 1, limit = 10 } = req.query;
+      const result = await classesService.getAllSubjects({
+        page,
+        limit,
+      });
+
+      res.status(200).json({
+        data: result.subjects,
+        pagination: result.pagination,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async updateStudentGrades(req, res, next) {
     try {
       const { subjectId, studentId } = req.params;
@@ -200,6 +340,140 @@ const classesController = {
       ) {
         return res.status(422).json({ message: error.message });
       }
+      next(error);
+    }
+  },
+
+  async importSubjectGrades(req, res, next) {
+     try {
+       const { id } = req.params; // subjectId
+       if (!req.file) {
+         return res.status(400).json({ message: "No file uploaded" });
+       }
+ 
+       // Manual CSV parsing for simplicity
+       const fileContent = req.file.buffer.toString('utf8');
+       const lines = fileContent.split(/\r?\n/).filter(line => line.trim() !== '');
+       const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+       
+       const lrnIdx = headers.indexOf('lrn number');
+       const q1Idx = headers.indexOf('q1');
+       const q2Idx = headers.indexOf('q2');
+       const q3Idx = headers.indexOf('q3');
+       const q4Idx = headers.indexOf('q4');
+ 
+       if (lrnIdx === -1) {
+         return res.status(400).json({ message: "Invalid CSV: LRN number column missing" });
+       }
+ 
+       const rows = lines.slice(1).map(line => {
+         const cols = line.split(',');
+         return {
+           lrn: cols[lrnIdx]?.trim(),
+           q1: cols[q1Idx]?.trim(),
+           q2: cols[q2Idx]?.trim(),
+           q3: cols[q3Idx]?.trim(),
+           q4: cols[q4Idx]?.trim(),
+         };
+       });
+ 
+       const results = await classesService.importGrades(parseInt(id), rows);
+       res.status(200).json({ message: "Grades imported successfully", data: results });
+     } catch (error) {
+       next(error);
+     }
+   },
+ 
+   async importAttendance(req, res, next) {
+     try {
+       if (!req.file) {
+         return res.status(400).json({ message: "No file uploaded" });
+       }
+ 
+       const fileContent = req.file.buffer.toString('utf8');
+       const lines = fileContent.split(/\r?\n/).filter(line => line.trim() !== '');
+       const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+       
+       const lrnIdx = headers.indexOf('lrn number');
+       const months = ['jun', 'jul', 'aug', 'sept', 'oct', 'nov', 'dec', 'jan', 'feb', 'mar', 'apr'];
+       const monthIndices = {};
+       months.forEach(m => {
+         monthIndices[m] = headers.indexOf(`no.of days absent (${m})`);
+         if (monthIndices[m] === -1) {
+           // Try alternate naming
+            monthIndices[m] = headers.findIndex(h => h.includes(m) && h.includes('absent'));
+         }
+       });
+ 
+       if (lrnIdx === -1) {
+         return res.status(400).json({ message: "Invalid CSV: LRN number column missing" });
+       }
+ 
+       const rows = lines.slice(1).map(line => {
+         const cols = line.split(',');
+         const absences = {};
+         Object.keys(monthIndices).forEach(m => {
+           if (monthIndices[m] !== -1) {
+              const val = cols[monthIndices[m]]?.trim();
+              if (val !== undefined && val !== '') {
+                // Map back to capitalized month names for Prisma enum
+                const prismaMonth = m.charAt(0) + m.slice(1);
+                // Prisma Map: Jun, Jul, Aug, Sept...
+                const captialized = prismaMonth === 'Sept' ? 'Sept' : prismaMonth.charAt(0).toUpperCase() + prismaMonth.slice(1);
+                absences[captialized] = val;
+              }
+           }
+         });
+         return {
+           lrn: cols[lrnIdx]?.trim(),
+           absences
+         };
+       });
+ 
+       const results = await classesService.importAttendance(rows);
+       res.status(200).json({ message: "Attendance imported successfully", data: results });
+     } catch (error) {
+       next(error);
+     }
+   },
+
+  async importStudents(req, res, next) {
+    try {
+      const { id } = req.params; // classId
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const fileContent = req.file.buffer.toString('utf8');
+      const lines = fileContent.split(/\r?\n/).filter(line => line.trim() !== '');
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+
+      const lrnIdx = headers.indexOf('lrn number');
+      const fnameIdx = headers.indexOf('first name');
+      const lnameIdx = headers.indexOf('last name');
+      const sexIdx = headers.indexOf('sex');
+      const sYearStartIdx = headers.indexOf('school year start');
+      const sYearEndIdx = headers.indexOf('school year end');
+
+      if (lrnIdx === -1 || fnameIdx === -1 || lnameIdx === -1) {
+        return res.status(400).json({ message: "Invalid CSV format: Required columns missing" });
+      }
+
+      const rows = lines.slice(1).map(line => {
+        const cols = line.split(',');
+        return {
+          lrn: cols[lrnIdx]?.trim(),
+          fname: cols[fnameIdx]?.trim(),
+          lname: cols[lnameIdx]?.trim(),
+          sex: cols[sexIdx]?.trim(),
+          syear_start: cols[sYearStartIdx]?.trim(),
+          syear_end: cols[sYearEndIdx]?.trim(),
+        };
+      });
+
+      const results = await classesService.importStudents(parseInt(id), rows);
+      res.status(200).json({ message: "Student list imported successfully", data: results });
+    } catch (error) {
       next(error);
     }
   },

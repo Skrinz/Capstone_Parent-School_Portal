@@ -22,6 +22,7 @@ import {
   downloadGradeSheetTemplate,
   exportAllQuartersGradeSheet,
   uploadGradeSheet,
+  uploadAttendanceSheet,
   uploadClassSchedulePicture,
   uploadSubjectGradeSheet,
 } from './services/fileService';
@@ -30,7 +31,6 @@ export const ClassList = () => {
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<SubjectItem | null>(null);
   const [activeTab, setActiveTab] = useState('class');
-  const [studentListTab, setStudentListTab] = useState('students');
   
   // Class filters
   const [classGradeLevel, setClassGradeLevel] = useState('allgrades');
@@ -52,6 +52,7 @@ export const ClassList = () => {
 
   // Modal states for file uploads
   const [isImportGradeSheetModalOpen, setIsImportGradeSheetModalOpen] = useState(false);
+  const [isImportAttendanceModalOpen, setIsImportAttendanceModalOpen] = useState(false);
   const [isUploadScheduleModalOpen, setIsUploadScheduleModalOpen] = useState(false);
   const [isImportSubjectGradeSheetModalOpen, setIsImportSubjectGradeSheetModalOpen] = useState(false);
 
@@ -83,7 +84,7 @@ export const ClassList = () => {
   );
 
   const studentsForSelectedClass = useMemo(
-    () => selectedClass ? getStudentsForClass(allStudents, selectedClass.id) : [],
+    () => selectedClass ? getStudentsForClass(allStudents, selectedClass.clist_id) : [],
     [selectedClass, allStudents]
   );
 
@@ -91,7 +92,7 @@ export const ClassList = () => {
   const schoolYears = useMemo(() => {
     const yearsSet = new Set<string>();
     classes.forEach(c => {
-      yearsSet.add(`${c.start_year}-${c.end_year}`);
+      yearsSet.add(`${c.syear_start}-${c.syear_end}`);
     });
     return Array.from(yearsSet).sort().reverse();
   }, [classes]);
@@ -103,7 +104,7 @@ export const ClassList = () => {
     return allStudents.filter(
       (student) =>
         student.gradeSection === `${selectedSubject.grade} - ${selectedSubject.section}` &&
-        student.schoolYear === `${selectedSubject.start_year} - ${selectedSubject.end_year}`
+        student.schoolYear === `${selectedSubject.syear_start} - ${selectedSubject.syear_end}`
     );
   }, [selectedSubject, allStudents]);
 
@@ -113,27 +114,27 @@ export const ClassList = () => {
 
     return studentsForSelectedSubject
       .map((student) => {
-        const subjectGrade = student.subjectGrades?.find(
-          (sg) => sg.subject === selectedSubject.name
+        const subjectGrade = student.subject_records?.find(
+          (sg) => sg.srecord_id === selectedSubject.srecord_id
         );
 
         return {
-          id: student.id,
+          id: student.student_id,
           name: student.name,
-          lrn: student.lrn,
-          finalAvgGrade: subjectGrade?.finalGrade ?? 'N/A',
+          lrn: student.lrn_number,
+          finalAvgGrade: subjectGrade?.avg_grade ?? 'N/A',
           remarks: subjectGrade?.remarks ?? 'N/A',
         };
       })
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [studentsForSelectedSubject, selectedSubject]);
 
   // Filter subject students (reuse same filters)
   const filteredSubjectStudents = useMemo(() => {
     return subjectStudentGrades.filter((student) => {
       const matchesSearch =
-        student.name.toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
-        student.lrn.includes(studentSearchQuery);
+        (student.name || '').toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
+        (student.lrn || '').includes(studentSearchQuery);
       const matchesRemarks = remarksFilter === 'all' || student.remarks === remarksFilter;
 
       return matchesSearch && matchesRemarks;
@@ -150,7 +151,7 @@ export const ClassList = () => {
   // Download handlers
   const handleDownloadTemplate = async () => {
     try {
-      await downloadGradeSheetTemplate('csv');
+      await downloadGradeSheetTemplate();
     } catch (error) {
       alert('Failed to download template. Please try again.');
     }
@@ -160,7 +161,7 @@ export const ClassList = () => {
     if (!selectedClass) return;
     
     try {
-      await exportAllQuartersGradeSheet(selectedClass.id, 'csv');
+      await exportAllQuartersGradeSheet(selectedClass.clist_id);
     } catch (error) {
       alert('Failed to export grades. Please try again.');
     }
@@ -171,7 +172,7 @@ export const ClassList = () => {
     if (!selectedClass) return;
     
     try {
-      await uploadGradeSheet(selectedClass.id, file);
+      await uploadGradeSheet(selectedClass.clist_id, file);
       alert('Grade sheet uploaded successfully!');
       // TODO: Reload student data
     } catch (error) {
@@ -179,11 +180,23 @@ export const ClassList = () => {
     }
   };
 
+  const handleImportAttendance = async (file: File) => {
+    if (!selectedClass) return;
+    
+    try {
+      await uploadAttendanceSheet(selectedClass.clist_id, file);
+      alert('Attendance sheet uploaded successfully!');
+      // TODO: Reload data
+    } catch (error) {
+      throw new Error('Failed to upload attendance sheet');
+    }
+  };
+
   const handleUploadSchedulePicture = async (file: File) => {
     if (!selectedClass) return;
     
     try {
-      await uploadClassSchedulePicture(selectedClass.id, file);
+      await uploadClassSchedulePicture(selectedClass.clist_id, file);
       alert('Class schedule uploaded successfully!');
     } catch (error) {
       throw new Error('Failed to upload class schedule');
@@ -194,7 +207,7 @@ export const ClassList = () => {
     if (!selectedSubject) return;
     
     try {
-      await uploadSubjectGradeSheet(selectedSubject.id, file);
+      await uploadSubjectGradeSheet(selectedSubject.srecord_id, file);
       alert('Grade sheet uploaded successfully!');
       // TODO: Reload student data
     } catch (error) {
@@ -298,11 +311,11 @@ export const ClassList = () => {
                   {isLoadingClasses ? (
                     <div className="text-center py-8 text-gray-500">Loading classes...</div>
                   ) : filteredClasses.length > 0 ? (
-                    filteredClasses.map((classItem) => (
+                    filteredClasses.map((classItem, index) => (
                       <Card
-                        key={classItem.id}
+                        key={classItem.clist_id ?? `${classItem.gl_id}-${classItem.section_id}-${classItem.syear_start}-${index}`}
                         className={`group p-4 cursor-pointer transition-colors bg-white border-none hover:bg-(--status-active) hover:text-white ${
-                          selectedClass?.id === classItem.id ? 'text-white bg-(--status-active)' : ''
+                          selectedClass?.clist_id === classItem.clist_id ? 'text-white bg-(--status-active)' : ''
                         }`}
                         onClick={() => {
                           setSelectedClass(classItem);
@@ -313,14 +326,14 @@ export const ClassList = () => {
                       >
                           <div className="flex justify-between items-start">
                             <div>
-                              <h3 className="font-semibold text-base">{classItem.grade} - {classItem.section}</h3>
-                              <p className={`text-sm transition-colors ${selectedClass?.id === classItem.id ? 'text-(--tab-subtext)' : 'text-gray-500 group-hover:text-(--tab-subtext)'}`}>
-                                {classItem.start_year} - {classItem.end_year}
+                              <h3 className="font-semibold text-base">{classItem.grade} - {classItem.section_name}</h3>
+                              <p className={`text-sm transition-colors ${selectedClass?.clist_id === classItem.clist_id ? 'text-(--tab-subtext)' : 'text-gray-500 group-hover:text-(--tab-subtext)'}`}>
+                                {classItem.syear_start} - {classItem.syear_end}
                               </p>
                             </div>
                             {/* DYNAMIC STUDENT COUNT */}
                             <span className="font-medium">
-                              {studentCountByClass[classItem.id] || 0} Students
+                              {studentCountByClass[classItem.clist_id] || 0} Students
                             </span>
                          </div>
                       </Card>
@@ -409,11 +422,11 @@ export const ClassList = () => {
                   {isLoadingSubjects ? (
                     <div className="text-center py-8 text-gray-500">Loading subjects...</div>
                   ) : filteredSubjects.length > 0 ? (
-                    filteredSubjects.map((subjectItem) => (
+                    filteredSubjects.map((subjectItem, index) => (
                       <Card
-                        key={subjectItem.id}
+                        key={subjectItem.srecord_id ?? `${subjectItem.subject_name}-${subjectItem.syear_start}-${subjectItem.syear_end}-${index}`}
                         className={`group p-4 cursor-pointer transition-colors bg-white border-none hover:bg-(--status-active) hover:text-white ${
-                          selectedSubject?.id === subjectItem.id ? 'text-white bg-(--status-active)' : ''
+                          selectedSubject?.srecord_id === subjectItem.srecord_id ? 'text-white bg-(--status-active)' : ''
                         }`}
                         onClick={() => {
                           setSelectedSubject(subjectItem);
@@ -424,10 +437,10 @@ export const ClassList = () => {
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="font-semibold text-base">
-                              {subjectItem.name}
+                              {subjectItem.subject_name}
                             </h3>
                             <p className={`text-sm transition-colors ${
-                              selectedSubject?.id === subjectItem.id 
+                              selectedSubject?.srecord_id === subjectItem.srecord_id 
                                 ? 'text-(--tab-subtext)' 
                                 : 'text-gray-500 group-hover:text-(--tab-subtext)'
                             }`}>
@@ -436,11 +449,11 @@ export const ClassList = () => {
                           </div>
                           <div className="text-right">
                             <p className={`text-sm transition-colors ${
-                              selectedSubject?.id === subjectItem.id 
+                              selectedSubject?.srecord_id === subjectItem.srecord_id 
                                 ? 'text-(--tab-subtext)' 
                                 : 'text-gray-500 group-hover:text-(--tab-subtext)'
                             }`}>
-                              {subjectItem.start_year} - {subjectItem.end_year}
+                              {subjectItem.syear_start} - {subjectItem.syear_end}
                             </p>
                           </div>
                         </div>
@@ -469,7 +482,6 @@ export const ClassList = () => {
                 <Tabs 
                   defaultValue="students" 
                   className="w-full h-full flex flex-col"
-                  onValueChange={(value) => setStudentListTab(value)}
                 >
                   <TabsList className="w-full rounded-none rounded-t-xl bg-white p-0 border-b border-gray-200">
                     <TabsTrigger value="students" className="flex-1 rounded-none data-[state=active]:bg-(--div-bg)">
@@ -548,6 +560,13 @@ export const ClassList = () => {
                         </Button>
                         <Button 
                           className="bg-(--button-green) hover:bg-green-700 text-white"
+                          onClick={() => setIsImportAttendanceModalOpen(true)}
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Import Attendance (.csv)
+                        </Button>
+                        <Button 
+                          className="bg-(--button-green) hover:bg-green-700 text-white"
                           onClick={handleExportAllQuartersGrades}
                         >
                           <Upload className="mr-2 h-4 w-4" />
@@ -598,7 +617,7 @@ export const ClassList = () => {
                               ) : filteredStudents.length > 0 ? (
                                 filteredStudents.map((student) => (
                                   <tr 
-                                    key={student.id}
+                                    key={student.student_id}
                                     className="hover:bg-gray-50 cursor-pointer"
                                     onClick={() => setSelectedStudent(student)}
                                   >
@@ -606,7 +625,7 @@ export const ClassList = () => {
                                       {student.name}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-900">
-                                      {student.lrn}
+                                      {student.lrn_number}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-900">
                                       {student.finalAvgGrade}
@@ -826,29 +845,36 @@ export const ClassList = () => {
         isOpen={isImportGradeSheetModalOpen}
         onClose={() => setIsImportGradeSheetModalOpen(false)}
         onUpload={handleImportGradeSheet}
-        title="Import Grade Sheet"
+        title="Import Class Grade Sheet"
         acceptedFileTypes={['.csv']}
-        maxSizeMB={25}
+        maxSizeMB={5}
       />
 
-      {/* Class Schedule */}
       <FileUploadModal
+        isOpen={isImportAttendanceModalOpen}
+        onClose={() => setIsImportAttendanceModalOpen(false)}
+        onUpload={handleImportAttendance}
+        title="Import Class Attendance Record"
+        acceptedFileTypes={['.csv']}
+        maxSizeMB={5}
+      />
+
+      <FileUploadModal 
         isOpen={isUploadScheduleModalOpen}
         onClose={() => setIsUploadScheduleModalOpen(false)}
         onUpload={handleUploadSchedulePicture}
-        title="Upload Class Schedule Picture"
-        acceptedFileTypes={['.png', '.jpg', '.jpeg', '.webp']}
+        title="Upload Class Schedule"
         maxSizeMB={15}
+        acceptedFileTypes={['.png', '.jpg', '.jpeg', '.webp']}
       />
 
-      {/* Subject Grades */}
       <FileUploadModal
         isOpen={isImportSubjectGradeSheetModalOpen}
         onClose={() => setIsImportSubjectGradeSheetModalOpen(false)}
         onUpload={handleImportSubjectGradeSheet}
-        title="Import Grade Sheet"
+        title="Import Subject Grade Sheet"
         acceptedFileTypes={['.csv']}
-        maxSizeMB={25}
+        maxSizeMB={5}
       />
     </div>
   );

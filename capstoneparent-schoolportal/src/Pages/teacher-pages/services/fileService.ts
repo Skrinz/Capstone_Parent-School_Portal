@@ -1,10 +1,11 @@
-const API_BASE_URL = '/api';
-
-// Download functions - ALL DEFAULT TO CSV
-export const downloadGradeSheetTemplate = async (fileType: 'csv' = 'csv') => {
+// Download functions
+export const downloadGradeSheetTemplate = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/templates/grade-sheet?format=${fileType}`, {
+    const response = await fetch('/api/classes/grade-sheet-template', {
       method: 'GET',
+      headers: {
+        'Accept': 'text/csv',
+      },
     });
 
     if (!response.ok) throw new Error('Failed to download template');
@@ -13,7 +14,7 @@ export const downloadGradeSheetTemplate = async (fileType: 'csv' = 'csv') => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `grade-sheet-template.${fileType}`;
+    a.download = `grade-sheet-template.csv`;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
@@ -24,18 +25,37 @@ export const downloadGradeSheetTemplate = async (fileType: 'csv' = 'csv') => {
   }
 };
 
-// UPDATED: Export all quarters
-export const exportAllQuartersGradeSheet = async (
-  classId: number,
-  fileType: 'csv' = 'csv'
-) => {
+export const downloadAttendanceTemplate = async () => {
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/classes/${classId}/export-grades-all-quarters?format=${fileType}`,
-      {
-        method: 'GET',
-      }
-    );
+    const response = await fetch('/api/classes/attendance-template', {
+      method: 'GET',
+      headers: {
+        'Accept': 'text/csv',
+      },
+    });
+
+    if (!response.ok) throw new Error('Failed to download template');
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `attendance-template.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  } catch (error) {
+    console.error('Error downloading template:', error);
+    throw error;
+  }
+};
+
+export const exportAllQuartersGradeSheet = async (clist_id: number) => {
+  try {
+    const response = await fetch(`/api/classes/${clist_id}/export-grades-all-quarters`, {
+      method: 'GET',
+    });
 
     if (!response.ok) throw new Error('Failed to export grade sheet');
 
@@ -43,7 +63,7 @@ export const exportAllQuartersGradeSheet = async (
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `class-${classId}-all-quarters-grades.${fileType}`;
+    a.download = `class-${clist_id}-grades.csv`;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
@@ -54,83 +74,66 @@ export const exportAllQuartersGradeSheet = async (
   }
 };
 
-export const downloadStudentListTemplate = async (fileType: 'csv' = 'csv') => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/templates/student-list?format=${fileType}`, {
-      method: 'GET',
-    });
+// Upload functions
+export const uploadGradeSheet = async (clist_id: number, file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
 
-    if (!response.ok) throw new Error('Failed to download template');
+  const response = await fetch(`/api/classes/${clist_id}/import-grades`, {
+    method: 'POST',
+    body: formData,
+  });
 
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `student-list-template.${fileType}`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-  } catch (error) {
-    console.error('Error downloading template:', error);
-    throw error;
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Failed to upload grade sheet' }));
+    throw new Error(error.message || 'Failed to upload grade sheet');
   }
+
+  return await response.json();
 };
 
-// Upload functions - UNCHANGED (accept File object)
-export const uploadGradeSheet = async (classId: number, file: File) => {
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
+export const uploadAttendanceSheet = async (clist_id: number, file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
 
-    const response = await fetch(`${API_BASE_URL}/classes/${classId}/import-grades`, {
-      method: 'POST',
-      body: formData,
-    });
+  const response = await fetch(`/api/classes/${clist_id}/import-attendance`, {
+    method: 'POST',
+    body: formData,
+  });
 
-    if (!response.ok) throw new Error('Failed to upload grade sheet');
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error uploading grade sheet:', error);
-    throw error;
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Failed to upload attendance' }));
+    throw new Error(error.message || 'Failed to upload attendance');
   }
+
+  return await response.json();
 };
 
-export const uploadClassSchedulePicture = async (classId: number, file: File) => {
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
+export const uploadClassSchedulePicture = async (clist_id: number, file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
 
-    const response = await fetch(`${API_BASE_URL}/classes/${classId}/upload-schedule`, {
-      method: 'POST',
-      body: formData,
-    });
+  const response = await fetch(`/api/classes/${clist_id}/upload-schedule`, {
+    method: 'POST',
+    body: formData,
+  });
 
-    if (!response.ok) throw new Error('Failed to upload class schedule');
+  if (!response.ok) throw new Error('Failed to upload class schedule');
 
-    return await response.json();
-  } catch (error) {
-    console.error('Error uploading class schedule:', error);
-    throw error;
-  }
+  return await response.json();
 };
 
-export const uploadSubjectGradeSheet = async (subjectId: number, file: File) => {
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
+export const uploadSubjectGradeSheet = async (srecord_id: number, file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
 
-    const response = await fetch(`${API_BASE_URL}/subjects/${subjectId}/import-grades`, {
-      method: 'POST',
-      body: formData,
-    });
+  // Note: Subject specific grade import might use a different endpoint or shared logic
+  const response = await fetch(`/api/classes/subjects/${srecord_id}/import-grades`, {
+    method: 'POST',
+    body: formData,
+  });
 
-    if (!response.ok) throw new Error('Failed to upload grade sheet');
+  if (!response.ok) throw new Error('Failed to upload subject grade sheet');
 
-    return await response.json();
-  } catch (error) {
-    console.error('Error uploading grade sheet:', error);
-    throw error;
-  }
-};
+  return await response.json();
+};

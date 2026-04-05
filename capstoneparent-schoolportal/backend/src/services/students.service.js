@@ -1,5 +1,11 @@
 const prisma = require("../config/database");
 
+const normalizeSex = (sex) => {
+  if (sex === "Male") return "M";
+  if (sex === "Female") return "F";
+  return sex;
+};
+
 const studentsService = {
   /**
    * Public LRN prefix search used during parent registration.
@@ -28,19 +34,34 @@ const studentsService = {
     return students;
   },
 
-  async getAllStudents({ page, limit, status, grade_level, syear_start }) {
+  async getAllStudents({
+    page = 1,
+    limit = 10,
+    status,
+    grade_level,
+    syear_start,
+    clist_id,
+  } = {}) {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const take = parseInt(limit);
 
     const where = {};
-    if (status) {
-      where.status = status;
-    }
-    if (grade_level) {
-      where.gl_id = parseInt(grade_level);
-    }
-    if (syear_start) {
-      where.syear_start = parseInt(syear_start);
+    if (status) where.status = status;
+    if (grade_level) where.gl_id = parseInt(grade_level);
+    if (syear_start) where.syear_start = parseInt(syear_start);
+    
+    if (clist_id) {
+      where.subject_records = {
+        some: {
+          subject_record: {
+            class_lists: {
+              some: {
+                clist_id: parseInt(clist_id)
+              }
+            }
+          }
+        }
+      };
     }
 
     const [students, total] = await Promise.all([
@@ -50,6 +71,17 @@ const studentsService = {
         take,
         include: {
           grade_level: true,
+          subject_records: {
+            include: {
+              subject_record: {
+                include: {
+                  class_lists: {
+                    select: { clist_id: true }
+                  }
+                }
+              }
+            }
+          }
         },
         orderBy: {
           created_at: "desc",
@@ -58,8 +90,21 @@ const studentsService = {
       prisma.student.count({ where }),
     ]);
 
+    // Map to include a single clist_id if found from subjects
+    const studentsWithClass = students.map(student => {
+      let clist_id = null;
+      if (student.subject_records && student.subject_records.length > 0) {
+        // Find the first clist_id from their subjects
+        const firstSubject = student.subject_records[0].subject_record;
+        if (firstSubject.class_lists && firstSubject.class_lists.length > 0) {
+          clist_id = firstSubject.class_lists[0].clist_id;
+        }
+      }
+      return { ...student, clist_id };
+    });
+
     return {
-      students,
+      students: studentsWithClass,
       pagination: {
         total,
         page: parseInt(page),
@@ -101,7 +146,16 @@ const studentsService = {
   },
 
   async createStudent(studentData) {
-    const { fname, lname, sex, lrn_number, gl_id, syear_start, syear_end } =
+    const {
+      fname,
+      lname,
+      sex,
+      lrn_number,
+      gl_id,
+      syear_start,
+      syear_end,
+      status,
+    } =
       studentData;
 
     // Check if grade level exists
@@ -124,11 +178,12 @@ const studentsService = {
       data: {
         fname,
         lname,
-        sex,
+        sex: normalizeSex(sex),
         lrn_number,
         gl_id,
         syear_start,
         syear_end,
+        ...(status ? { status } : {}),
       },
       include: {
         grade_level: true,
@@ -157,6 +212,20 @@ const studentsService = {
       });
       if (duplicateLRN) {
         throw new Error("A student with this LRN already exists");
+      }
+    }
+
+    if (updateData.sex) {
+      updateData.sex = normalizeSex(updateData.sex);
+    }
+
+    if (updateData.gl_id) {
+      const gradeLevel = await prisma.gradeLevel.findUnique({
+        where: { gl_id: updateData.gl_id },
+      });
+
+      if (!gradeLevel) {
+        throw new Error("Grade level not found");
       }
     }
 

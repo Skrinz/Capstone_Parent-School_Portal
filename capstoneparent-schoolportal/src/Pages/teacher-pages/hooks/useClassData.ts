@@ -11,6 +11,7 @@ import {
 } from '@/Pages/teacher-pages/utils/filters';
 import {
   fetchSections,
+  fetchGradeLevels,
 } from '@/Pages/teacher-pages/services/api'
 
 export const useClassData = () => {
@@ -19,6 +20,7 @@ export const useClassData = () => {
   const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [isLoadingSections, setIsLoadingSections] = useState(false);
+  const [isLoadingGradeLevels, setIsLoadingGradeLevels] = useState(false);
 
 
   // Data
@@ -26,6 +28,7 @@ export const useClassData = () => {
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [sections, setSections] = useState<SectionItem[]>([]);
+  const [gradeLevels, setGradeLevels] = useState<any[]>([]);
   
 
   // Load data on mount
@@ -34,6 +37,7 @@ export const useClassData = () => {
     loadSubjects();
     loadStudents();
     loadSections();
+    loadGradeLevels();
   }, []);
 
   const loadClasses = async () => {
@@ -64,6 +68,13 @@ export const useClassData = () => {
       setIsLoadingSections(false);
     };
 
+  const loadGradeLevels = async () => {
+    setIsLoadingGradeLevels(true);
+    const data = await fetchGradeLevels();
+    setGradeLevels(data);
+    setIsLoadingGradeLevels(false);
+  };
+
   // Calculate student counts
   const studentCountByClass = useMemo(
     () => getStudentCountByClass(allStudents),
@@ -75,9 +86,12 @@ export const useClassData = () => {
     subjects,
     sections,
     allStudents,
+    gradeLevels,
     isLoadingClasses,
     isLoadingSubjects,
     isLoadingStudents,
+    isLoadingSections,
+    isLoadingGradeLevels,
     studentCountByClass,
     filterClasses,
     filterSubjects,

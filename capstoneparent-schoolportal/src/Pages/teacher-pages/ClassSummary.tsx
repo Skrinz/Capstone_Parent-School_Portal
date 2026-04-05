@@ -13,31 +13,32 @@ export const ClassSummary = ({ students = [] }: ClassSummaryProps) => {
   
   // Calculate passing rate per quarter
   const quarterlyStats = useMemo(() => {
-    const quarterKeys = ['q1', 'q2', 'q3', 'q4'] as const;
+    const quarterKeys = ['q1_grade', 'q2_grade', 'q3_grade', 'q4_grade'] as const;
+    const labels = ['Q1', 'Q2', 'Q3', 'Q4'];
     
-    return quarterKeys.map((qKey) => {
+    return quarterKeys.map((qKey, index) => {
       // Count students who have grades for this quarter
       let totalGraded = 0;
       let passedCount = 0;
 
       students.forEach((student) => {
-        if (!student.subjectGrades || student.subjectGrades.length === 0) return;
+        if (!student.subject_records || student.subject_records.length === 0) return;
 
         // Check if student has any subject with this quarter's grade
-        const hasQuarterGrade = student.subjectGrades.some(
-          (sg) => sg[qKey] !== undefined && sg[qKey] !== null
+        const hasQuarterGrade = student.subject_records.some(
+          (sg: any) => sg[qKey] !== undefined && sg[qKey] !== null
         );
 
         if (hasQuarterGrade) {
           totalGraded++;
 
           // Count passed subjects for this quarter
-          const quarterSubjects = student.subjectGrades.filter(
-            (sg) => sg[qKey] !== undefined && sg[qKey] !== null
+          const quarterSubjects = student.subject_records.filter(
+            (sg: any) => sg[qKey] !== undefined && sg[qKey] !== null
           );
 
           const quarterPassedSubjects = quarterSubjects.filter(
-            (sg) => {
+            (sg: any) => {
               const grade = sg[qKey];
               return typeof grade === 'number' && grade >= 75;
             }
@@ -61,7 +62,7 @@ export const ClassSummary = ({ students = [] }: ClassSummaryProps) => {
       }
 
       return {
-        quarter: qKey.toUpperCase(),
+        quarter: labels[index],
         passingRate: rate,
         totalStudents: students.length,
         passedStudents: passedCount,
@@ -75,17 +76,17 @@ export const ClassSummary = ({ students = [] }: ClassSummaryProps) => {
     const subjectTotals: Record<string, { sum: number; count: number }> = {};
 
     students.forEach((student) => {
-      if (!student.subjectGrades) return;
+      if (!student.subject_records) return;
 
-      student.subjectGrades.forEach((subjectGrade) => {
-        const { subject } = subjectGrade;
+      student.subject_records.forEach((subjectGrade) => {
+        const subject = subjectGrade.subject_name || 'Unknown';
         
         // Collect all quarter grades for this subject
         const quarterGrades = [
-          subjectGrade.q1,
-          subjectGrade.q2,
-          subjectGrade.q3,
-          subjectGrade.q4,
+          subjectGrade.q1_grade,
+          subjectGrade.q2_grade,
+          subjectGrade.q3_grade,
+          subjectGrade.q4_grade,
         ].filter((grade): grade is number => typeof grade === 'number');
 
         if (quarterGrades.length > 0) {

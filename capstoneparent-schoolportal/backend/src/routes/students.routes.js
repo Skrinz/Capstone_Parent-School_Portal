@@ -59,11 +59,20 @@ router.post(
   [
     body("fname").notEmpty().trim(),
     body("lname").notEmpty().trim(),
-    body("sex").isIn(["Male", "Female"]),
-    body("lrn_number").notEmpty(),
+    body("sex").isIn(["Male", "Female", "M", "F"]),
+    body("lrn_number")
+      .notEmpty()
+      .withMessage("LRN is required")
+      .isNumeric()
+      .withMessage("LRN must be numeric")
+      .isLength({ min: 12, max: 12 })
+      .withMessage("LRN must be exactly 12 digits"),
     body("gl_id").isInt(),
     body("syear_start").isInt({ min: 2000, max: 2100 }),
     body("syear_end").isInt({ min: 2000, max: 2100 }),
+    body("status")
+      .optional()
+      .isIn(["ENROLLED", "GRADUATED", "TRANSFERRED", "DROPPED", "SUSPENDED"]),
   ],
   validate,
   studentsController.createStudent,
@@ -77,8 +86,14 @@ router.put(
     param("id").isInt(),
     body("fname").optional().trim(),
     body("lname").optional().trim(),
-    body("sex").optional().isIn(["Male", "Female"]),
-    body("lrn_number").optional(),
+    body("sex").optional().isIn(["Male", "Female", "M", "F"]),
+    body("lrn_number")
+      .optional()
+      .isNumeric()
+      .withMessage("LRN must be numeric")
+      .isLength({ min: 12, max: 12 })
+      .withMessage("LRN must be exactly 12 digits"),
+    body("gl_id").optional().isInt(),
     body("syear_start").optional().isInt({ min: 2000, max: 2100 }),
     body("syear_end").optional().isInt({ min: 2000, max: 2100 }),
     body("status")

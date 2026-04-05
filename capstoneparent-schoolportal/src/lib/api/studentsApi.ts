@@ -3,7 +3,34 @@
  */
 
 import { apiFetch, bearerHeaders } from "./base";
-import type { ApiList, StudentSearchResult } from "./types";
+import type {
+  ApiData,
+  ApiList,
+  GradeLevel,
+  PaginationMeta,
+  StudentRecord,
+  StudentSearchResult,
+  StudentStatus,
+} from "./types";
+
+export interface StudentListParams {
+  page?: number;
+  limit?: number;
+  status?: StudentStatus;
+  grade_level?: number;
+  syear_start?: number;
+}
+
+export interface StudentPayload {
+  fname: string;
+  lname: string;
+  sex: "M" | "F" | "Male" | "Female";
+  lrn_number: string;
+  gl_id: number;
+  syear_start: number;
+  syear_end: number;
+  status?: StudentStatus;
+}
 
 export const studentsApi = {
   // GET /api/students/search?lrn=...
@@ -12,5 +39,71 @@ export const studentsApi = {
       `/students/search?lrn=${encodeURIComponent(lrn)}`,
       { headers: bearerHeaders() },
     );
+  },
+
+  getAll(params: StudentListParams = {}) {
+    const searchParams = new URLSearchParams();
+
+    if (params.page) searchParams.set("page", String(params.page));
+    if (params.limit) searchParams.set("limit", String(params.limit));
+    if (params.status) searchParams.set("status", params.status);
+    if (params.grade_level) {
+      searchParams.set("grade_level", String(params.grade_level));
+    }
+    if (params.syear_start) {
+      searchParams.set("syear_start", String(params.syear_start));
+    }
+
+    const query = searchParams.toString();
+
+    return apiFetch<{ data: StudentRecord[]; pagination: PaginationMeta }>(
+      `/students${query ? `?${query}` : ""}`,
+      { headers: bearerHeaders() },
+    );
+  },
+
+  getById(id: number) {
+    return apiFetch<ApiData<StudentRecord>>(`/students/${id}`, {
+      headers: bearerHeaders(),
+    });
+  },
+
+  create(payload: StudentPayload) {
+    return apiFetch<ApiData<StudentRecord>>("/students", {
+      method: "POST",
+      headers: {
+        ...bearerHeaders(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+  },
+
+  update(
+    id: number,
+    payload: Partial<StudentPayload> & { status?: StudentStatus },
+  ) {
+    return apiFetch<ApiData<StudentRecord>>(`/students/${id}`, {
+      method: "PUT",
+      headers: {
+        ...bearerHeaders(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+  },
+
+  delete(id: number) {
+    return apiFetch<{ message: string }>(`/students/${id}`, {
+      method: "DELETE",
+      headers: bearerHeaders(),
+    });
+  },
+
+  getGradeLevels() {
+    return apiFetch<{ data: GradeLevel[] }>("/classes/grade-levels/all", {
+      method: "GET",
+      headers: bearerHeaders(),
+    });
   },
 };

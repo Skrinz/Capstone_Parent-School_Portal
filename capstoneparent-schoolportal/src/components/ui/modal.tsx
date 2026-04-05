@@ -44,6 +44,7 @@ export const Modal = ({ isOpen, onClose, title, children, contentClassName }: Mo
 				<div className="flex justify-between items-start p-6 pb-3">
 					<h2 className="text-3xl font-bold text-black">{title}</h2>
 					<button
+						type="button"
 						onClick={onClose}
 						className="text-red-600 hover:text-red-800 transition-colors text-3xl font-bold leading-none"
 						aria-label="Close modal"

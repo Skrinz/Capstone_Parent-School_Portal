@@ -1,266 +1,313 @@
-import { useState, useMemo } from "react";
-import { Eye, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Pencil, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
 import { Button } from "../../components/ui/button";
 import { StatusDropdown } from "../../components/general/StatusDropdown";
-import { StudentFormModal } from "../../components/admin/StudentFormModal";
-import { StudentDeleteModal } from "../../components/admin/StudentDeleteModal";
+import {
+  StudentFormModal,
+  type StudentFormData,
+} from "../../components/admin/StudentFormModal";
+import { studentsApi } from "@/lib/api/studentsApi";
+import type {
+  GradeLevel,
+  PaginationMeta,
+  StudentRecord,
+  StudentStatus,
+} from "@/lib/api/types";
+import { useAuthStore } from "@/lib/store/authStore";
 
-interface Student {
-  id: number;
-  name: string;
-  lrn: string;
-  gradeLevel: string;
-  section: string;
-  status: "ENROLLED" | "TRANSFERRED" | "GRADUATED" | "DROPPED" | "SUSPENDED";
-  dateEnrolled: string;
-}
+const ITEMS_PER_PAGE = 10;
+const DEFAULT_SCHOOL_YEAR_START = String(new Date().getFullYear());
+const DEFAULT_SCHOOL_YEAR_END = String(new Date().getFullYear() + 1);
+
+const emptyForm = (): StudentFormData => ({
+  firstName: "",
+  lastName: "",
+  sex: "M",
+  lrn: "",
+  gradeLevelId: "",
+  status: "ENROLLED",
+  schoolYearStart: DEFAULT_SCHOOL_YEAR_START,
+  schoolYearEnd: DEFAULT_SCHOOL_YEAR_END,
+});
+
+const formatSchoolYear = (student: StudentRecord) =>
+  `${student.syear_start}-${student.syear_end}`;
+
+const toApiSex = (sex: "M" | "F") => (sex === "M" ? "Male" : "Female");
+
+const getStatusColor = (status: StudentStatus) => {
+  switch (status) {
+    case "ENROLLED":
+      return "text-(--status-enrolled) bg-green-100";
+    case "TRANSFERRED":
+      return "text-(--status-transferred) bg-yellow-100";
+    case "GRADUATED":
+      return "text-(--status-graduated) bg-blue-100";
+    case "DROPPED":
+      return "text-(--status-dropped) bg-red-100";
+    case "SUSPENDED":
+      return "text-(--status-suspended) bg-purple-100";
+    default:
+      return "text-gray-900 bg-gray-100";
+  }
+};
 
 export const ManageStudents = () => {
-  // Sample data - replace with actual data from your backend
-  const [students, setStudents] = useState<Student[]>([
-    { id: 1, name: "Angela Reyes", lrn: "501142400721", gradeLevel: "Grade 1", section: "Section A", status: "ENROLLED", dateEnrolled: "03/7/2024" },
-    { id: 2, name: "Ethan Navarro", lrn: "501142400722", gradeLevel: "Grade 1", section: "Section A", status: "ENROLLED", dateEnrolled: "03/7/2025" },
-    { id: 3, name: "Jasmine Tolentino", lrn: "501142400723", gradeLevel: "Grade 4", section: "Section B", status: "TRANSFERRED", dateEnrolled: "03/7/2024" },
-    { id: 4, name: "Lorenzo Castillo", lrn: "501142400724", gradeLevel: "Grade 6", section: "Section A", status: "GRADUATED", dateEnrolled: "03/7/2024" },
-    { id: 5, name: "Sophia Dizon", lrn: "501142400725", gradeLevel: "Grade 2", section: "Section C", status: "DROPPED", dateEnrolled: "03/7/2024" },
-    { id: 6, name: "Joshua Salvador", lrn: "501142400726", gradeLevel: "Grade 5", section: "Section C", status: "DROPPED", dateEnrolled: "03/7/2024" },
-    { id: 7, name: "Angela Navarro", lrn: "501142400726", gradeLevel: "Grade 5", section: "Section D", status: "SUSPENDED", dateEnrolled: "03/7/2024" },
-    { id: 8, name: "Joshua Salvador", lrn: "501142400727", gradeLevel: "Grade 5", section: "Section D", status: "SUSPENDED", dateEnrolled: "03/7/2024" },
-    { id: 2, name: "Ethan Navarro", lrn: "501142400722", gradeLevel: "Grade 1", section: "Section A", status: "ENROLLED", dateEnrolled: "03/7/2025" },
-    { id: 3, name: "Jasmine Tolentino", lrn: "501142400723", gradeLevel: "Grade 4", section: "Section B", status: "TRANSFERRED", dateEnrolled: "03/7/2024" },
-    { id: 4, name: "Lorenzo Castillo", lrn: "501142400724", gradeLevel: "Grade 6", section: "Section A", status: "GRADUATED", dateEnrolled: "03/7/2024" },
-    { id: 5, name: "Sophia Dizon", lrn: "501142400725", gradeLevel: "Grade 2", section: "Section C", status: "DROPPED", dateEnrolled: "03/7/2024" },
-    { id: 6, name: "Joshua Salvador", lrn: "501142400726", gradeLevel: "Grade 5", section: "Section C", status: "DROPPED", dateEnrolled: "03/7/2024" },
-    { id: 7, name: "Angela Navarro", lrn: "501142400726", gradeLevel: "Grade 5", section: "Section D", status: "SUSPENDED", dateEnrolled: "03/7/2024" },
-    { id: 8, name: "Joshua Salvador", lrn: "501142400727", gradeLevel: "Grade 5", section: "Section D", status: "SUSPENDED", dateEnrolled: "03/7/2024" }
-  ]);
+  const role = useAuthStore((state) => state.user?.role);
+  const canAddStudents = role === "admin" || role === "teacher";
+
+  const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [gradeLevels, setGradeLevels] = useState<GradeLevel[]>([]);
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    total: 0,
+    page: 1,
+    limit: ITEMS_PER_PAGE,
+    totalPages: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [gradeLevelFilter, setGradeLevelFilter] = useState("all");
-  const [sectionFilter, setSectionFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    sex: "Male",
-    lrn: "",
-    gradeLevel: "Grade 1",
-    section: "Section A",
-    status: "ENROLLED" as "ENROLLED" | "TRANSFERRED" | "GRADUATED" | "DROPPED" | "SUSPENDED",
-    dateEnrolled: "",
-  });
+  const [formData, setFormData] = useState<StudentFormData>(emptyForm);
+  const [editingStudent, setEditingStudent] = useState<StudentRecord | null>(null);
 
-  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
+  const loadStudents = async (page = currentPage) => {
+    setIsLoading(true);
+    setError(null);
 
-  // Filtered students
-  const filteredStudents = useMemo(() => {
-    let filtered = students.filter((student) =>
-      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.lrn.includes(searchQuery)
-    );
+    try {
+      const status =
+        statusFilter !== "all" ? (statusFilter as StudentStatus) : undefined;
+      const gradeLevelId =
+        gradeLevelFilter !== "all" ? Number(gradeLevelFilter) : undefined;
 
-    if (gradeLevelFilter !== "all") {
-      filtered = filtered.filter((s) => s.gradeLevel === gradeLevelFilter);
-    }
+      const response = await studentsApi.getAll({
+        page,
+        limit: ITEMS_PER_PAGE,
+        status,
+        grade_level: gradeLevelId,
+      });
 
-    if (sectionFilter !== "all") {
-      filtered = filtered.filter((s) => s.section === sectionFilter);
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((s) => s.status === statusFilter);
-    }
-
-    return filtered;
-  }, [students, searchQuery, gradeLevelFilter, sectionFilter, statusFilter]);
-
-  // Pagination
-  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
-  const paginatedStudents = filteredStudents.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "ENROLLED":
-        return "text-(--status-enrolled) bg-green-100";
-      case "TRANSFERRED":
-        return "text-(--status-transferred) bg-yellow-100";
-      case "GRADUATED":
-        return "text-(--status-graduated) bg-blue-100";
-      case "DROPPED":
-        return "text-(--status-dropped) bg-red-100";
-      case "SUSPENDED":
-        return "text-(--status-suspended) bg-purple-100";
-      default:
-        return "text-gray-900 bg-gray-100";
+      setStudents(response.data);
+      setPagination(response.pagination);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch students",
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Get unique grade levels and sections for filters
-  const gradeLevels = ["all", ...Array.from(new Set(students.map(s => s.gradeLevel))).sort((a, b) => {
-    const numA = parseInt(a.replace("Grade ", ""));
-    const numB = parseInt(b.replace("Grade ", ""));
-    return numA - numB;
-  })];
-  const sections = ["all", ...Array.from(new Set(students.map(s => s.section)))];
-
-  // Add student handler
-  const handleAddStudent = () => {
-    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.lrn.trim() || !formData.dateEnrolled) return;
-
-    const newStudent: Student = {
-      id: Math.max(...students.map((s) => s.id), 0) + 1,
-      name: `${formData.firstName} ${formData.lastName}`,
-      lrn: formData.lrn,
-      gradeLevel: formData.gradeLevel,
-      section: formData.section,
-      status: formData.status,
-      dateEnrolled: formData.dateEnrolled,
+  useEffect(() => {
+    const loadPageData = async () => {
+      try {
+        const [gradeLevelsResponse] = await Promise.all([
+          studentsApi.getGradeLevels(),
+        ]);
+        setGradeLevels(gradeLevelsResponse.data);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch grade levels",
+        );
+      }
     };
 
-    setStudents([...students, newStudent]);
-    setFormData({
-      firstName: "",
-      lastName: "",
-      sex: "Male",
-      lrn: "",
-      gradeLevel: "Grade 1",
-      section: "Section A",
-      status: "ENROLLED",
-      dateEnrolled: "",
+    loadPageData();
+  }, []);
+
+  useEffect(() => {
+    loadStudents(currentPage);
+  }, [currentPage, gradeLevelFilter, statusFilter]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [gradeLevelFilter, statusFilter]);
+
+  const filteredStudents = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    if (!normalizedQuery) return students;
+
+    return students.filter((student) => {
+      const fullName = `${student.fname} ${student.lname}`.toLowerCase();
+      return (
+        fullName.includes(normalizedQuery) ||
+        student.lrn_number.includes(searchQuery)
+      );
     });
-    setIsAddModalOpen(false);
+  }, [students, searchQuery]);
+
+  const resetForm = () => setFormData(emptyForm());
+
+  const openAddModal = () => {
+    resetForm();
+    setIsAddModalOpen(true);
   };
 
-  // Edit student handlers
-  const handleEditClick = (student: Student) => {
+  const validateForm = () => {
+    if (
+      !formData.firstName.trim() ||
+      !formData.lastName.trim() ||
+      !formData.lrn.trim() ||
+      !formData.gradeLevelId ||
+      !formData.schoolYearStart ||
+      !formData.schoolYearEnd
+    ) {
+      return "Please complete all required fields.";
+    }
+
+    if (!/^\d{12}$/.test(formData.lrn)) {
+      return "LRN must be exactly 12 digits.";
+    }
+
+    const schoolYearStart = Number(formData.schoolYearStart);
+    const schoolYearEnd = Number(formData.schoolYearEnd);
+
+    if (Number.isNaN(schoolYearStart) || Number.isNaN(schoolYearEnd)) {
+      return "School year must be a valid number.";
+    }
+
+    if (schoolYearEnd < schoolYearStart) {
+      return "School year end must be greater than or equal to the start year.";
+    }
+
+    return null;
+  };
+
+  const toPayload = () => ({
+    fname: formData.firstName.trim(),
+    lname: formData.lastName.trim(),
+    sex: toApiSex(formData.sex),
+    lrn_number: formData.lrn.trim(),
+    gl_id: Number(formData.gradeLevelId),
+    syear_start: Number(formData.schoolYearStart),
+    syear_end: Number(formData.schoolYearEnd),
+    status: formData.status,
+  });
+
+  const handleAddStudent = async () => {
+    const validationError = validateForm();
+    if (validationError) {
+      alert(validationError);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await studentsApi.create(toPayload());
+      setIsAddModalOpen(false);
+      resetForm();
+      await loadStudents(currentPage);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to add student");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditClick = (student: StudentRecord) => {
     setEditingStudent(student);
-    const nameParts = student.name.split(" ");
     setFormData({
-      firstName: nameParts[0] || "",
-      lastName: nameParts.slice(1).join(" ") || "",
-      sex: "Male", // Default, you may want to store this in the Student interface
-      lrn: student.lrn,
-      gradeLevel: student.gradeLevel,
-      section: student.section,
+      firstName: student.fname,
+      lastName: student.lname,
+      sex: student.sex,
+      lrn: student.lrn_number,
+      gradeLevelId: String(student.gl_id),
       status: student.status,
-      dateEnrolled: student.dateEnrolled,
+      schoolYearStart: String(student.syear_start),
+      schoolYearEnd: String(student.syear_end),
     });
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateStudent = () => {
-    if (!editingStudent || !formData.firstName.trim() || !formData.lastName.trim() || !formData.lrn.trim() || !formData.dateEnrolled)
+  const handleUpdateStudent = async () => {
+    if (!editingStudent) return;
+
+    const validationError = validateForm();
+    if (validationError) {
+      alert(validationError);
       return;
+    }
 
-    setStudents(
-      students.map((student) =>
-        student.id === editingStudent.id
-          ? {
-              ...student,
-              name: `${formData.firstName} ${formData.lastName}`,
-              lrn: formData.lrn,
-              gradeLevel: formData.gradeLevel,
-              section: formData.section,
-              status: formData.status,
-              dateEnrolled: formData.dateEnrolled,
-            }
-          : student,
-      ),
-    );
-    setFormData({
-      firstName: "",
-      lastName: "",
-      sex: "Male",
-      lrn: "",
-      gradeLevel: "Grade 1",
-      section: "Section A",
-      status: "ENROLLED",
-      dateEnrolled: "",
-    });
-    setEditingStudent(null);
-    setIsEditModalOpen(false);
+    setIsSubmitting(true);
+    try {
+      await studentsApi.update(editingStudent.student_id, toPayload());
+      setIsEditModalOpen(false);
+      setEditingStudent(null);
+      resetForm();
+      await loadStudents(currentPage);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update student");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // Delete student handlers
-  const handleDeleteClick = (student: Student) => {
-    setDeletingStudent(student);
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleDeleteStudent = () => {
-    if (!deletingStudent) return;
-
-    setStudents(
-      students.filter((student) => student.id !== deletingStudent.id),
-    );
-    setDeletingStudent(null);
-    setIsDeleteModalOpen(false);
-  };
+  const totalPages = pagination.totalPages;
+  const showingStart =
+    filteredStudents.length === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
+  const showingEnd =
+    filteredStudents.length === 0
+      ? 0
+      : Math.min(
+          (pagination.page - 1) * pagination.limit + filteredStudents.length,
+          pagination.total,
+        );
 
   return (
     <div className="min-h-screen">
       <RoleAwareNavbar />
-      <div className="max-w-7xl mx-auto py-12 px-4">
-        <div className="bg-white rounded-lg shadow-md p-8">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold">Manage Students</h1>
-            <Button
-              className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-6 py-2"
-              onClick={() => {
-                setFormData({
-                  firstName: "",
-                  lastName: "",
-                  sex: "Male",
-                  lrn: "",
-                  gradeLevel: "Grade 1",
-                  section: "Section A",
-                  status: "ENROLLED",
-                  dateEnrolled: "",
-                });
-                setIsAddModalOpen(true);
-              }}
-            >
-              Add New Student
-            </Button>
+      <div className="mx-auto max-w-7xl px-4 py-12">
+        <div className="rounded-lg bg-white p-8 shadow-md">
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Manage Students</h1>
+              {!canAddStudents && (
+                <p className="mt-2 text-sm text-gray-500">
+                  Student records are managed here through updates to student
+                  details and status. Deletion is disabled because records are
+                  soft-managed instead of permanently removed.
+                </p>
+              )}
+            </div>
+            {canAddStudents && (
+              <Button
+                className="bg-(--button-green) px-6 py-2 text-white hover:bg-(--button-hover-green)"
+                onClick={openAddModal}
+              >
+                Add New Student
+              </Button>
+            )}
           </div>
 
-          {/* Search and Filters */}
-          <div className="flex gap-4 mb-6">
+          <div className="mb-6 flex flex-col gap-4 lg:flex-row">
             <input
               type="text"
               placeholder="Search student name or LRN..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 rounded-md border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <StatusDropdown
               value={gradeLevelFilter}
               onChange={setGradeLevelFilter}
               placeholder="Grade Level"
-              options={gradeLevels.map(grade => ({
-                value: grade,
-                label: grade === "all" ? "Grade Level" : grade
-              }))}
-            />
-            <StatusDropdown
-              value={sectionFilter}
-              onChange={setSectionFilter}
-              placeholder="Section"
-              options={sections.map(section => ({
-                value: section,
-                label: section === "all" ? "Section" : section
-              }))}
+              options={[
+                { value: "all", label: "Grade Level" },
+                ...gradeLevels.map((gradeLevel) => ({
+                  value: String(gradeLevel.gl_id),
+                  label: gradeLevel.grade_level,
+                })),
+              ]}
             />
             <StatusDropdown
               value={statusFilter}
@@ -268,62 +315,110 @@ export const ManageStudents = () => {
               placeholder="Status"
               options={[
                 { value: "all", label: "Status" },
-                { value: "ENROLLED", label: "Enrolled", className: "text-(--status-enrolled)" },
-                { value: "TRANSFERRED", label: "Transferred", className: "text-(--status-transferred)" },
-                { value: "GRADUATED", label: "Graduated", className: "text-(--status-graduated)" },
-                { value: "DROPPED", label: "Dropped", className: "text-(--status-dropped)" },
-                { value: "SUSPENDED", label: "Suspended", className: "text-(--status-suspended)" },
+                {
+                  value: "ENROLLED",
+                  label: "Enrolled",
+                  className: "text-(--status-enrolled)",
+                },
+                {
+                  value: "TRANSFERRED",
+                  label: "Transferred",
+                  className: "text-(--status-transferred)",
+                },
+                {
+                  value: "GRADUATED",
+                  label: "Graduated",
+                  className: "text-(--status-graduated)",
+                },
+                {
+                  value: "DROPPED",
+                  label: "Dropped",
+                  className: "text-(--status-dropped)",
+                },
+                {
+                  value: "SUSPENDED",
+                  label: "Suspended",
+                  className: "text-(--status-suspended)",
+                },
               ]}
             />
           </div>
 
-          {/* Table */}
-          {filteredStudents.length > 0 && (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+              <Loader2 className="mb-2 h-8 w-8 animate-spin text-(--button-green)" />
+              <p>Loading students...</p>
+            </div>
+          ) : error ? (
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-center text-red-600">
+              <p>{error}</p>
+              <button
+                onClick={() => loadStudents(currentPage)}
+                className="mt-2 text-sm font-semibold underline hover:text-red-700"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : filteredStudents.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-10 text-center text-gray-500">
+              No students found.
+            </div>
+          ) : (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="text-left py-4 px-6 font-semibold text-gray-700">Student Name</th>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-700">LRN</th>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-700">Grade Level & Section</th>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-700">Status</th>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-700">Date Enrolled</th>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-700">Actions</th>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="px-6 py-4 text-left font-semibold text-gray-700">
+                      Student Name
+                    </th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-700">
+                      LRN
+                    </th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-700">
+                      Grade Level
+                    </th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-700">
+                      School Year
+                    </th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-700">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-700">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedStudents.map((student) => (
-                    <tr key={student.id} className="border-b border-gray-200 hover:bg-gray-50">
-                      <td className="py-4 px-6">{student.name}</td>
-                      <td className="py-4 px-6">{student.lrn}</td>
-                      <td className="py-4 px-6">{student.gradeLevel} - {student.section}</td>
-                      <td className="py-4 px-6">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(student.status)}`}>
+                  {filteredStudents.map((student) => (
+                    <tr
+                      key={student.student_id}
+                      className="border-b border-gray-200 hover:bg-gray-50"
+                    >
+                      <td className="px-6 py-4">
+                        {student.fname} {student.lname}
+                      </td>
+                      <td className="px-6 py-4">{student.lrn_number}</td>
+                      <td className="px-6 py-4">
+                        {student.grade_level?.grade_level ?? "Unknown"}
+                      </td>
+                      <td className="px-6 py-4">{formatSchoolYear(student)}</td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusColor(
+                            student.status,
+                          )}`}
+                        >
                           {student.status}
                         </span>
                       </td>
-                      <td className="py-4 px-6">{student.dateEnrolled}</td>
-                      <td className="py-4 px-6">
+                      <td className="px-6 py-4">
                         <div className="flex gap-3">
                           <button
-                            className="text-gray-600 hover:text-gray-800 transition-colors"
-                            aria-label="View student"
-                          >
-                            <Eye className="h-5 w-5" />
-                          </button>
-                          <button
                             onClick={() => handleEditClick(student)}
-                            className="text-(--button-green) hover:text-(--button-hover-green) transition-colors"
+                            className="text-(--button-green) transition-colors hover:text-(--button-hover-green)"
                             aria-label="Edit student"
                           >
                             <Pencil className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(student)}
-                            className="text-red-600 hover:text-red-800 transition-colors"
-                            aria-label="Delete student"
-                          >
-                            <Trash2 className="h-5 w-5" />
                           </button>
                         </div>
                       </td>
@@ -334,17 +429,15 @@ export const ManageStudents = () => {
             </div>
           )}
 
-          {/* Pagination */}
-          <div className="flex items-center justify-between mt-6">
+          <div className="mt-6 flex items-center justify-between">
             <div className="text-sm text-gray-600">
-              Showing {filteredStudents.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-
-              {Math.min(currentPage * itemsPerPage, filteredStudents.length)} of {filteredStudents.length} entries
+              Showing {showingStart}-{showingEnd} of {pagination.total} entries
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={currentPage === 1 || isLoading}
+                className="rounded border border-gray-300 px-3 py-1 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -359,13 +452,14 @@ export const ManageStudents = () => {
                 } else {
                   pageNum = currentPage - 2 + i;
                 }
+
                 return (
                   <button
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`px-3 py-1 rounded border ${
+                    className={`rounded border px-3 py-1 ${
                       currentPage === pageNum
-                        ? "bg-(--button-green) text-white border-(--button-green)"
+                        ? "border-(--button-green) bg-(--button-green) text-white"
                         : "border-gray-300 hover:bg-gray-100"
                     }`}
                   >
@@ -373,21 +467,12 @@ export const ManageStudents = () => {
                   </button>
                 );
               })}
-              {totalPages > 5 && currentPage < totalPages - 2 && (
-                <span className="px-3 py-1">...</span>
-              )}
-              {totalPages > 5 && currentPage < totalPages - 2 && (
-                <button
-                  onClick={() => setCurrentPage(totalPages)}
-                  className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-100"
-                >
-                  {totalPages}
-                </button>
-              )}
               <button
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages || totalPages === 0}
-                className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))
+                }
+                disabled={currentPage === totalPages || totalPages === 0 || isLoading}
+                className="rounded border border-gray-300 px-3 py-1 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -400,22 +485,15 @@ export const ManageStudents = () => {
         isOpen={isAddModalOpen}
         onClose={() => {
           setIsAddModalOpen(false);
-          setFormData({
-            firstName: "",
-            lastName: "",
-            sex: "Male",
-            lrn: "",
-            gradeLevel: "Grade 1",
-            section: "Section A",
-            status: "ENROLLED",
-            dateEnrolled: "",
-          });
+          resetForm();
         }}
         onSubmit={handleAddStudent}
         title="Add Student"
         submitLabel="Add"
         formData={formData}
         setFormData={setFormData}
+        gradeLevels={gradeLevels}
+        isSubmitting={isSubmitting}
       />
 
       <StudentFormModal
@@ -423,32 +501,15 @@ export const ManageStudents = () => {
         onClose={() => {
           setIsEditModalOpen(false);
           setEditingStudent(null);
-          setFormData({
-            firstName: "",
-            lastName: "",
-            sex: "Male",
-            lrn: "",
-            gradeLevel: "Grade 1",
-            section: "Section A",
-            status: "ENROLLED",
-            dateEnrolled: "",
-          });
+          resetForm();
         }}
         onSubmit={handleUpdateStudent}
         title="Edit Student"
         submitLabel="Update"
         formData={formData}
         setFormData={setFormData}
-      />
-
-      <StudentDeleteModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => {
-          setIsDeleteModalOpen(false);
-          setDeletingStudent(null);
-        }}
-        onConfirm={handleDeleteStudent}
-        studentName={deletingStudent?.name}
+        gradeLevels={gradeLevels}
+        isSubmitting={isSubmitting}
       />
     </div>
   );

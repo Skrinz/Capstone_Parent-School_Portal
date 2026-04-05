@@ -5,6 +5,7 @@ import { Search, UserPlus, X, ArrowLeft, Plus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -290,6 +291,9 @@ export const Subjects = ({
                 <X className="h-8 w-8 font-bold" strokeWidth={3} />
               </button>
             </div>
+            <DialogDescription className="sr-only">
+              Add one or more subjects to the selected class.
+            </DialogDescription>
           </DialogHeader>
           
           <div className="px-6 pb-6 space-y-4">
@@ -377,6 +381,9 @@ export const Subjects = ({
                 <X className="h-8 w-8 font-bold" strokeWidth={3} />
               </button>
             </div>
+            <DialogDescription className="sr-only">
+              Search for and assign a class adviser to the selected class.
+            </DialogDescription>
           </DialogHeader>
           
           <div className="px-6 pb-6 space-y-4">
@@ -471,6 +478,9 @@ export const Subjects = ({
                 <X className="h-8 w-8 font-bold" strokeWidth={3} />
               </button>
             </div>
+            <DialogDescription className="sr-only">
+              Search for and assign a teacher to the selected subject.
+            </DialogDescription>
           </DialogHeader>
           
           <div className="px-6 pb-6 space-y-4">

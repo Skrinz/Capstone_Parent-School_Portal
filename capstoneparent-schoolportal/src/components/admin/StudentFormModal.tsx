@@ -1,18 +1,17 @@
 import React from "react";
 import { Button } from "../ui/button";
 import { Modal } from "../ui/modal";
+import type { GradeLevel, StudentStatus } from "@/lib/api/types";
 
-type StudentStatus = "ENROLLED" | "TRANSFERRED" | "GRADUATED" | "DROPPED" | "SUSPENDED";
-
-interface StudentFormData {
+export interface StudentFormData {
   firstName: string;
   lastName: string;
-  sex: string;
+  sex: "M" | "F";
   lrn: string;
-  gradeLevel: string;
-  section: string;
+  gradeLevelId: string;
   status: StudentStatus;
-  dateEnrolled: string;
+  schoolYearStart: string;
+  schoolYearEnd: string;
 }
 
 interface StudentFormModalProps {
@@ -23,6 +22,9 @@ interface StudentFormModalProps {
   submitLabel: string;
   formData: StudentFormData;
   setFormData: React.Dispatch<React.SetStateAction<StudentFormData>>;
+  gradeLevels: GradeLevel[];
+  isSubmitting?: boolean;
+  canEditStatus?: boolean;
 }
 
 export const StudentFormModal = ({
@@ -33,6 +35,9 @@ export const StudentFormModal = ({
   submitLabel,
   formData,
   setFormData,
+  gradeLevels,
+  isSubmitting = false,
+  canEditStatus = true,
 }: StudentFormModalProps) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
@@ -41,77 +46,105 @@ export const StudentFormModal = ({
           type="text"
           placeholder="First Name"
           value={formData.firstName}
-          onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-          className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green) placeholder-gray-400"
+          onChange={(e) =>
+            setFormData({ ...formData, firstName: e.target.value })
+          }
+          className="w-full rounded-md border-2 border-black px-4 py-3 text-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-(--button-green)"
         />
         <input
           type="text"
           placeholder="Last Name"
           value={formData.lastName}
-          onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-          className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green) placeholder-gray-400"
+          onChange={(e) =>
+            setFormData({ ...formData, lastName: e.target.value })
+          }
+          className="w-full rounded-md border-2 border-black px-4 py-3 text-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-(--button-green)"
         />
         <select
           value={formData.sex}
-          onChange={(e) => setFormData({ ...formData, sex: e.target.value })}
-          className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+          onChange={(e) =>
+            setFormData({ ...formData, sex: e.target.value as "M" | "F" })
+          }
+          className="w-full rounded-md border-2 border-black px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-(--button-green)"
         >
-          <option value="Male">Male</option>
-          <option value="Female">Female</option>
+          <option value="M">Male</option>
+          <option value="F">Female</option>
         </select>
         <input
           type="text"
+          inputMode="numeric"
           placeholder="LRN Number"
           value={formData.lrn}
-          onChange={(e) => setFormData({ ...formData, lrn: e.target.value })}
-          className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green) placeholder-gray-400"
+          onChange={(e) =>
+            setFormData({
+              ...formData,
+              lrn: e.target.value.replace(/\D/g, "").slice(0, 12),
+            })
+          }
+          className="w-full rounded-md border-2 border-black px-4 py-3 text-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-(--button-green)"
         />
         <select
-          value={formData.gradeLevel}
-          onChange={(e) => setFormData({ ...formData, gradeLevel: e.target.value })}
-          className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+          value={formData.gradeLevelId}
+          onChange={(e) =>
+            setFormData({ ...formData, gradeLevelId: e.target.value })
+          }
+          className="w-full rounded-md border-2 border-black px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-(--button-green)"
         >
-          <option value="Grade 1">Grade 1</option>
-          <option value="Grade 2">Grade 2</option>
-          <option value="Grade 3">Grade 3</option>
-          <option value="Grade 4">Grade 4</option>
-          <option value="Grade 5">Grade 5</option>
-          <option value="Grade 6">Grade 6</option>
+          <option value="">Select grade level</option>
+          {gradeLevels.map((gradeLevel) => (
+            <option key={gradeLevel.gl_id} value={String(gradeLevel.gl_id)}>
+              {gradeLevel.grade_level}
+            </option>
+          ))}
         </select>
-        <select
-          value={formData.section}
-          onChange={(e) => setFormData({ ...formData, section: e.target.value })}
-          className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
-        >
-          <option value="Section A">Section A</option>
-          <option value="Section B">Section B</option>
-          <option value="Section C">Section C</option>
-          <option value="Section D">Section D</option>
-        </select>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <input
+            type="number"
+            min="2000"
+            max="2100"
+            placeholder="School Year Start"
+            value={formData.schoolYearStart}
+            onChange={(e) =>
+              setFormData({ ...formData, schoolYearStart: e.target.value })
+            }
+            className="w-full rounded-md border-2 border-black px-4 py-3 text-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+          />
+          <input
+            type="number"
+            min="2000"
+            max="2101"
+            placeholder="School Year End"
+            value={formData.schoolYearEnd}
+            onChange={(e) =>
+              setFormData({ ...formData, schoolYearEnd: e.target.value })
+            }
+            className="w-full rounded-md border-2 border-black px-4 py-3 text-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+          />
+        </div>
         <select
           value={formData.status}
-          onChange={(e) => setFormData({ ...formData, status: e.target.value as StudentStatus })}
-          className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+          onChange={(e) =>
+            setFormData({
+              ...formData,
+              status: e.target.value as StudentStatus,
+            })
+          }
+          disabled={!canEditStatus}
+          className="w-full rounded-md border-2 border-black px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-(--button-green) disabled:cursor-not-allowed disabled:bg-gray-100"
         >
-          <option value="ENROLLED" className="text-green-600">ENROLLED</option>
-          <option value="TRANSFERRED" className="text-yellow-600">TRANSFERRED</option>
-          <option value="GRADUATED" className="text-blue-600">GRADUATED</option>
-          <option value="DROPPED" className="text-red-600">DROPPED</option>
-          <option value="SUSPENDED" className="text-purple-600">SUSPENDED</option>
+          <option value="ENROLLED">ENROLLED</option>
+          <option value="TRANSFERRED">TRANSFERRED</option>
+          <option value="GRADUATED">GRADUATED</option>
+          <option value="DROPPED">DROPPED</option>
+          <option value="SUSPENDED">SUSPENDED</option>
         </select>
-        <input
-          type="text"
-          placeholder="Date Enrolled (MM/DD/YY)"
-          value={formData.dateEnrolled}
-          onChange={(e) => setFormData({ ...formData, dateEnrolled: e.target.value })}
-          className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green) placeholder-gray-400"
-        />
         <div className="flex justify-end">
           <Button
             onClick={onSubmit}
-            className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full"
+            disabled={isSubmitting}
+            className="rounded-full bg-(--button-green) px-8 py-3 text-lg text-white hover:bg-(--button-hover-green)"
           >
-            {submitLabel}
+            {isSubmitting ? "Saving..." : submitLabel}
           </Button>
         </div>
       </div>

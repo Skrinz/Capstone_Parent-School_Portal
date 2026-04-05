@@ -37,3 +37,38 @@ export interface StudentSearchResult {
   lname: string;
   grade_level: { grade_level: string };
 }
+
+export interface GradeLevel {
+  gl_id: number;
+  grade_level: string;
+}
+
+export type StudentStatus =
+  | "ENROLLED"
+  | "GRADUATED"
+  | "TRANSFERRED"
+  | "DROPPED"
+  | "SUSPENDED";
+
+export interface StudentRecord {
+  student_id: number;
+  fname: string;
+  lname: string;
+  sex: "M" | "F";
+  lrn_number: string;
+  gl_id: number;
+  syear_start: number;
+  syear_end: number;
+  status: StudentStatus;
+  created_at: string;
+  updated_at: string;
+  grade_level?: GradeLevel;
+  clist_id?: number | null;
+}
+
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}

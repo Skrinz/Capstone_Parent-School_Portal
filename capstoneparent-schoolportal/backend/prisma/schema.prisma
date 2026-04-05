@@ -318,7 +318,7 @@ model GradeLevel {
 
 model Section {
   section_id   Int    @id @default(autoincrement())
-  section_name String
+  section_name String @unique
 
   class_lists ClassList[]
 
@@ -347,9 +347,9 @@ model SubjectRecord {
   subject_name    String
   time_start      DateTime @db.Time()
   time_end        DateTime @db.Time()
-  subject_teacher Int
+  subject_teacher Int?
 
-  teacher     User                       @relation(fields: [subject_teacher], references: [user_id])
+  teacher     User?                      @relation(fields: [subject_teacher], references: [user_id])
   class_lists ClassListSubjectRecord[]
   students    SubjectRecordStudent[]
 

@@ -3,8 +3,23 @@
  * Core fetch wrapper shared by every API module.
  */
 
-export const BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+function normalizeApiBaseUrl(url?: string): string {
+  const fallback = import.meta.env.DEV ? "/api" : "http://localhost:5000/api";
+  const trimmed = url?.trim();
+
+  if (!trimmed) return fallback;
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed.replace(/\/+$/, "");
+  }
+
+  return `/${trimmed.replace(/^\/+|\/+$/g, "")}`;
+}
+
+/**
+ * In Vite dev, default to same-origin `/api` so requests go through the dev-server
+ * proxy (see vite.config.ts). Set VITE_API_URL when the API lives elsewhere.
+ */
+export const BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_URL);
 
 /**
  * Turns stored photo paths into usable image URLs. Absolute http(s), blob:,
@@ -58,7 +73,11 @@ export async function apiFetch<T>(
   const data = await res.json();
 
   if (!res.ok) {
-    throw new Error(data.message || `Request failed: ${res.status}`);
+    const msg =
+      (typeof data?.message === "string" && data.message) ||
+      (typeof data?.error === "string" && data.error) ||
+      `Request failed: ${res.status}`;
+    throw new Error(msg);
   }
 
   return data as T;

@@ -20,22 +20,23 @@ export const SubjectSummary = ({ subject, students }: SubjectSummaryProps) => {
   
   // Calculate passing rate per quarter for this specific subject
   const quarterlyStats = useMemo(() => {
-    const quarterKeys = ['q1', 'q2', 'q3', 'q4'] as const;
+    const quarterKeys = ['q1_grade', 'q2_grade', 'q3_grade', 'q4_grade'] as const;
+    const labels = ['Q1', 'Q2', 'Q3', 'Q4'];
     
-    return quarterKeys.map((qKey) => {
+    return quarterKeys.map((qKey, index) => {
       let totalGraded = 0;
       let passedCount = 0;
 
       students.forEach((student) => {
         // Find the grade for this specific subject
-        const subjectGrade = student.subjectGrades?.find(
-          (sg) => sg.subject === subject.name
+        const subjectGrade = student.subject_records?.find(
+          (sg) => sg.subject_name === subject.subject_name || sg.srecord_id === subject.srecord_id
         );
 
         if (!subjectGrade) return;
 
         // Check if this quarter has a grade
-        const quarterGrade = subjectGrade[qKey];
+        const quarterGrade = (subjectGrade as any)[qKey];
         if (quarterGrade !== undefined && quarterGrade !== null) {
           totalGraded++;
           
@@ -57,29 +58,30 @@ export const SubjectSummary = ({ subject, students }: SubjectSummaryProps) => {
       }
 
       return {
-        quarter: qKey.toUpperCase(),
+        quarter: labels[index],
         passingRate: rate,
         totalStudents: students.length,
         passedStudents: passedCount,
         color,
       };
     });
-  }, [students, subject.name]);
+  }, [students, subject.subject_name, subject.srecord_id]);
 
   // Calculate average grade per quarter for this subject
   const quarterAverages = useMemo(() => {
-    const quarterKeys = ['q1', 'q2', 'q3', 'q4'] as const;
+    const quarterKeys = ['q1_grade', 'q2_grade', 'q3_grade', 'q4_grade'] as const;
+    const labels = ['Q1', 'Q2', 'Q3', 'Q4'];
     
-    return quarterKeys.map((qKey) => {
+    return quarterKeys.map((qKey, index) => {
       const grades: number[] = [];
 
       students.forEach((student) => {
-        const subjectGrade = student.subjectGrades?.find(
-          (sg) => sg.subject === subject.name
+        const subjectGrade = student.subject_records?.find(
+          (sg) => sg.subject_name === subject.subject_name || sg.srecord_id === subject.srecord_id
         );
 
         if (subjectGrade) {
-          const quarterGrade = subjectGrade[qKey];
+          const quarterGrade = (subjectGrade as any)[qKey];
           if (typeof quarterGrade === 'number') {
             grades.push(quarterGrade);
           }
@@ -101,13 +103,13 @@ export const SubjectSummary = ({ subject, students }: SubjectSummaryProps) => {
       }
 
       return {
-        quarter: qKey.toUpperCase(),
+        quarter: labels[index],
         average,
         barColor,
         studentCount: grades.length,
       };
     });
-  }, [students, subject.name]);
+  }, [students, subject.subject_name, subject.srecord_id]);
 
   // Calculate overall statistics for this subject
   const overallStats = useMemo(() => {
@@ -116,11 +118,11 @@ export const SubjectSummary = ({ subject, students }: SubjectSummaryProps) => {
     let failedCount = 0;
 
     students.forEach((student) => {
-      const subjectGrade = student.subjectGrades?.find(
-        (sg) => sg.subject === subject.name
+      const subjectGrade = student.subject_records?.find(
+        (sg) => sg.subject_name === subject.subject_name || sg.srecord_id === subject.srecord_id
       );
 
-      if (subjectGrade && subjectGrade.finalGrade !== 'N/A') {
+      if (subjectGrade && subjectGrade.avg_grade !== 'N/A' && subjectGrade.avg_grade !== undefined) {
         totalWithGrades++;
         if (subjectGrade.remarks === 'PASSED') {
           passedCount++;
@@ -137,7 +139,7 @@ export const SubjectSummary = ({ subject, students }: SubjectSummaryProps) => {
       failed: failedCount,
       noGrade: students.length - totalWithGrades,
     };
-  }, [students, subject.name]);
+  }, [students, subject.subject_name, subject.srecord_id]);
 
   return (
     <div className="p-6 space-y-8">
@@ -197,7 +199,7 @@ export const SubjectSummary = ({ subject, students }: SubjectSummaryProps) => {
       {/* Average Grades per Quarter for this Subject */}
       <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-800 text-center mb-6">
-          Average Grades for {subject.name}
+          Average Grades for {subject.subject_name}
         </h2>
         
         <div className="h-[400px] w-full">
@@ -223,7 +225,7 @@ export const SubjectSummary = ({ subject, students }: SubjectSummaryProps) => {
                   borderRadius: '8px',
                   padding: '12px'
                 }}
-                formatter={(value: number | string | undefined, name: any, props: any) => {
+                formatter={(value: any, _name: any, props: any) => {
                     if (value === undefined) return ['', 'Average'];
 
                     return [

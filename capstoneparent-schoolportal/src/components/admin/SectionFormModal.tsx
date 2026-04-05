@@ -37,6 +37,7 @@ export const SectionFormModal = ({
         />
         <div className="flex justify-end">
           <Button
+            type="button"
             onClick={onSubmit}
             className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full"
           >

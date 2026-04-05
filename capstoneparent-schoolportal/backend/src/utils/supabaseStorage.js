@@ -9,7 +9,8 @@ const crypto = require("crypto");
  *   1. Supabase Dashboard → Storage → New Bucket
  *   2. Name buckets to match your dedicated env vars:
  *      SUPABASE_BUCKET_PARENT, SUPABASE_BUCKET_ANNOUNCEMENTS,
- *      SUPABASE_BUCKET_PFP, SUPABASE_BUCKET_EVENTS, SUPABASE_BUCKET_ABOUT_US
+ *      SUPABASE_BUCKET_PFP, SUPABASE_BUCKET_EVENTS, SUPABASE_BUCKET_ABOUT_US,
+ *      SUPABASE_BUCKET_TEACHER
  *   3. Leave it PRIVATE (do NOT toggle "Public bucket")
  *   4. Click Create
  *
@@ -67,6 +68,13 @@ const STORAGE_TARGETS = {
     allowedMimeTypes: [...IMAGE_MIME_TYPES],
     allowedExtensions: [...IMAGE_EXTENSIONS],
     displayName: "about us",
+  },
+  teacher_files: {
+    envVar: "SUPABASE_BUCKET_TEACHER",
+    fallbackBucket: "teacher-files",
+    allowedMimeTypes: [...IMAGE_MIME_TYPES],
+    allowedExtensions: [...IMAGE_EXTENSIONS],
+    displayName: "teacher files",
   },
 };
 
@@ -179,9 +187,11 @@ const uploadFile = async (file, targetKey = "parent_docs") => {
   // Validate file type before touching Supabase
   const ext = path.extname(file.originalname).toLowerCase();
   if (!isValidFileType(file, target)) {
-    try {
-      fs.unlinkSync(file.path);
-    } catch (_) {}
+    if (file.path) {
+      try {
+        fs.unlinkSync(file.path);
+      } catch (_) {}
+    }
     const allowed = target.allowedExtensions.join(", ");
     throw new Error(
       `Invalid file type for ${target.displayName}: ${file.originalname}. Allowed extensions: ${allowed}.`,
@@ -191,7 +201,7 @@ const uploadFile = async (file, targetKey = "parent_docs") => {
   // Collision-proof storage key that preserves the original extension
   const storageKey = `${Date.now()}_${crypto.randomBytes(8).toString("hex")}${ext}`;
 
-  const fileBuffer = fs.readFileSync(file.path);
+  const fileBuffer = file.buffer ?? fs.readFileSync(file.path);
 
   const { error: uploadError } = await supabase.storage
     .from(target.bucket)
@@ -201,9 +211,11 @@ const uploadFile = async (file, targetKey = "parent_docs") => {
     });
 
   // Always clean up the multer temp file regardless of upload result
-  try {
-    fs.unlinkSync(file.path);
-  } catch (_) {}
+  if (file.path) {
+    try {
+      fs.unlinkSync(file.path);
+    } catch (_) {}
+  }
 
   if (uploadError) {
     throw new Error(`Supabase upload failed: ${uploadError.message}`);

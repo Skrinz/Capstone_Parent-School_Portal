@@ -3,8 +3,15 @@ export interface SectionItem {
   name: string; // e.g., "Section A", "Section B"
 }
 
+export interface GradeLevelItem {
+  id: number;
+  name: string;
+}
+
 export interface TeacherItem {
   id: number;
+  fname: string;
+  lname: string;
   name: string;
 }
 
@@ -34,4 +41,14 @@ export interface Student {
   classId: number;
   name: string;
   lrn: string;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }

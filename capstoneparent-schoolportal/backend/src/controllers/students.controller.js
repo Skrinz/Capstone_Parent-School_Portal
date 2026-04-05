@@ -26,6 +26,7 @@ const studentsController = {
         status,
         grade_level,
         syear_start,
+        clist_id,
       } = req.query;
       const result = await studentsService.getAllStudents({
         page,
@@ -33,6 +34,7 @@ const studentsController = {
         status,
         grade_level,
         syear_start,
+        clist_id,
       });
 
       res.status(200).json({
@@ -96,6 +98,9 @@ const studentsController = {
       });
     } catch (error) {
       if (error.message === "Student not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message === "Grade level not found") {
         return res.status(404).json({ message: error.message });
       }
       if (error.message === "A student with this LRN already exists") {

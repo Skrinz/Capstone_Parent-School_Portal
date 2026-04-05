@@ -1,71 +1,82 @@
 export interface ClassItem {
-  id: number;
-  grade: string;
-  section: string;
-  start_year: number;
-  end_year: number;
+  clist_id: number;
+  gl_id: number;
+  section_id: number;
+  class_adviser: number;
+  syear_start: number;
+  syear_end: number;
+  grade_level?: { grade_level: string };
+  section?: { section_name: string };
+  // For UI compatibility, I'll keep the flattened properties but update nomenclature
+  grade?: string; // Mapped from grade_level.grade_level
+  section_name?: string; // Mapped from section.section_name
 }
 
 export interface SubjectItem {
-  id: number;
-  name: string;
-  grade: string;
-  section: string;
-  start_year: number;
-  end_year: number;
+  srecord_id: number;
+  subject_name: string;
+  time_start: string;
+  time_end: string;
+  subject_teacher?: number | null;
+  // For UI list filtering
+  grade?: string; 
+  section?: string;
+  syear_start?: number;
+  syear_end?: number;
 }
 
 // Student interface
 export interface Student {
-  id: number;
-  classId: number;
-  name: string;
-  lrn: string;
+  student_id: number;
+  fname: string;
+  lname: string;
+  name?: string; // Mapped: `${fname} ${lname}`
+  lrn_number: string;
+  lrn?: string; // Alias for UI
   sex: string;
-  schoolYear: string;     // Need to change: must be based on subject school year
-  gradeSection: string;
+  gl_id: number;
+  syear_start: number;
+  syear_end: number;
+  schoolYear: string;     // Mapped: `${syear_start} - ${syear_end}`
+  gradeSection: string;   // Mapped from relations
   finalAvgGrade: number | string;
   remarks: string;
   
   // Subject grades with all quarters
-  subjectGrades?: SubjectGrade[];
+  subject_records?: SubjectGrade[]; // Renamed from subjectGrades
   
   // Attendance records
-  attendance?: AttendanceRecord;
+  attendance_records?: AttendanceRecord[]; // Renamed and changed to array
 }
 
 // Student subjects grades interface
 export interface SubjectGrade {
-  subject: string;
-  q1?: number;
-  q2?: number;
-  q3?: number;
-  q4?: number;
-  finalGrade: number | string; // Stored in DB
-  remarks: string; // Stored in DB (PASSED/FAILED)
+  srs_id: number;
+  srecord_id: number;
+  student_id: number;
+  subject_name?: string; // Mapped from subject record
+  q1_grade?: number;
+  q2_grade?: number;
+  q3_grade?: number;
+  q4_grade?: number;
+  avg_grade: number | string;
+  remarks: string; // PASSED/FAILED
 }
 
 // Attendance data structure
 export interface AttendanceRecord {
-  months: {
-    Jun: MonthAttendance;
-    Jul: MonthAttendance;
-    Aug: MonthAttendance;
-    Sept: MonthAttendance;
-    Oct: MonthAttendance;
-    Nov: MonthAttendance;
-    Dec: MonthAttendance;
-    Jan: MonthAttendance;
-    Feb: MonthAttendance;
-    Mar: MonthAttendance;
-    Apr: MonthAttendance;
-  };
+  attendance_id: number;
+  student_id: number;
+  school_days: number;
+  days_present: number;
+  days_absent: number;
+  month: string; // Enum: Jun, Jul...
 }
 
 export interface MonthAttendance {
-  schoolDays: number;
-  present: number;
-  absent: number;
+  school_days: number;
+  days_present: number;
+  days_absent: number;
 }
 
 // For backward compatibility with ClassSummary

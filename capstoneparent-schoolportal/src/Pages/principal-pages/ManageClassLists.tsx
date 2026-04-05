@@ -8,10 +8,12 @@ import {
 } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Edit, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Edit, X, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -40,8 +42,6 @@ export const ManageClassLists = () => {
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isAddSubjectModalOpen, setIsAddSubjectModalOpen] = useState(false);
-  const [isAssignAdviserModalOpen, setIsAssignAdviserModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -65,6 +65,8 @@ export const ManageClassLists = () => {
     schoolYearEnd: '',
     teacherId: '',
   });
+  const [addTeacherSearchQuery, setAddTeacherSearchQuery] = useState('');
+  const [editTeacherSearchQuery, setEditTeacherSearchQuery] = useState('');
 
   // Use custom hook for data management
   const {
@@ -72,13 +74,18 @@ export const ManageClassLists = () => {
     subjects,
     allStudents,
     sections,
+    gradeLevels,
     teachers,
     isLoadingClasses,
     isLoadingSubjects,
     isLoadingStudents,
     isLoadingSections,
+    isLoadingGradeLevels,
     isLoadingTeachers,
     studentCountByClass,
+    classPagination,
+    loadClasses,
+    loadStudents,
     filterClasses,
     reloadClasses,
     reloadSubjects,
@@ -89,6 +96,84 @@ export const ManageClassLists = () => {
     () => filterClasses(classes, gradeLevel, section, year),
     [classes, gradeLevel, section, year]
   );
+
+  const rankedTeachersForEditModal = useMemo(() => {
+    const query = editTeacherSearchQuery.trim().toLowerCase();
+
+    if (!query) {
+      return teachers.slice(0, 8);
+    }
+
+    const queryTokens = query.split(/\s+/).filter(Boolean);
+
+    const scoreTeacher = (teacher: typeof teachers[number]) => {
+      const fname = teacher.fname.toLowerCase();
+      const lname = teacher.lname.toLowerCase();
+      const fullName = `${fname} ${lname}`;
+
+      let score = 0;
+
+      if (fullName === query) score += 1000;
+      if (`${lname}, ${fname}` === query) score += 950;
+      if (fullName.startsWith(query)) score += 500;
+      if (fname.startsWith(query) || lname.startsWith(query)) score += 400;
+      if (fullName.includes(query)) score += 250;
+
+      queryTokens.forEach((token) => {
+        if (fname === token || lname === token) score += 180;
+        else if (fname.startsWith(token) || lname.startsWith(token)) score += 120;
+        else if (fname.includes(token) || lname.includes(token)) score += 70;
+      });
+
+      return score;
+    };
+
+    return teachers
+      .map((teacher) => ({ teacher, score: scoreTeacher(teacher) }))
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score || a.teacher.name.localeCompare(b.teacher.name))
+      .slice(0, 8)
+      .map(({ teacher }) => teacher);
+  }, [editTeacherSearchQuery, teachers]);
+
+  const rankedTeachersForAddModal = useMemo(() => {
+    const query = addTeacherSearchQuery.trim().toLowerCase();
+
+    if (!query) {
+      return teachers.slice(0, 8);
+    }
+
+    const queryTokens = query.split(/\s+/).filter(Boolean);
+
+    const scoreTeacher = (teacher: typeof teachers[number]) => {
+      const fname = teacher.fname.toLowerCase();
+      const lname = teacher.lname.toLowerCase();
+      const fullName = `${fname} ${lname}`;
+
+      let score = 0;
+
+      if (fullName === query) score += 1000;
+      if (`${lname}, ${fname}` === query) score += 950;
+      if (fullName.startsWith(query)) score += 500;
+      if (fname.startsWith(query) || lname.startsWith(query)) score += 400;
+      if (fullName.includes(query)) score += 250;
+
+      queryTokens.forEach((token) => {
+        if (fname === token || lname === token) score += 180;
+        else if (fname.startsWith(token) || lname.startsWith(token)) score += 120;
+        else if (fname.includes(token) || lname.includes(token)) score += 70;
+      });
+
+      return score;
+    };
+
+    return teachers
+      .map((teacher) => ({ teacher, score: scoreTeacher(teacher) }))
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score || a.teacher.name.localeCompare(b.teacher.name))
+      .slice(0, 8)
+      .map(({ teacher }) => teacher);
+  }, [addTeacherSearchQuery, teachers]);
 
   // Generate unique school years from existing classes
   const schoolYears = useMemo(() => {
@@ -126,6 +211,7 @@ export const ManageClassLists = () => {
       schoolYearEnd: '',
       teacherId: '',
     });
+    setAddTeacherSearchQuery('');
     setIsAddModalOpen(true);
   };
 
@@ -140,19 +226,29 @@ export const ManageClassLists = () => {
       schoolYearEnd: classItem.end_year.toString(),
       teacherId: classItem.teacher_id?.toString() || '',
     });
+    setEditTeacherSearchQuery(classItem.teacher_name || '');
     setIsEditModalOpen(true);
   };
 
   // Handle Add Class submission
   const handleAddClass = async () => {
+    const selectedGradeLevel = gradeLevels.find((item) => item.name === addFormData.gradeLevel);
+    const selectedSection = sections.find((item) => item.name === addFormData.section);
+    const selectedTeacherId = addFormData.teacherId ? parseInt(addFormData.teacherId, 10) : undefined;
+
+    if (!selectedGradeLevel || !selectedSection || !selectedTeacherId) {
+      alert('Please select a valid grade level, section, and class adviser.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await addClass({
-        grade: addFormData.gradeLevel,
-        section: addFormData.section,
-        start_year: parseInt(addFormData.schoolYearStart),
-        end_year: parseInt(addFormData.schoolYearEnd),
-        teacher_id: addFormData.teacherId ? parseInt(addFormData.teacherId) : undefined,
+        gl_id: selectedGradeLevel.id,
+        section_id: selectedSection.id,
+        class_adviser: selectedTeacherId,
+        syear_start: parseInt(addFormData.schoolYearStart, 10),
+        syear_end: parseInt(addFormData.schoolYearEnd, 10),
       });
       
       await reloadClasses();
@@ -168,15 +264,19 @@ export const ManageClassLists = () => {
   // Handle Edit Class submission
   const handleSaveChanges = async () => {
     if (!editingClass) return;
-    
+
+    const selectedGradeLevel = gradeLevels.find((item) => item.name === editFormData.gradeLevel);
+    const selectedSection = sections.find((item) => item.name === editFormData.section);
+    const selectedTeacherId = editFormData.teacherId ? parseInt(editFormData.teacherId, 10) : undefined;
+
     setIsSubmitting(true);
     try {
       await updateClass(editingClass.id, {
-        grade: editFormData.gradeLevel,
-        section: editFormData.section,
-        start_year: parseInt(editFormData.schoolYearStart),
-        end_year: parseInt(editFormData.schoolYearEnd),
-        teacher_id: editFormData.teacherId ? parseInt(editFormData.teacherId) : undefined,
+        gl_id: selectedGradeLevel?.id,
+        section_id: selectedSection?.id,
+        class_adviser: selectedTeacherId,
+        syear_start: parseInt(editFormData.schoolYearStart, 10),
+        syear_end: parseInt(editFormData.schoolYearEnd, 10),
       });
       
       await reloadClasses();
@@ -237,6 +337,12 @@ export const ManageClassLists = () => {
   // Generate year options (current year - 5 to current year + 5)
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
+  const selectedEditTeacher = teachers.find(
+    (teacher) => teacher.id.toString() === editFormData.teacherId
+  );
+  const selectedAddTeacher = teachers.find(
+    (teacher) => teacher.id.toString() === addFormData.teacherId
+  );
 
   const isDetailView = selectedClass !== null;
 
@@ -379,7 +485,10 @@ export const ManageClassLists = () => {
                   className={`group p-4 cursor-pointer transition-colors bg-white border-none hover:bg-(--status-active) hover:text-white ${
                     selectedClass?.id === classItem.id ? 'text-white bg-(--status-active)' : ''
                   }`}
-                  onClick={() => setSelectedClass(classItem)}
+                  onClick={() => {
+                    setSelectedClass(classItem);
+                    loadStudents(1, classItem.id);
+                  }}
                 >
                   <div className="flex justify-between items-start gap-3">
                     <div className="flex-1">
@@ -427,6 +536,33 @@ export const ManageClassLists = () => {
               </div>
             )}
           </div>
+
+          {/* Pagination Controls */}
+          {classPagination.total > classPagination.limit && (
+            <div className="p-4 border-t border-gray-200 flex items-center justify-between">
+              <span className="text-sm text-gray-500">
+                Page {classPagination.page} of {Math.ceil(classPagination.total / classPagination.limit)}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => loadClasses(classPagination.page - 1)}
+                  disabled={classPagination.page <= 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => loadClasses(classPagination.page + 1)}
+                  disabled={classPagination.page >= Math.ceil(classPagination.total / classPagination.limit)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* RIGHT PANEL */}
@@ -498,13 +634,18 @@ export const ManageClassLists = () => {
             <div className="flex items-center justify-between">
               <DialogTitle className="text-2xl font-bold text-gray-900">Add Class</DialogTitle>
               <button
-                onClick={() => setIsAddModalOpen(false)}
+                onClick={() => {
+                  setIsAddModalOpen(false);
+                }}
                 className="text-red-600 hover:text-red-700 transition-colors"
                 disabled={isSubmitting}
               >
                 <X className="h-8 w-8 font-bold" strokeWidth={3} />
               </button>
             </div>
+            <DialogDescription className="sr-only">
+              Create a class by selecting its grade level, section, school year, and class adviser.
+            </DialogDescription>
           </DialogHeader>
           
           <div className="px-6 pb-6 space-y-4">
@@ -512,19 +653,17 @@ export const ManageClassLists = () => {
             <Select 
               value={addFormData.gradeLevel} 
               onValueChange={(value) => setAddFormData({...addFormData, gradeLevel: value})}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLoadingGradeLevels}
             >
               <SelectTrigger className={`w-full h-12 bg-white ${getSelectColor(addFormData.gradeLevel)}`}>
-                <SelectValue placeholder="Grade Level" />
+                <SelectValue placeholder={isLoadingGradeLevels ? "Loading grade levels..." : "Grade Level"} />
               </SelectTrigger>
               <SelectContent className="bg-white font-semibold">
-                <SelectItem value="Kindergarten" className="hover:underline">Kindergarten</SelectItem>
-                <SelectItem value="Grade 1" className="hover:underline">Grade 1</SelectItem>
-                <SelectItem value="Grade 2" className="hover:underline">Grade 2</SelectItem>
-                <SelectItem value="Grade 3" className="hover:underline">Grade 3</SelectItem>
-                <SelectItem value="Grade 4" className="hover:underline">Grade 4</SelectItem>
-                <SelectItem value="Grade 5" className="hover:underline">Grade 5</SelectItem>
-                <SelectItem value="Grade 6" className="hover:underline">Grade 6</SelectItem>
+                {gradeLevels.map((grade) => (
+                  <SelectItem key={grade.id} value={grade.name} className="hover:underline">
+                    {grade.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -589,28 +728,72 @@ export const ManageClassLists = () => {
               </SelectContent>
             </Select>
 
-            {/* DYNAMIC TEACHERS */}
-            <Select 
-              value={addFormData.teacherId} 
-              onValueChange={(value) => setAddFormData({...addFormData, teacherId: value})}
-              disabled={isSubmitting || isLoadingTeachers}
-            >
-              <SelectTrigger className={`w-full h-12 bg-white ${getSelectColor(addFormData.teacherId)}`}>
-                <SelectValue placeholder={isLoadingTeachers ? "Loading teachers..." : "Class Adviser (Optional)"} />
-              </SelectTrigger>
-              <SelectContent className="bg-white font-semibold">
-                {teachers.map((teacher) => (
-                  <SelectItem key={teacher.id} value={teacher.id.toString()} className="hover:underline">
-                    {teacher.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                <Input
+                  type="text"
+                  value={addTeacherSearchQuery}
+                  placeholder={isLoadingTeachers ? 'Loading teachers...' : 'Search class adviser by first or last name'}
+                  disabled={isSubmitting || isLoadingTeachers}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setAddTeacherSearchQuery(value);
+                    setAddFormData({ ...addFormData, teacherId: '' });
+                  }}
+                  className="h-12 bg-white pl-10"
+                />
+              </div>
+
+              {selectedAddTeacher ? (
+                <div className="rounded-lg border-2 border-green-500 bg-white p-4">
+                  <p className="mb-2 text-sm font-semibold text-gray-700">Selected Teacher:</p>
+                  <div className="flex items-center justify-between rounded-md bg-green-50 px-3 py-2">
+                    <span className="font-medium text-gray-900">{selectedAddTeacher.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddFormData({ ...addFormData, teacherId: '' });
+                        setAddTeacherSearchQuery('');
+                      }}
+                      className="text-red-600 transition-colors hover:text-red-700"
+                      disabled={isSubmitting}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : addTeacherSearchQuery ? (
+                <div className="max-h-[250px] overflow-y-auto rounded-lg border-2 border-gray-300 bg-white">
+                  {rankedTeachersForAddModal.length > 0 ? (
+                    <div className="divide-y divide-gray-200">
+                      {rankedTeachersForAddModal.map((teacher) => (
+                        <button
+                          key={teacher.id}
+                          type="button"
+                          onClick={() => {
+                            setAddFormData({ ...addFormData, teacherId: teacher.id.toString() });
+                            setAddTeacherSearchQuery(teacher.name);
+                          }}
+                          className="w-full px-4 py-3 text-left transition-colors hover:bg-gray-50"
+                        >
+                          <span className="text-gray-900">{teacher.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-gray-500">No matching teachers found</div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">Search and choose the teacher who will be assigned as class adviser.</p>
+              )}
+            </div>
 
             {/* Add Button */}
             <Button
               onClick={handleAddClass}
-              disabled={isSubmitting || !addFormData.gradeLevel || !addFormData.section || !addFormData.schoolYearStart}
+              disabled={isSubmitting || !addFormData.gradeLevel || !addFormData.section || !addFormData.schoolYearStart || !addFormData.teacherId}
               className="w-full h-12 bg-(--button-green) hover:bg-green-700 text-white text-lg font-semibold mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Adding...' : 'Add'}
@@ -626,13 +809,19 @@ export const ManageClassLists = () => {
             <div className="flex items-center justify-between">
               <DialogTitle className="text-2xl font-bold text-gray-900">Edit Class Information</DialogTitle>
               <button
-                onClick={() => setIsEditModalOpen(false)}
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditTeacherSearchQuery('');
+                }}
                 className="text-red-600 hover:text-red-700 transition-colors"
                 disabled={isSubmitting}
               >
                 <X className="h-8 w-8 font-bold" strokeWidth={3} />
               </button>
             </div>
+            <DialogDescription className="sr-only">
+              Update the class details and assign a class adviser.
+            </DialogDescription>
           </DialogHeader>
           
           <div className="px-6 pb-6 space-y-4">
@@ -640,19 +829,17 @@ export const ManageClassLists = () => {
             <Select 
               value={editFormData.gradeLevel} 
               onValueChange={(value) => setEditFormData({...editFormData, gradeLevel: value})}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLoadingGradeLevels}
             >
               <SelectTrigger className="w-full h-12 bg-white border-gray-300">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-white font-semibold">
-                <SelectItem value="Kindergarten" className="hover:underline">Kindergarten</SelectItem>
-                <SelectItem value="Grade 1" className="hover:underline">Grade 1</SelectItem>
-                <SelectItem value="Grade 2" className="hover:underline">Grade 2</SelectItem>
-                <SelectItem value="Grade 3" className="hover:underline">Grade 3</SelectItem>
-                <SelectItem value="Grade 4" className="hover:underline">Grade 4</SelectItem>
-                <SelectItem value="Grade 5" className="hover:underline">Grade 5</SelectItem>
-                <SelectItem value="Grade 6" className="hover:underline">Grade 6</SelectItem>
+                {gradeLevels.map((grade) => (
+                  <SelectItem key={grade.id} value={grade.name} className="hover:underline">
+                    {grade.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -718,27 +905,72 @@ export const ManageClassLists = () => {
             </Select>
 
             {/* DYNAMIC TEACHERS */}
-            <Select 
-              value={editFormData.teacherId} 
-              onValueChange={(value) => setEditFormData({...editFormData, teacherId: value})}
-              disabled={isSubmitting || isLoadingTeachers}
-            >
-              <SelectTrigger className="w-full h-12 bg-white border-gray-300">
-                <SelectValue placeholder="Class Adviser (Optional)" />
-              </SelectTrigger>
-              <SelectContent className="bg-white font-semibold">
-                {teachers.map((teacher) => (
-                  <SelectItem key={teacher.id} value={teacher.id.toString()} className="hover:underline">
-                    {teacher.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                <Input
+                  type="text"
+                  value={editTeacherSearchQuery}
+                  placeholder={isLoadingTeachers ? 'Loading teachers...' : 'Search class adviser by first or last name'}
+                  disabled={isSubmitting || isLoadingTeachers}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setEditTeacherSearchQuery(value);
+                    setEditFormData({ ...editFormData, teacherId: '' });
+                  }}
+                  className="h-12 bg-white pl-10"
+                />
+              </div>
+
+              {selectedEditTeacher ? (
+                <div className="rounded-lg border-2 border-green-500 bg-white p-4">
+                  <p className="mb-2 text-sm font-semibold text-gray-700">Selected Teacher:</p>
+                  <div className="flex items-center justify-between rounded-md bg-green-50 px-3 py-2">
+                    <span className="font-medium text-gray-900">{selectedEditTeacher.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditFormData({ ...editFormData, teacherId: '' });
+                        setEditTeacherSearchQuery('');
+                      }}
+                      className="text-red-600 transition-colors hover:text-red-700"
+                      disabled={isSubmitting}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : editTeacherSearchQuery ? (
+                <div className="max-h-[250px] overflow-y-auto rounded-lg border-2 border-gray-300 bg-white">
+                  {rankedTeachersForEditModal.length > 0 ? (
+                    <div className="divide-y divide-gray-200">
+                      {rankedTeachersForEditModal.map((teacher) => (
+                        <button
+                          key={teacher.id}
+                          type="button"
+                          onClick={() => {
+                            setEditFormData({ ...editFormData, teacherId: teacher.id.toString() });
+                            setEditTeacherSearchQuery(teacher.name);
+                          }}
+                          className="w-full px-4 py-3 text-left transition-colors hover:bg-gray-50"
+                        >
+                          <span className="text-gray-900">{teacher.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-gray-500">No matching teachers found</div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">Search and choose the teacher who will be assigned as class adviser.</p>
+              )}
+            </div>
 
             {/* Save Changes Button */}
             <Button
               onClick={handleSaveChanges}
-              disabled={isSubmitting || !editFormData.gradeLevel || !editFormData.section}
+              disabled={isSubmitting || !editFormData.gradeLevel || !editFormData.section || !editFormData.teacherId}
               className="w-full h-12 bg-(--button-green) hover:bg-green-700 text-white text-lg font-semibold mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Saving...' : 'Save Changes'}
