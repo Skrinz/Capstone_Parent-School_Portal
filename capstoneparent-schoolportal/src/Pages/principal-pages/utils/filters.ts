@@ -37,6 +37,7 @@ export const filterStudents = (
 export const getStudentCountByClass = (students: Student[]): Record<number, number> => {
   const counts: Record<number, number> = {};
   students.forEach(student => {
+    if (student.classId === null) return;
     counts[student.classId] = (counts[student.classId] || 0) + 1;
   });
   return counts;

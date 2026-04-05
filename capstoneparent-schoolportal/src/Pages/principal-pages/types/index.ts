@@ -38,7 +38,7 @@ export interface SubjectItem {
 
 export interface Student {
   id: number;
-  classId: number;
+  classId: number | null;
   name: string;
   lrn: string;
 }

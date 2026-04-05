@@ -1,10 +1,12 @@
 const express = require("express");
 const { body, param, query } = require("express-validator");
+const multer = require("multer");
 const studentsController = require("../controllers/students.controller");
 const validate = require("../middlewares/validation");
 const { authenticate, authorize } = require("../middlewares/auth");
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 // ─── Public route — no authentication required ───────────────────────────────
 // Used during parent registration to look up a student by LRN before the
@@ -37,6 +39,7 @@ router.get(
       .isIn(["ENROLLED", "GRADUATED", "TRANSFERRED", "DROPPED", "SUSPENDED"]),
     query("grade_level").optional().isInt(),
     query("syear_start").optional().isInt(),
+    query("clist_id").optional().isInt(),
     query("page").optional().isInt({ min: 1 }),
     query("limit").optional().isInt({ min: 1, max: 100 }),
   ],
@@ -52,10 +55,10 @@ router.get(
   studentsController.getStudentById,
 );
 
-// Create student (Admin, Principal, Vice Principal only)
+// Create student
 router.post(
   "/",
-  authorize("Admin", "Principal", "Vice_Principal"),
+  authorize("Admin", "Principal", "Vice_Principal", "Teacher"),
   [
     body("fname").notEmpty().trim(),
     body("lname").notEmpty().trim(),
@@ -76,6 +79,15 @@ router.post(
   ],
   validate,
   studentsController.createStudent,
+);
+
+// Import students via CSV
+router.post(
+  "/import",
+  authorize("Admin", "Principal", "Vice_Principal", "Teacher"),
+  upload.single("file"),
+  validate,
+  studentsController.importStudents,
 );
 
 // Update student

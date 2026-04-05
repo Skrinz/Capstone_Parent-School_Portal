@@ -62,6 +62,7 @@ export const Subjects = ({
   onAssignAdviser,
 }: SubjectsProps) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const buildTeacherListKey = (teacherId: number, index: number) => `${teacherId}-${index}`;
 
   // Modal states
   const [isAddSubjectModalOpen, setIsAddSubjectModalOpen] = useState(false);
@@ -425,9 +426,9 @@ export const Subjects = ({
                   <div className="p-4 text-center text-gray-500">Loading teachers...</div>
                 ) : filteredAdviserTeachers.length > 0 ? (
                   <div className="divide-y divide-gray-200">
-                    {filteredAdviserTeachers.map((teacher) => (
+                    {filteredAdviserTeachers.map((teacher, index) => (
                       <button
-                        key={teacher.id}
+                        key={buildTeacherListKey(teacher.id, index)}
                         onClick={() => setSelectedAdviser(teacher)}
                         className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors"
                       >
@@ -522,9 +523,9 @@ export const Subjects = ({
                   <div className="p-4 text-center text-gray-500">Loading teachers...</div>
                 ) : filteredSubjectTeachers.length > 0 ? (
                   <div className="divide-y divide-gray-200">
-                    {filteredSubjectTeachers.map((teacher) => (
+                    {filteredSubjectTeachers.map((teacher, index) => (
                       <button
-                        key={teacher.id}
+                        key={buildTeacherListKey(teacher.id, index)}
                         onClick={() => setSelectedTeacher(teacher)}
                         className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors"
                       >

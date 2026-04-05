@@ -6,6 +6,26 @@ const normalizeSex = (sex) => {
   return sex;
 };
 
+const normalizeGradeLevelName = (gradeLevel) => {
+  const normalized = String(gradeLevel || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+
+  const gradeAliases = {
+    kinder: "Kindergarten",
+    kindergarten: "Kindergarten",
+    "grade 1": "Grade 1",
+    "grade 2": "Grade 2",
+    "grade 3": "Grade 3",
+    "grade 4": "Grade 4",
+    "grade 5": "Grade 5",
+    "grade 6": "Grade 6",
+  };
+
+  return gradeAliases[normalized] ?? null;
+};
+
 const studentsService = {
   /**
    * Public LRN prefix search used during parent registration.
@@ -51,16 +71,10 @@ const studentsService = {
     if (syear_start) where.syear_start = parseInt(syear_start);
     
     if (clist_id) {
-      where.subject_records = {
+      where.class_lists = {
         some: {
-          subject_record: {
-            class_lists: {
-              some: {
-                clist_id: parseInt(clist_id)
-              }
-            }
-          }
-        }
+          clist_id: parseInt(clist_id),
+        },
       };
     }
 
@@ -71,6 +85,11 @@ const studentsService = {
         take,
         include: {
           grade_level: true,
+          class_lists: {
+            select: {
+              clist_id: true,
+            },
+          },
           subject_records: {
             include: {
               subject_record: {
@@ -90,16 +109,8 @@ const studentsService = {
       prisma.student.count({ where }),
     ]);
 
-    // Map to include a single clist_id if found from subjects
     const studentsWithClass = students.map(student => {
-      let clist_id = null;
-      if (student.subject_records && student.subject_records.length > 0) {
-        // Find the first clist_id from their subjects
-        const firstSubject = student.subject_records[0].subject_record;
-        if (firstSubject.class_lists && firstSubject.class_lists.length > 0) {
-          clist_id = firstSubject.class_lists[0].clist_id;
-        }
-      }
+      const clist_id = student.class_lists?.[0]?.clist_id ?? null;
       return { ...student, clist_id };
     });
 
@@ -119,6 +130,7 @@ const studentsService = {
       where: { student_id: studentId },
       include: {
         grade_level: true,
+        class_lists: true,
         subject_records: {
           include: {
             subject_record: {
@@ -191,6 +203,79 @@ const studentsService = {
     });
 
     return student;
+  },
+
+  async importStudents(rows) {
+    const gradeLevels = await prisma.gradeLevel.findMany({
+      select: { gl_id: true, grade_level: true },
+    });
+
+    const gradeLevelMap = new Map(
+      gradeLevels.map((gradeLevel) => [
+        gradeLevel.grade_level.trim().toLowerCase(),
+        gradeLevel.gl_id,
+      ]),
+    );
+
+    const results = [];
+
+    for (const row of rows) {
+      const {
+        fname,
+        lname,
+        sex,
+        lrn,
+        grade_level,
+        syear_start,
+        syear_end,
+      } = row;
+
+      if (!fname || !lname || !lrn || !grade_level || !syear_start || !syear_end) {
+        continue;
+      }
+
+      const normalizedGradeLevel = normalizeGradeLevelName(grade_level);
+      const gl_id = normalizedGradeLevel
+        ? gradeLevelMap.get(normalizedGradeLevel.toLowerCase())
+        : undefined;
+
+      if (!gl_id) {
+        throw new Error(`Invalid grade level for LRN ${lrn}`);
+      }
+
+      const payload = {
+        fname: String(fname).trim(),
+        lname: String(lname).trim(),
+        sex: normalizeSex(String(sex).trim() || "M"),
+        lrn_number: String(lrn).trim(),
+        gl_id,
+        syear_start: parseInt(syear_start, 10),
+        syear_end: parseInt(syear_end, 10),
+        status: "ENROLLED",
+      };
+
+      const existingStudent = await prisma.student.findFirst({
+        where: { lrn_number: payload.lrn_number },
+      });
+
+      if (existingStudent) {
+        const updatedStudent = await prisma.student.update({
+          where: { student_id: existingStudent.student_id },
+          data: payload,
+          include: { grade_level: true },
+        });
+        results.push(updatedStudent);
+        continue;
+      }
+
+      const createdStudent = await prisma.student.create({
+        data: payload,
+        include: { grade_level: true },
+      });
+      results.push(createdStudent);
+    }
+
+    return results;
   },
 
   async updateStudent(studentId, updateData) {

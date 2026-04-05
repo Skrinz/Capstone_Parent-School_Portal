@@ -2,6 +2,51 @@ const prisma = require("../config/database");
 const { findOrThrow } = require("../utils/findOrThrow");
 const { uploadFile } = require("../utils/supabaseStorage");
 
+const normalizeSex = (sex) => {
+  if (sex === "Female" || sex === "F") return "F";
+  return "M";
+};
+
+const syncStudentIntoClassSubjects = async (db, classId, studentId) => {
+  const classSubjects = await db.classListSubjectRecord.findMany({
+    where: { clist_id: classId },
+    select: { srecord_id: true },
+  });
+
+  for (const subject of classSubjects) {
+    await db.subjectRecordStudent.upsert({
+      where: {
+        srecord_id_student_id: {
+          srecord_id: subject.srecord_id,
+          student_id: studentId,
+        },
+      },
+      update: {},
+      create: {
+        srecord_id: subject.srecord_id,
+        student_id: studentId,
+      },
+    });
+  }
+};
+
+const removeStudentFromClassSubjects = async (db, classId, studentId) => {
+  const classSubjects = await db.classListSubjectRecord.findMany({
+    where: { clist_id: classId },
+    select: { srecord_id: true },
+  });
+
+  const subjectIds = classSubjects.map((subject) => subject.srecord_id);
+  if (subjectIds.length === 0) return;
+
+  await db.subjectRecordStudent.deleteMany({
+    where: {
+      student_id: studentId,
+      srecord_id: { in: subjectIds },
+    },
+  });
+};
+
 const classesService = {
   async getAllClasses({ page, limit, school_year, grade_level }) {
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -63,6 +108,9 @@ const classesService = {
       include: {
         teacher: {
           select: { user_id: true, fname: true, lname: true },
+        },
+        students: {
+          select: { srs_id: true },
         },
         class_lists: {
           include: {
@@ -134,6 +182,11 @@ const classesService = {
         section: true,
         adviser: {
           select: { user_id: true, fname: true, lname: true },
+        },
+        students: {
+          include: {
+            student: true,
+          },
         },
         subject_records: {
           include: {
@@ -294,6 +347,27 @@ const classesService = {
       data: { clist_id: classId, srecord_id: subjectRecord.srecord_id },
     });
 
+    const classStudents = await prisma.classListStudent.findMany({
+      where: { clist_id: classId },
+      select: { student_id: true },
+    });
+
+    for (const classStudent of classStudents) {
+      await prisma.subjectRecordStudent.upsert({
+        where: {
+          srecord_id_student_id: {
+            srecord_id: subjectRecord.srecord_id,
+            student_id: classStudent.student_id,
+          },
+        },
+        update: {},
+        create: {
+          srecord_id: subjectRecord.srecord_id,
+          student_id: classStudent.student_id,
+        },
+      });
+    }
+
     return subjectRecord;
   },
 
@@ -316,6 +390,242 @@ const classesService = {
     });
 
     return subjects.map((s) => s.subject_record);
+  },
+
+  async assignTeacherToSubject(subjectId, teacherId) {
+    await findOrThrow(
+      () => prisma.subjectRecord.findUnique({ where: { srecord_id: subjectId } }),
+      "Subject record not found",
+    );
+
+    await findOrThrow(
+      () => prisma.user.findUnique({ where: { user_id: teacherId } }),
+      "Teacher not found",
+    );
+
+    return prisma.subjectRecord.update({
+      where: { srecord_id: subjectId },
+      data: { subject_teacher: teacherId },
+      include: {
+        teacher: { select: { user_id: true, fname: true, lname: true } },
+        class_lists: {
+          include: {
+            class_list: {
+              include: {
+                grade_level: true,
+                section: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  },
+
+  async addStudentToClass(classId, studentData) {
+    const classData = await findOrThrow(
+      () => prisma.classList.findUnique({ where: { clist_id: classId } }),
+      "Class not found",
+    );
+
+    const { student_id, fname, lname, sex, lrn_number, syear_start, syear_end } =
+      studentData;
+    const targetStartYear = parseInt(syear_start) || classData.syear_start;
+    const targetEndYear = parseInt(syear_end) || classData.syear_end;
+
+    return prisma.$transaction(async (tx) => {
+      let student;
+
+      if (student_id) {
+        student = await findOrThrow(
+          () => tx.student.findUnique({ where: { student_id } }),
+          "Student not found",
+        );
+
+        student = await tx.student.update({
+          where: { student_id },
+          data: {
+            gl_id: classData.gl_id,
+            syear_start: targetStartYear,
+            syear_end: targetEndYear,
+            status: "ENROLLED",
+          },
+        });
+      } else {
+        if (!fname || !lname || !lrn_number) {
+          throw new Error("First name, last name, and LRN are required");
+        }
+
+        const existingStudent = await tx.student.findFirst({
+          where: {
+            lrn_number: String(lrn_number),
+            syear_start: targetStartYear,
+          },
+        });
+
+        if (existingStudent) {
+          student = await tx.student.update({
+            where: { student_id: existingStudent.student_id },
+            data: {
+              fname: String(fname).trim(),
+              lname: String(lname).trim(),
+              sex: normalizeSex(sex),
+              gl_id: classData.gl_id,
+              syear_start: targetStartYear,
+              syear_end: targetEndYear,
+              status: "ENROLLED",
+            },
+          });
+        } else {
+          student = await tx.student.create({
+            data: {
+              fname: String(fname).trim(),
+              lname: String(lname).trim(),
+              sex: normalizeSex(sex),
+              lrn_number: String(lrn_number).trim(),
+              gl_id: classData.gl_id,
+              syear_start: targetStartYear,
+              syear_end: targetEndYear,
+              status: "ENROLLED",
+            },
+          });
+        }
+      }
+
+      await tx.classListStudent.upsert({
+        where: {
+          clist_id_student_id: {
+            clist_id: classId,
+            student_id: student.student_id,
+          },
+        },
+        update: {},
+        create: {
+          clist_id: classId,
+          student_id: student.student_id,
+        },
+      });
+
+      await syncStudentIntoClassSubjects(tx, classId, student.student_id);
+
+      return student;
+    });
+  },
+
+  async removeStudentFromClass(classId, studentId) {
+    await findOrThrow(
+      () => prisma.classList.findUnique({ where: { clist_id: classId } }),
+      "Class not found",
+    );
+
+    await findOrThrow(
+      () => prisma.student.findUnique({ where: { student_id: studentId } }),
+      "Student not found",
+    );
+
+    const classMembership = await prisma.classListStudent.findUnique({
+      where: {
+        clist_id_student_id: {
+          clist_id: classId,
+          student_id: studentId,
+        },
+      },
+    });
+
+    if (!classMembership) {
+      throw new Error("Student is not enrolled in this class");
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await removeStudentFromClassSubjects(tx, classId, studentId);
+      await tx.classListStudent.delete({
+        where: {
+          clist_id_student_id: {
+            clist_id: classId,
+            student_id: studentId,
+          },
+        },
+      });
+    });
+
+    return true;
+  },
+
+  async addStudentToSubject(subjectId, studentId) {
+    const subject = await findOrThrow(
+      () =>
+        prisma.subjectRecord.findUnique({
+          where: { srecord_id: subjectId },
+          include: {
+            class_lists: true,
+          },
+        }),
+      "Subject record not found",
+    );
+
+    const student = await findOrThrow(
+      () => prisma.student.findUnique({ where: { student_id: studentId } }),
+      "Student not found",
+    );
+
+    const classIds = subject.class_lists.map((item) => item.clist_id);
+    const classMembership = await prisma.classListStudent.findFirst({
+      where: {
+        clist_id: { in: classIds },
+        student_id,
+      },
+    });
+
+    if (!classMembership) {
+      throw new Error("Student must belong to the class before joining this subject");
+    }
+
+    return prisma.subjectRecordStudent.upsert({
+      where: {
+        srecord_id_student_id: {
+          srecord_id: subjectId,
+          student_id: student.student_id,
+        },
+      },
+      update: {},
+      create: {
+        srecord_id: subjectId,
+        student_id: student.student_id,
+      },
+      include: {
+        student: true,
+        subject_record: true,
+      },
+    });
+  },
+
+  async removeStudentFromSubject(subjectId, studentId) {
+    await findOrThrow(
+      () => prisma.subjectRecord.findUnique({ where: { srecord_id: subjectId } }),
+      "Subject record not found",
+    );
+
+    await findOrThrow(
+      () => prisma.student.findUnique({ where: { student_id: studentId } }),
+      "Student not found",
+    );
+
+    const subjectEnrollment = await prisma.subjectRecordStudent.findFirst({
+      where: {
+        srecord_id: subjectId,
+        student_id: studentId,
+      },
+    });
+
+    if (!subjectEnrollment) {
+      throw new Error("Student is not enrolled in this subject");
+    }
+
+    await prisma.subjectRecordStudent.delete({
+      where: { srs_id: subjectEnrollment.srs_id },
+    });
+
+    return true;
   },
 
   async getAllSubjects({ page = 1, limit = 10 } = {}) {
@@ -523,38 +833,15 @@ const classesService = {
       const { fname, lname, sex, lrn, syear_start, syear_end } = row;
       if (!lrn || !fname || !lname) continue;
 
-      // Check if student already exists for this LRN
-      // If they exist, we just update their grade level and school year to match the class
-      const existingStudent = await prisma.student.findFirst({
-        where: { lrn_number: String(lrn) },
+      const student = await this.addStudentToClass(classId, {
+        fname,
+        lname,
+        sex,
+        lrn_number: String(lrn),
+        syear_start: parseInt(syear_start) || classData.syear_start,
+        syear_end: parseInt(syear_end) || classData.syear_end,
       });
-
-      if (existingStudent) {
-        const updated = await prisma.student.update({
-          where: { student_id: existingStudent.student_id },
-          data: {
-            gl_id: classData.gl_id,
-            syear_start: parseInt(syear_start) || classData.syear_start,
-            syear_end: parseInt(syear_end) || classData.syear_end,
-            status: 'ENROLLED'
-          }
-        });
-        results.push(updated);
-      } else {
-        const created = await prisma.student.create({
-          data: {
-            fname,
-            lname,
-            sex: sex === 'F' ? 'F' : 'M',
-            lrn_number: String(lrn),
-            gl_id: classData.gl_id,
-            syear_start: parseInt(syear_start) || classData.syear_start,
-            syear_end: parseInt(syear_end) || classData.syear_end,
-            status: 'ENROLLED'
-          }
-        });
-        results.push(created);
-      }
+      results.push(student);
     }
     return results;
   },

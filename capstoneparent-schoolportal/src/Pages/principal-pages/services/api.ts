@@ -73,7 +73,7 @@ export const fetchStudents = async (page = 1, limit = 100, classId?: number): Pr
 
     const mappedData = result.data.map((item: any) => ({
       id: item.student_id,
-      classId: item.clist_id, 
+      classId: item.clist_id ?? null,
       name: `${item.fname} ${item.lname}`,
       lrn: item.lrn_number
     }));
@@ -219,14 +219,31 @@ export const assignTeacherToSubject = async (
   teacherId: number
 ): Promise<SubjectItem> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/classes/subjects/${subjectId}/assign-teacher`, { // Guessed route
+    const response = await fetch(`${API_BASE_URL}/classes/subjects/${subjectId}/assign-teacher`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ teacher_id: teacherId }),
     });
-    if (!response.ok) throw new Error('Failed to assign teacher');
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+      throw new Error(errorBody?.message || 'Failed to assign teacher');
+    }
+
     const result = await response.json();
-    return result.data;
+    const item = result.data;
+    const firstClass = item.class_lists && item.class_lists.length > 0 ? item.class_lists[0].class_list : null;
+
+    return {
+      id: item.srecord_id,
+      name: item.subject_name,
+      grade: firstClass?.grade_level?.grade_level || 'N/A',
+      section: firstClass?.section?.section_name || 'N/A',
+      start_year: firstClass?.syear_start || 0,
+      end_year: firstClass?.syear_end || 0,
+      teacher_id: item.teacher?.user_id,
+      teacher_name: item.teacher ? `${item.teacher.fname} ${item.teacher.lname}` : undefined,
+    };
   } catch (error) {
     console.error('Error assigning teacher:', error);
     throw error;
@@ -245,14 +262,52 @@ export const removeSubject = async (subjectId: number): Promise<void> => {
   }
 };
 
-export const removeStudentFromClass = async (studentId: number): Promise<void> => {
+export const addStudentToClass = async (
+  classId: number,
+  studentData: {
+    fname: string;
+    lname: string;
+    sex: 'M' | 'F';
+    lrn_number: string;
+  }
+): Promise<Student> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/students/${studentId}`, {
+    const response = await fetch(`${API_BASE_URL}/classes/${classId}/students`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(studentData),
+    });
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+      throw new Error(errorBody?.message || 'Failed to add student');
+    }
+    const result = await response.json();
+    return {
+      id: result.data.student_id,
+      classId,
+      name: `${result.data.fname} ${result.data.lname}`,
+      lrn: result.data.lrn_number,
+    };
+  } catch (error) {
+    console.error('Error adding student:', error);
+    throw error;
+  }
+};
+
+export const removeStudentFromClass = async (
+  classId: number,
+  studentId: number
+): Promise<void> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/classes/${classId}/students/${studentId}`, {
       method: 'DELETE',
     });
-    if (!response.ok) throw new Error('Failed to remove student');
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+      throw new Error(errorBody?.message || 'Failed to remove student');
+    }
   } catch (error) {
-    console.error('Error removing student:', error);
+    console.error('Error removing student from class:', error);
     throw error;
   }
 };

@@ -256,6 +256,7 @@ model Student {
 
   grade_level              GradeLevel                 @relation(fields: [gl_id], references: [gl_id])
   parent_registrations     ParentRegistrationStudent[]
+  class_lists              ClassListStudent[]
   subject_records          SubjectRecordStudent[]
   attendance_records       AttendanceRecord[]
   material_borrow_records  MaterialBorrowRecord[]
@@ -337,9 +338,22 @@ model ClassList {
   grade_level     GradeLevel                @relation(fields: [gl_id], references: [gl_id])
   section         Section                   @relation(fields: [section_id], references: [section_id])
   adviser         User                      @relation(fields: [class_adviser], references: [user_id])
+  students        ClassListStudent[]
   subject_records ClassListSubjectRecord[]
 
   @@map("class_lists")
+}
+
+model ClassListStudent {
+  cls_id     Int @id @default(autoincrement())
+  clist_id   Int
+  student_id Int
+
+  class_list ClassList @relation(fields: [clist_id], references: [clist_id], onDelete: Cascade)
+  student    Student   @relation(fields: [student_id], references: [student_id], onDelete: Cascade)
+
+  @@unique([clist_id, student_id])
+  @@map("class_list_students")
 }
 
 model SubjectRecord {
@@ -394,6 +408,7 @@ model SubjectRecordStudent {
   subject_record SubjectRecord @relation(fields: [srecord_id], references: [srecord_id], onDelete: Cascade)
   student        Student       @relation(fields: [student_id], references: [student_id], onDelete: Cascade)
 
+  @@unique([srecord_id, student_id])
   @@map("subject_record_students")
 }
 

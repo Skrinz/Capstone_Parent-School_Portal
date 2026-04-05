@@ -273,6 +273,136 @@ const classesController = {
     }
   },
 
+  async assignTeacherToSubject(req, res, next) {
+    try {
+      const { subjectId } = req.params;
+      const { teacher_id } = req.body;
+
+      const subject = await classesService.assignTeacherToSubject(
+        parseInt(subjectId),
+        parseInt(teacher_id),
+      );
+
+      res.status(200).json({
+        message: "Teacher assigned to subject successfully",
+        data: subject,
+      });
+    } catch (error) {
+      if (
+        error.message === "Subject record not found" ||
+        error.message === "Teacher not found"
+      ) {
+        return res.status(404).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
+
+  async addStudentToClass(req, res, next) {
+    try {
+      const { id } = req.params;
+      const student = await classesService.addStudentToClass(
+        parseInt(id),
+        req.body,
+      );
+
+      res.status(201).json({
+        message: "Student added to class successfully",
+        data: student,
+      });
+    } catch (error) {
+      if (error.message === "Class not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message === "Student not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message === "First name, last name, and LRN are required") {
+        return res.status(400).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
+
+  async removeStudentFromClass(req, res, next) {
+    try {
+      const { id, studentId } = req.params;
+      await classesService.removeStudentFromClass(
+        parseInt(id),
+        parseInt(studentId),
+      );
+
+      res.status(200).json({
+        message: "Student removed from class successfully",
+      });
+    } catch (error) {
+      if (
+        error.message === "Class not found" ||
+        error.message === "Student not found"
+      ) {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message === "Student is not enrolled in this class") {
+        return res.status(400).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
+
+  async addStudentToSubject(req, res, next) {
+    try {
+      const { subjectId, studentId } = req.params;
+      const enrollment = await classesService.addStudentToSubject(
+        parseInt(subjectId),
+        parseInt(studentId),
+      );
+
+      res.status(201).json({
+        message: "Student added to subject successfully",
+        data: enrollment,
+      });
+    } catch (error) {
+      if (
+        error.message === "Subject record not found" ||
+        error.message === "Student not found"
+      ) {
+        return res.status(404).json({ message: error.message });
+      }
+      if (
+        error.message ===
+        "Student must belong to the class before joining this subject"
+      ) {
+        return res.status(400).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
+
+  async removeStudentFromSubject(req, res, next) {
+    try {
+      const { subjectId, studentId } = req.params;
+      await classesService.removeStudentFromSubject(
+        parseInt(subjectId),
+        parseInt(studentId),
+      );
+
+      res.status(200).json({
+        message: "Student removed from subject successfully",
+      });
+    } catch (error) {
+      if (
+        error.message === "Subject record not found" ||
+        error.message === "Student not found"
+      ) {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message === "Student is not enrolled in this subject") {
+        return res.status(400).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
+
   async getAllSubjects(req, res, next) {
     try {
       const { page = 1, limit = 10 } = req.query;
