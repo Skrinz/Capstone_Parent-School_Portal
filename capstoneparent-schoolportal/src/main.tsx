@@ -39,8 +39,10 @@ import { ManageParentVerification } from "./Pages/admin-pages/ManageParentVerifi
 import { ManageSection } from "./Pages/admin-pages/ManageSection";
 import { ManageStaffAccounts } from "./Pages/admin-pages/ManageStaffAccounts";
 import { ManageStudents } from "./Pages/admin-pages/ManageStudents";
+import { ManagePartnershipAndEvents } from "./Pages/admin-pages/ManagePartnershipAndEvents";
 import { EditContactUs } from "./Pages/admin-pages/edit-pages/EditContactUs";
 import { EditHistory } from "./Pages/admin-pages/edit-pages/EditHistory";
+import { EditPartnershipAndEventsDetails } from "./Pages/admin-pages/edit-pages/EditPartnershipAndEventsDetails";
 
 {
   /*Teacher Sub Pages */
@@ -174,6 +176,22 @@ const App = () => {
           <ProtectedRoute allowedRoles={["admin"]}>
             <ManageStaffAccounts />
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/managepartnershipandevents"
+        element={
+          //<ProtectedRoute allowedRoles={["admin"]}>
+            <ManagePartnershipAndEvents />
+          //</ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin-edit-event/:eventId"
+        element={
+          //<ProtectedRoute allowedRoles={["admin"]}>
+            <EditPartnershipAndEventsDetails />
+          //</ProtectedRoute>
         }
       />
       <Route

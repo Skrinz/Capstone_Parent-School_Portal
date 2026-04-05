@@ -1,8 +1,5 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
-import {
-	getPartnershipEventBySlug,
-	partnershipEvents,
-} from "@/lib/partnershipEvents";
+import { usePartnershipEvents } from "@/hooks/usePartnershipEvents";
 import { ArrowLeft } from "lucide-react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useMemo, useState } from "react";
@@ -33,12 +30,13 @@ const DetailImage = ({ src, alt }: { src: string; alt: string }) => {
 
 export const PartnershipAndEventsCard = () => {
 	const { eventSlug } = useParams<{ eventSlug: string }>();
+	const { events: partnershipEvents } = usePartnershipEvents();
 
 	if (!eventSlug) {
 		return <Navigate to="/partnership&events" replace />;
 	}
 
-	const event = getPartnershipEventBySlug(eventSlug);
+	const event = partnershipEvents.find((event) => event.slug === eventSlug);
 
 	const relatedEvents = useMemo(() => {
 		if (!event) {

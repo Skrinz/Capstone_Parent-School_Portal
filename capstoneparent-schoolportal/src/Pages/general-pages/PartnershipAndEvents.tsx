@@ -1,5 +1,5 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
-import { partnershipEvents } from "@/lib/partnershipEvents";
+import { usePartnershipEvents } from "@/hooks/usePartnershipEvents";
 import { ArrowUpRight, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -34,6 +34,7 @@ const EventCardImage = ({ src, alt }: { src: string; alt: string }) => {
 };
 
 export const PartnershipAndEvents = () => {
+  const { events: partnershipEvents, isLoading } = usePartnershipEvents();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState<number | "all">("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -48,8 +49,7 @@ export const PartnershipAndEvents = () => {
     return partnershipEvents.filter((event) => {
       const matchesSearch =
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.subtitle.toLowerCase().includes(searchQuery.toLowerCase());
+        event.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesYear = selectedYear === "all" || event.year === selectedYear;
 
       return matchesSearch && matchesYear;
@@ -71,16 +71,22 @@ export const PartnershipAndEvents = () => {
     <div className="min-h-screen bg-white">
       <RoleAwareNavbar />
       <main className="max-w-7xl mx-auto py-10 px-4">
-        <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
-              Partnerships & Events
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Explore school highlights, community programs, and partner activities.
-            </p>
+        {isLoading ? (
+          <div className="text-center py-12">
+            <p className="text-gray-600">Loading events...</p>
           </div>
-          <div className="relative w-full md:w-96">
+        ) : (
+          <>
+            <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+                  Partnerships & Events
+                </h1>
+                <p className="text-gray-600 mt-2">
+                  Explore school highlights, community programs, and partner activities.
+                </p>
+              </div>
+              <div className="relative w-full md:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
             <input
               type="text"
@@ -110,10 +116,7 @@ export const PartnershipAndEvents = () => {
                       <p className="mt-2 text-lg leading-snug line-clamp-4">
                         {event.description}
                       </p>
-                      <div className="mt-auto flex items-end justify-between gap-3 pt-4">
-                        <p className="text-base font-semibold text-(--tab-subtext) line-clamp-2">
-                          {event.subtitle}
-                        </p>
+                      <div className="mt-auto flex items-end justify-end gap-3 pt-4">
                         <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-white/15 px-3 py-1 text-sm font-semibold text-white transition-colors group-hover:bg-white/25">
                           Read more
                           <ArrowUpRight className="h-4 w-4" />
@@ -201,6 +204,8 @@ export const PartnershipAndEvents = () => {
             </div>
           </aside>
         </div>
+          </>
+        )}
       </main>
     </div>
   );

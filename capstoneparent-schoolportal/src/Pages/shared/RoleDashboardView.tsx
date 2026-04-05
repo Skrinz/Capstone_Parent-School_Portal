@@ -5,7 +5,6 @@ import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
 interface Event {
   id: number;
   title: string;
-  subtitle: string;
   description: string;
   imageUrl?: string;
 }
@@ -14,28 +13,24 @@ const events: Event[] = [
   {
     id: 1,
     title: "United Nations Day",
-    subtitle: "#G1 Science Class",
     description:
       "On United Nations Day, we celebrated our global community and explored the world through books.",
   },
   {
     id: 2,
     title: "Reading Month Celebration",
-    subtitle: "",
     description:
       "Share a book, share a story, and share the joy of reading this month with every learner.",
   },
   {
     id: 3,
     title: "Science Magic PH",
-    subtitle: "From mind-blowing experiments",
     description:
       "A spectacular show brought science to life and inspired students through hands-on demonstrations.",
   },
   {
     id: 4,
     title: "Career Day",
-    subtitle: "Dressed as future community heroes",
     description:
       "Young learners explored their future dreams while discovering resources that support each path.",
   },
@@ -67,7 +62,6 @@ export const RoleDashboardView = () => {
               <EventCard
                 key={event.id}
                 title={event.title}
-                subtitle={event.subtitle}
                 description={event.description}
                 imageUrl={event.imageUrl}
               />

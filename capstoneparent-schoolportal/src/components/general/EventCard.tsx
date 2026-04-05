@@ -1,9 +1,8 @@
-import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
 interface EventCardProps {
   title: string
   description: string
-  subtitle: string
   backgroundColor?: string
   imageUrl?: string
 }
@@ -11,7 +10,6 @@ interface EventCardProps {
 export default function EventCard({
   title,
   description,
-  subtitle,
   backgroundColor = "bg-emerald-500",
   imageUrl = "https://images.unsplash.com/photo-1604076850742-4c7221f3101b?q=80&w=1887&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
 }: EventCardProps) {
@@ -29,11 +27,6 @@ export default function EventCard({
           <CardTitle className="text-white text-2xl line-clamp-2">{title}</CardTitle>
           <CardDescription className="text-white text-[17px] line-clamp-4">{description}</CardDescription>
         </CardHeader>
-        {subtitle && (
-          <CardFooter>
-            <p className="text-white text-sm font-semibold">{subtitle}</p>
-          </CardFooter>
-        )}
       </div>
     </Card>
   )

@@ -5,7 +5,6 @@ import { Link } from "react-router-dom";
 interface Event {
   id: number;
   title: string;
-  subtitle: string;
   description: string;
   imageUrl?: string;
 }
@@ -14,28 +13,24 @@ const events: Event[] = [
   {
     id: 1,
     title: "United Nations Day",
-    subtitle: "#G1 Science Class",
     description:
       "On UNITED NATIONS DAY, let's celebrate our global community by exploring the world of books.🌍 Happy reading! 📚📖",
   },
   {
     id: 2,
     title: "Reading Month Celebration",
-    subtitle: "",
     description:
       "Share a book, Share a story, Share the joy of reading! This Reading Month, sharing books nurtures kindness and inspires a love for learning from everyone 📚✨",
   },
   {
     id: 3,
     title: "Science Magic PH",
-    subtitle: "From mind-blowing experiments",
     description:
       "A Spellbinding Success! ✨ Pagsabungan Elementary School was captivated by the Science Magic Philippines Team with a spectacular show that brought science to life!",
   },
   {
     id: 4,
     title: "Career Day",
-    subtitle: "Dressed as future community heroes 👨‍⚕️👨‍💼",
     description:
       "Grade 1-SPS: Little Community Helpers! 🦸‍♀️👩‍🌾 As future community heroes, our young learners explored the library on Career Day discovering books that inspire their dreams! 📚🎓✨",
   },
@@ -64,7 +59,6 @@ export const HomePage = () => {
               <EventCard
                 key={event.id}
                 title={event.title}
-                subtitle={event.subtitle}
                 description={event.description}
                 imageUrl={event.imageUrl}
               />
