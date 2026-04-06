@@ -18,6 +18,16 @@ const studentsController = {
     }
   },
 
+  async lookupStudents(req, res, next) {
+    try {
+      const { q } = req.query;
+      const results = await studentsService.lookupStudents(q);
+      res.status(200).json({ data: results });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async getAllStudents(req, res, next) {
     try {
       const {

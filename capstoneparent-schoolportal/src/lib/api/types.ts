@@ -64,6 +64,7 @@ export interface StudentRecord {
   updated_at: string;
   grade_level?: GradeLevel;
   clist_id?: number | null;
+  section_name?: string | null;
 }
 
 export interface PaginationMeta {

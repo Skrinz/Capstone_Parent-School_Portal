@@ -29,6 +29,20 @@ router.get(
 // ─── All routes below require authentication ─────────────────────────────────
 router.use(authenticate);
 
+router.get(
+  "/lookup",
+  authorize("Teacher", "Admin", "Principal", "Vice_Principal"),
+  [
+    query("q")
+      .notEmpty()
+      .withMessage("Search query is required")
+      .isLength({ min: 1, max: 100 })
+      .withMessage("Search query must be between 1 and 100 characters"),
+  ],
+  validate,
+  studentsController.lookupStudents,
+);
+
 // Get all students
 router.get(
   "/",
@@ -119,7 +133,7 @@ router.put(
 // Delete student
 router.delete(
   "/:id",
-  authorize("Admin", "Principal"),
+  authorize("Admin", "Principal", "Vice_Principal"),
   param("id").isInt(),
   validate,
   studentsController.deleteStudent,

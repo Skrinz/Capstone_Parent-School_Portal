@@ -43,6 +43,25 @@ export interface Student {
   lrn: string;
 }
 
+export interface StudentLookupResult {
+  id: number;
+  name: string;
+  lrn: string;
+  grade: string;
+  status: string;
+}
+
+export interface StudentAddSummary {
+  added: number;
+  unchanged: number;
+  failed: number;
+  totalProcessed: number;
+  failures: {
+    input: string;
+    message: string;
+  }[];
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   pagination: {

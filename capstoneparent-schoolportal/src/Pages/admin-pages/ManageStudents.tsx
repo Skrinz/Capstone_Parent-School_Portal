@@ -39,6 +39,13 @@ const emptyForm = (): StudentFormData => ({
 const formatSchoolYear = (student: StudentRecord) =>
   `${student.syear_start}-${student.syear_end}`;
 
+const formatGradeLevelWithSection = (student: StudentRecord) => {
+  const gradeLevel = student.grade_level?.grade_level ?? "Unknown";
+  return student.section_name
+    ? `${gradeLevel} - ${student.section_name}`
+    : gradeLevel;
+};
+
 const toApiSex = (sex: "M" | "F") => (sex === "M" ? "Male" : "Female");
 
 const getStatusColor = (status: StudentStatus) => {
@@ -60,7 +67,11 @@ const getStatusColor = (status: StudentStatus) => {
 
 export const ManageStudents = () => {
   const role = useAuthStore((state) => state.user?.role);
-  const canManageStudents = role === "admin" || role === "teacher";
+  const canManageStudents =
+    role === "admin" ||
+    role === "teacher" ||
+    role === "principal" ||
+    role === "vice_principal";
   const canCreateStudents = canManageStudents;
   const canBatchAddStudents = canManageStudents;
 
@@ -441,7 +452,7 @@ export const ManageStudents = () => {
                       </td>
                       <td className="px-6 py-4">{student.lrn_number}</td>
                       <td className="px-6 py-4">
-                        {student.grade_level?.grade_level ?? "Unknown"}
+                        {formatGradeLevelWithSection(student)}
                       </td>
                       <td className="px-6 py-4">{formatSchoolYear(student)}</td>
                       <td className="px-6 py-4">

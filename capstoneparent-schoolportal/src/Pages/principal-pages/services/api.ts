@@ -1,4 +1,13 @@
-import type { ClassItem, SubjectItem, Student, SectionItem, TeacherItem, GradeLevelItem, PaginatedResponse } from '@/Pages/principal-pages/types';
+import type {
+  ClassItem,
+  SubjectItem,
+  Student,
+  StudentLookupResult,
+  SectionItem,
+  TeacherItem,
+  GradeLevelItem,
+  PaginatedResponse,
+} from '@/Pages/principal-pages/types';
 
 const API_BASE_URL = '/api';
 
@@ -85,6 +94,27 @@ export const fetchStudents = async (page = 1, limit = 100, classId?: number): Pr
   } catch (error) {
     console.error('Error fetching students:', error);
     return { data: [], pagination: { total: 0, page: 1, limit: 100, totalPages: 0 } };
+  }
+};
+
+export const lookupStudents = async (query: string): Promise<StudentLookupResult[]> => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/students/lookup?q=${encodeURIComponent(query)}`
+    );
+    if (!response.ok) throw new Error('Failed to search students');
+    const result = await response.json();
+
+    return result.data.map((item: any) => ({
+      id: item.student_id,
+      name: `${item.fname} ${item.lname}`,
+      lrn: item.lrn_number,
+      grade: item.grade_level?.grade_level || 'Unknown',
+      status: item.status,
+    }));
+  } catch (error) {
+    console.error('Error searching students:', error);
+    throw error;
   }
 };
 
@@ -265,10 +295,11 @@ export const removeSubject = async (subjectId: number): Promise<void> => {
 export const addStudentToClass = async (
   classId: number,
   studentData: {
-    fname: string;
-    lname: string;
-    sex: 'M' | 'F';
-    lrn_number: string;
+    student_id?: number;
+    fname?: string;
+    lname?: string;
+    sex?: 'M' | 'F';
+    lrn_number?: string;
   }
 ): Promise<Student> => {
   try {

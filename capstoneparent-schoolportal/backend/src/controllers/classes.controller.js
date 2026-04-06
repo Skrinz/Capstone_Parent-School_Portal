@@ -317,7 +317,10 @@ const classesController = {
       if (error.message === "Student not found") {
         return res.status(404).json({ message: error.message });
       }
-      if (error.message === "First name, last name, and LRN are required") {
+      if (
+        error.message === "First name, last name, and LRN are required" ||
+        error.message === "Student grade level does not match this class"
+      ) {
         return res.status(400).json({ message: error.message });
       }
       next(error);

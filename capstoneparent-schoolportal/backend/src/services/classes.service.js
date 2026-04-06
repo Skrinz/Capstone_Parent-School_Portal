@@ -7,6 +7,12 @@ const normalizeSex = (sex) => {
   return "M";
 };
 
+const ensureStudentMatchesClassGrade = (student, classData) => {
+  if (student.gl_id !== classData.gl_id) {
+    throw new Error("Student grade level does not match this class");
+  }
+};
+
 const syncStudentIntoClassSubjects = async (db, classId, studentId) => {
   const classSubjects = await db.classListSubjectRecord.findMany({
     where: { clist_id: classId },
@@ -442,10 +448,11 @@ const classesService = {
           "Student not found",
         );
 
+        ensureStudentMatchesClassGrade(student, classData);
+
         student = await tx.student.update({
           where: { student_id },
           data: {
-            gl_id: classData.gl_id,
             syear_start: targetStartYear,
             syear_end: targetEndYear,
             status: "ENROLLED",
@@ -464,13 +471,14 @@ const classesService = {
         });
 
         if (existingStudent) {
+          ensureStudentMatchesClassGrade(existingStudent, classData);
+
           student = await tx.student.update({
             where: { student_id: existingStudent.student_id },
             data: {
               fname: String(fname).trim(),
               lname: String(lname).trim(),
               sex: normalizeSex(sex),
-              gl_id: classData.gl_id,
               syear_start: targetStartYear,
               syear_end: targetEndYear,
               status: "ENROLLED",

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, X, ArrowLeft, Upload, Download, UserPlus } from 'lucide-react';
+import { Search, X, ArrowLeft, UserPlus } from 'lucide-react';
 import type { Student } from '@/Pages/principal-pages/types';
 
 interface StudentListProps {
@@ -10,8 +10,6 @@ interface StudentListProps {
   onBack: () => void;
   onRemoveStudent: (student: Student) => void;
   onAddStudent: () => void;
-  onImportStudents: () => void;
-  onDownloadTemplate: () => void;
 }
 
 export const StudentList = ({
@@ -20,8 +18,6 @@ export const StudentList = ({
   onBack,
   onRemoveStudent,
   onAddStudent,
-  onImportStudents,
-  onDownloadTemplate,
 }: StudentListProps) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -57,28 +53,13 @@ export const StudentList = ({
           </div>
         </div>
 
-        {/* Import & Download Buttons */}
         <div className="flex gap-3 flex-wrap">
           <Button 
             className="bg-(--button-green) hover:bg-green-700 text-white"
             onClick={onAddStudent}
           >
             <UserPlus className="mr-2 h-4 w-4" />
-            Add Student
-          </Button>
-          <Button 
-            className="bg-(--button-green) hover:bg-green-700 text-white"
-            onClick={onImportStudents}
-          >
-            <Upload className="mr-2 h-4 w-4" />
-            Import Student List (.csv)
-          </Button>
-          <Button 
-            className="bg-(--button-green) hover:bg-green-700 text-white"
-            onClick={onDownloadTemplate}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Download Student List Template (.csv)
+            Add Students
           </Button>
         </div>
       </div>

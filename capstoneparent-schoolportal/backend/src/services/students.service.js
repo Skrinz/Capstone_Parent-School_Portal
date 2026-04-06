@@ -54,6 +54,50 @@ const studentsService = {
     return students;
   },
 
+  async lookupStudents(queryText) {
+    const normalizedQuery = String(queryText || "").trim();
+    if (!normalizedQuery) {
+      return [];
+    }
+
+    const isNumericLookup = /^\d+$/.test(normalizedQuery);
+    const nameTokens = normalizedQuery
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
+
+    const students = await prisma.student.findMany({
+      where: isNumericLookup
+        ? {
+            lrn_number: {
+              startsWith: normalizedQuery,
+            },
+          }
+        : {
+            AND: nameTokens.map((token) => ({
+              OR: [
+                { fname: { contains: token, mode: "insensitive" } },
+                { lname: { contains: token, mode: "insensitive" } },
+              ],
+            })),
+          },
+      select: {
+        student_id: true,
+        lrn_number: true,
+        fname: true,
+        lname: true,
+        status: true,
+        grade_level: {
+          select: { grade_level: true },
+        },
+      },
+      orderBy: [{ lname: "asc" }, { fname: "asc" }, { lrn_number: "asc" }],
+      take: 20,
+    });
+
+    return students;
+  },
+
   async getAllStudents({
     page = 1,
     limit = 10,
@@ -88,6 +132,15 @@ const studentsService = {
           class_lists: {
             select: {
               clist_id: true,
+              class_list: {
+                select: {
+                  section: {
+                    select: {
+                      section_name: true,
+                    },
+                  },
+                },
+              },
             },
           },
           subject_records: {
@@ -109,9 +162,17 @@ const studentsService = {
       prisma.student.count({ where }),
     ]);
 
-    const studentsWithClass = students.map(student => {
-      const clist_id = student.class_lists?.[0]?.clist_id ?? null;
-      return { ...student, clist_id };
+    const studentsWithClass = students.map((student) => {
+      const firstClassList = student.class_lists?.[0];
+      const clist_id = firstClassList?.clist_id ?? null;
+      const section_name =
+        firstClassList?.class_list?.section?.section_name ?? null;
+
+      return {
+        ...student,
+        clist_id,
+        section_name,
+      };
     });
 
     return {

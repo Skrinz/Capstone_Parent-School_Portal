@@ -19,17 +19,19 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useClassData } from '@/Pages/principal-pages/hooks/useClassData';
-import { addClass, addStudentToClass, removeStudentFromClass, updateClass } from '@/Pages/principal-pages/services/api';
+import {
+  addClass,
+  addSubjects,
+  assignClassAdviser,
+  assignTeacherToSubject,
+  removeStudentFromClass,
+  updateClass,
+} from '@/Pages/principal-pages/services/api';
 import type { ClassItem, SubjectItem, Student } from '@/Pages/principal-pages/types';
 import { NavbarPrincipal } from '@/components/principal/NavbarPrincipal';
 import { Subjects } from '@/Pages/principal-pages/Subjects';
 import { StudentList } from '@/Pages/principal-pages/StudentList';
-import { FileUploadModal } from '@/Pages/principal-pages/FileUploadModal';
-import {
-  downloadStudentListTemplate,
-  uploadStudentList,
-} from '@/Pages/principal-pages/services/fileService';
-import { addSubjects, assignClassAdviser, assignTeacherToSubject } from '@/Pages/principal-pages/services/api';
+import { StudentAddModal } from '@/Pages/principal-pages/StudentAddModal';
 
 export const ManageClassLists = () => {
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
@@ -45,8 +47,6 @@ export const ManageClassLists = () => {
   const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Modal state for file upload
-  const [isImportStudentListModalOpen, setIsImportStudentListModalOpen] = useState(false);
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
 
   // Form states for Add Class
@@ -65,12 +65,6 @@ export const ManageClassLists = () => {
     schoolYearStart: '',
     schoolYearEnd: '',
     teacherId: '',
-  });
-  const [addStudentFormData, setAddStudentFormData] = useState({
-    fname: '',
-    lname: '',
-    sex: 'M' as 'M' | 'F',
-    lrn_number: '',
   });
   const [addTeacherSearchQuery, setAddTeacherSearchQuery] = useState('');
   const [editTeacherSearchQuery, setEditTeacherSearchQuery] = useState('');
@@ -326,40 +320,8 @@ export const ManageClassLists = () => {
     }
   };
 
-  // Upload and Download Handler Functions
-  const handleImportStudents = () => {
-    setIsImportStudentListModalOpen(true);
-  };
-
   const handleOpenAddStudentModal = () => {
-    setAddStudentFormData({
-      fname: '',
-      lname: '',
-      sex: 'M',
-      lrn_number: '',
-    });
     setIsAddStudentModalOpen(true);
-  };
-
-  const handleDownloadTemplate = async () => {
-    try {
-      await downloadStudentListTemplate('csv');
-    } catch (error) {
-      alert('Failed to download template. Please try again.');
-    }
-  };
-
-  // Add this new handler
-  const handleUploadStudentList = async (file: File) => {
-    if (!selectedClass) return;
-    
-    try {
-      await uploadStudentList(selectedClass.id, file);
-      alert('Student list uploaded successfully!');
-      await loadStudents(1, selectedClass.id);
-    } catch (error) {
-      throw new Error('Failed to upload student list');
-    }
   };
 
   // Generate year options (current year - 5 to current year + 5)
@@ -415,37 +377,13 @@ export const ManageClassLists = () => {
     }
   };
 
-  const handleAddStudent = async () => {
+  const handleStudentsChanged = async () => {
     if (!selectedClass) return;
 
-    if (
-      !addStudentFormData.fname.trim() ||
-      !addStudentFormData.lname.trim() ||
-      !addStudentFormData.lrn_number.trim()
-    ) {
-      alert('Please complete the student name and LRN.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await addStudentToClass(selectedClass.id, {
-        fname: addStudentFormData.fname.trim(),
-        lname: addStudentFormData.lname.trim(),
-        sex: addStudentFormData.sex,
-        lrn_number: addStudentFormData.lrn_number.trim(),
-      });
-      await Promise.all([
-        reloadClasses(),
-        loadStudents(1, selectedClass.id),
-      ]);
-      setIsAddStudentModalOpen(false);
-    } catch (error) {
-      console.error('Failed to add student:', error);
-      alert('Failed to add student. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    await Promise.all([
+      reloadClasses(),
+      loadStudents(1, selectedClass.id),
+    ]);
   };
 
   return (
@@ -673,8 +611,6 @@ export const ManageClassLists = () => {
                     onBack={() => setSelectedClass(null)}
                     onRemoveStudent={handleRemoveStudent}
                     onAddStudent={handleOpenAddStudentModal}
-                    onImportStudents={handleImportStudents}
-                    onDownloadTemplate={handleDownloadTemplate}
                   />
                 </TabsContent>
               </Tabs>
@@ -1041,98 +977,12 @@ export const ManageClassLists = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isAddStudentModalOpen} onOpenChange={setIsAddStudentModalOpen}>
-        <DialogContent className="bg-[#FFFACD] border-none max-w-md p-0 gap-0" showCloseButton={false}>
-          <DialogHeader className="p-6 pb-4">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-2xl font-bold text-gray-900">Add Student</DialogTitle>
-              <button
-                onClick={() => setIsAddStudentModalOpen(false)}
-                className="text-red-600 hover:text-red-700 transition-colors"
-                disabled={isSubmitting}
-              >
-                <X className="h-8 w-8 font-bold" strokeWidth={3} />
-              </button>
-            </div>
-            <DialogDescription className="text-sm text-gray-600">
-              Add one learner to {selectedClass?.grade} - {selectedClass?.section}.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="px-6 pb-6 space-y-4">
-            <Input
-              value={addStudentFormData.fname}
-              onChange={(event) =>
-                setAddStudentFormData({ ...addStudentFormData, fname: event.target.value })
-              }
-              placeholder="First Name"
-              className="h-12 bg-white"
-              disabled={isSubmitting}
-            />
-
-            <Input
-              value={addStudentFormData.lname}
-              onChange={(event) =>
-                setAddStudentFormData({ ...addStudentFormData, lname: event.target.value })
-              }
-              placeholder="Last Name"
-              className="h-12 bg-white"
-              disabled={isSubmitting}
-            />
-
-            <Input
-              value={addStudentFormData.lrn_number}
-              onChange={(event) =>
-                setAddStudentFormData({
-                  ...addStudentFormData,
-                  lrn_number: event.target.value.replace(/\D/g, '').slice(0, 12),
-                })
-              }
-              placeholder="12-digit LRN"
-              className="h-12 bg-white"
-              disabled={isSubmitting}
-            />
-
-            <Select
-              value={addStudentFormData.sex}
-              onValueChange={(value) =>
-                setAddStudentFormData({ ...addStudentFormData, sex: value as 'M' | 'F' })
-              }
-              disabled={isSubmitting}
-            >
-              <SelectTrigger className="w-full h-12 bg-white border-gray-300">
-                <SelectValue placeholder="Sex" />
-              </SelectTrigger>
-              <SelectContent className="bg-white font-semibold">
-                <SelectItem value="M">Male</SelectItem>
-                <SelectItem value="F">Female</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button
-              onClick={handleAddStudent}
-              disabled={
-                isSubmitting ||
-                !addStudentFormData.fname ||
-                !addStudentFormData.lname ||
-                addStudentFormData.lrn_number.length !== 12
-              }
-              className="w-full h-12 bg-(--button-green) hover:bg-green-700 text-white text-lg font-semibold mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? 'Adding...' : 'Add Student'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      
-      {/* File Upload Modal */}
-      <FileUploadModal
-        isOpen={isImportStudentListModalOpen}
-        onClose={() => setIsImportStudentListModalOpen(false)}
-        onUpload={handleUploadStudentList}
-        title="Import Student List"
-        acceptedFileTypes={['.csv']}
-        maxSizeMB={25}
+      <StudentAddModal
+        isOpen={isAddStudentModalOpen}
+        onClose={() => setIsAddStudentModalOpen(false)}
+        selectedClass={selectedClass}
+        existingStudents={classStudents}
+        onStudentsChanged={handleStudentsChanged}
       />
     </div>
   );

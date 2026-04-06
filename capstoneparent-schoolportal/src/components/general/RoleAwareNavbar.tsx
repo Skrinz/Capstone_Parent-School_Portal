@@ -44,8 +44,13 @@ const NAV_CONFIGS: Record<UserRole, NavConfig> = {
     recordsItems: [
       { label: "Manage Class Lists", to: "/manageclasslists" },
       { label: "Manage Sections", to: "/managesections" },
+      { label: "Manage Students", to: "/managestudents" },
     ],
-    recordsActivePaths: ["/manageclasslists", "/managesections"],
+    recordsActivePaths: [
+      "/manageclasslists",
+      "/managesections",
+      "/managestudents",
+    ],
     sticky: true,
     logoAlt: LOGO_ALT,
   },
@@ -56,8 +61,13 @@ const NAV_CONFIGS: Record<UserRole, NavConfig> = {
     recordsItems: [
       { label: "Manage Class Lists", to: "/manageclasslists" },
       { label: "Manage Sections", to: "/managesections" },
+      { label: "Manage Students", to: "/managestudents" },
     ],
-    recordsActivePaths: ["/manageclasslists", "/managesections"],
+    recordsActivePaths: [
+      "/manageclasslists",
+      "/managesections",
+      "/managestudents",
+    ],
     sticky: true,
     logoAlt: LOGO_ALT,
   },

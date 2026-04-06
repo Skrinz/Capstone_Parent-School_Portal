@@ -157,7 +157,9 @@ const App = () => {
         // Also acessible by teachers
         path="/managestudents"
         element={
-          <ProtectedRoute allowedRoles={["admin", "teacher"]}>
+          <ProtectedRoute
+            allowedRoles={["admin", "teacher", "principal", "vice_principal"]}
+          >
             <ManageStudents />
           </ProtectedRoute>
         }
