@@ -6,25 +6,24 @@ import type { Student } from '@/Pages/teacher-pages/types';
 interface StudentGradesProps {
   student: Student;
   onBack: () => void;
+  isLoading?: boolean;
 }
 
-export const StudentGrades = ({ student, onBack }: StudentGradesProps) => {
-  // All subjects to display
-  const allSubjects = [
-    'Filipino',
-    'English',
-    'Mathematics',
-    'Science',
-    'Araling Panlipunan',
-    'MAPEH',
-    'Edukasyon sa Pagpapakatao',
-    'Technology and Livelihood Education',
-  ];
+export const StudentGrades = ({ student, onBack, isLoading = false }: StudentGradesProps) => {
+  const getNumericGrade = (value: unknown) => {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
 
-  // Get subject grade data (from backend)
-  const getSubjectData = (subjectName: string) => {
-    return student.subject_records?.find(sg => sg.subject_name === subjectName);
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
   };
+
+  const subjectRows = useMemo(() => {
+    return [...(student.subject_records ?? [])]
+      .filter((record) => record.subject_name)
+      .sort((a, b) => (a.subject_name || '').localeCompare(b.subject_name || ''));
+  }, [student.subject_records]);
 
   // Calculate attendance totals
   const months = ['Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'];
@@ -54,6 +53,35 @@ export const StudentGrades = ({ student, onBack }: StudentGradesProps) => {
     Object.values(attendanceMap).reduce((sum, m) => sum + (m as any).days_absent, 0)
   , [attendanceMap]);
 
+  const generalAverage = useMemo(() => {
+    const numericAverages = subjectRows
+      .map((subject) => getNumericGrade(subject.avg_grade))
+      .filter((grade) => Number.isFinite(grade));
+
+    if (numericAverages.length === 0) return 'N/A';
+
+    const numericStudentAverage = getNumericGrade(student.finalAvgGrade);
+    if (numericStudentAverage !== null) {
+      return numericStudentAverage;
+    }
+
+    return Math.round((numericAverages.reduce((sum, grade) => sum + grade, 0) / numericAverages.length) * 100) / 100;
+  }, [student.finalAvgGrade, subjectRows]);
+
+  const generalRemarks = useMemo(() => {
+    const numericAverages = subjectRows
+      .map((subject) => getNumericGrade(subject.avg_grade))
+      .filter((grade) => Number.isFinite(grade));
+
+    if (numericAverages.length === 0) return 'N/A';
+
+    if (student.remarks && student.remarks !== 'N/A') {
+      return student.remarks;
+    }
+
+    return numericAverages.every((grade) => grade >= 75) ? 'PASSED' : 'FAILED';
+  }, [student.remarks, subjectRows]);
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
@@ -76,6 +104,11 @@ export const StudentGrades = ({ student, onBack }: StudentGradesProps) => {
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+        {isLoading ? (
+          <div className="rounded-lg border border-gray-200 bg-white p-6 text-center text-gray-500">
+            Loading student records...
+          </div>
+        ) : null}
 
         {/* Student Info Card */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -155,12 +188,11 @@ export const StudentGrades = ({ student, onBack }: StudentGradesProps) => {
                 </tr>
               </thead>
               <tbody>
-                {allSubjects.map((subject) => {
-                  const subjectData = getSubjectData(subject);
-                  return (
-                    <tr key={subject} className="hover:bg-gray-50">
+                {subjectRows.length > 0 ? (
+                  subjectRows.map((subjectData) => (
+                    <tr key={subjectData.srs_id} className="hover:bg-gray-50">
                       <td className="px-6 py-3 text-left border border-gray-300 font-medium">
-                        {subject}
+                        {subjectData.subject_name}
                       </td>
                       <td className="px-6 py-3 text-center border border-gray-300">
                         {subjectData?.q1_grade ?? ''}
@@ -189,8 +221,14 @@ export const StudentGrades = ({ student, onBack }: StudentGradesProps) => {
                         </span>
                       </td>
                     </tr>
-                  );
-                })}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-6 text-center text-gray-500 border border-gray-300">
+                      No subject records found for this student.
+                    </td>
+                  </tr>
+                )}
                 
                 {/* General Average Row */}
                 <tr className="bg-gray-50 font-bold">
@@ -200,17 +238,17 @@ export const StudentGrades = ({ student, onBack }: StudentGradesProps) => {
                   <td className="px-6 py-3 text-center border border-gray-300"></td>
                   <td className="px-6 py-3 text-center border border-gray-300"></td>
                   <td className="px-6 py-3 text-center border border-gray-300 text-lg">
-                    {student.finalAvgGrade}
+                    {generalAverage}
                   </td>
                   <td className="px-6 py-3 text-center border border-gray-300">
                     <span className={`font-semibold ${
-                      student.remarks === 'PASSED' 
+                      generalRemarks === 'PASSED' 
                         ? 'text-(--button-green)' 
-                        : student.remarks === 'FAILED'
+                        : generalRemarks === 'FAILED'
                         ? 'text-(--status-denied)'
                         : 'text-gray-500'
                     }`}>
-                      {student.remarks}
+                      {generalRemarks}
                     </span>
                   </td>
                 </tr>

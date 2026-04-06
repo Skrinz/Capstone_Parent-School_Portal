@@ -54,9 +54,9 @@ export const useClassData = () => {
     setIsLoadingSubjects(false);
   };
 
-  const loadStudents = async () => {
+  const loadStudents = async (classId?: number) => {
     setIsLoadingStudents(true);
-    const data = await fetchStudents();
+    const data = await fetchStudents(classId);
     setAllStudents(data);
     setIsLoadingStudents(false);
   };
@@ -97,6 +97,7 @@ export const useClassData = () => {
     filterSubjects,
     filterStudents,
     getStudentsForClass,
+    loadStudents,
   };
 };
 

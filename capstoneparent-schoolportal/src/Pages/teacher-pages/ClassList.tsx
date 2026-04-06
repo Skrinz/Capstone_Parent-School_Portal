@@ -26,6 +26,7 @@ import {
   uploadClassSchedulePicture,
   uploadSubjectGradeSheet,
 } from './services/fileService';
+import { fetchStudentById } from './services/api';
 
 export const ClassList = () => {
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
@@ -49,6 +50,7 @@ export const ClassList = () => {
 
   // Student selection
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [isLoadingStudentDetail, setIsLoadingStudentDetail] = useState(false);
 
   // Modal states for file uploads
   const [isImportGradeSheetModalOpen, setIsImportGradeSheetModalOpen] = useState(false);
@@ -70,6 +72,7 @@ export const ClassList = () => {
     filterSubjects,
     filterStudents,
     getStudentsForClass,
+    loadStudents,
   } = useClassData();
 
   // Apply filters
@@ -215,6 +218,34 @@ export const ClassList = () => {
     }
   };
 
+  const handleSelectStudent = async (student: Student) => {
+    setSelectedStudent(student);
+    setIsLoadingStudentDetail(true);
+
+    try {
+      const detailedStudent = await fetchStudentById(student.student_id);
+      setSelectedStudent({
+        ...student,
+        ...detailedStudent,
+        gradeSection: detailedStudent.gradeSection || student.gradeSection,
+        schoolYear: detailedStudent.schoolYear || student.schoolYear,
+        finalAvgGrade:
+          detailedStudent.finalAvgGrade === 'N/A'
+            ? student.finalAvgGrade
+            : detailedStudent.finalAvgGrade,
+        remarks:
+          detailedStudent.remarks === 'N/A'
+            ? student.remarks
+            : detailedStudent.remarks,
+      });
+    } catch (error) {
+      console.error('Error fetching student details:', error);
+      alert('Failed to load student details. Please try again.');
+    } finally {
+      setIsLoadingStudentDetail(false);
+    }
+  };
+
   return (
     // ROOT CONTAINER
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-gray-50"> 
@@ -322,6 +353,7 @@ export const ClassList = () => {
                           setRemarksFilter('all');
                           setStudentSearchQuery('');
                           setSelectedStudent(null);
+                          loadStudents(classItem.clist_id);
                         }}
                       >
                           <div className="flex justify-between items-start">
@@ -505,6 +537,7 @@ export const ClassList = () => {
                       <StudentGrades 
                         student={selectedStudent} 
                         onBack={() => setSelectedStudent(null)} 
+                        isLoading={isLoadingStudentDetail}
                       />
                     ) : (
                     <>
@@ -626,7 +659,7 @@ export const ClassList = () => {
                                   <tr 
                                     key={student.student_id}
                                     className="hover:bg-gray-50 cursor-pointer"
-                                    onClick={() => setSelectedStudent(student)}
+                                    onClick={() => handleSelectStudent(student)}
                                   >
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-left text-gray-900">
                                       {student.name}

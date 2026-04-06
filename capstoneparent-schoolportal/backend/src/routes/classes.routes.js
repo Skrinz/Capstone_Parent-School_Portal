@@ -270,6 +270,15 @@ router.post('/subjects/:id/import-grades',
 );
 
 // Import class attendance via CSV
+router.post('/:id/import-attendance',
+  authorize('Teacher', 'Admin', 'Principal', 'Vice_Principal'),
+  param('id').isInt(),
+  upload.single('file'),
+  validate,
+  classesController.importAttendance
+);
+
+// Backward-compatible import class attendance via CSV
 router.post('/import-attendance',
   authorize('Teacher', 'Admin', 'Principal', 'Vice_Principal'),
   upload.single('file'),

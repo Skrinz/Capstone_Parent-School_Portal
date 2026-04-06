@@ -55,7 +55,7 @@ router.get(
     query("syear_start").optional().isInt(),
     query("clist_id").optional().isInt(),
     query("page").optional().isInt({ min: 1 }),
-    query("limit").optional().isInt({ min: 1, max: 100 }),
+    query("limit").optional().isInt({ min: 1, max: 1000 }),
   ],
   validate,
   studentsController.getAllStudents,

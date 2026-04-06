@@ -563,7 +563,8 @@ const classesController = {
          };
        });
  
-       const results = await classesService.importAttendance(rows);
+       const classId = req.params.id ? parseInt(req.params.id, 10) : undefined;
+       const results = await classesService.importAttendance(rows, classId);
        res.status(200).json({ message: "Attendance imported successfully", data: results });
      } catch (error) {
        next(error);

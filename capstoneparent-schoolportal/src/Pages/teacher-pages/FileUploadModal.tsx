@@ -4,6 +4,7 @@ import { X, Upload, FileText, Image as ImageIcon, AlertCircle } from 'lucide-rea
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -120,6 +121,9 @@ export const FileUploadModal = ({
               <X className="h-8 w-8 font-bold" strokeWidth={3} />
             </button>
           </div>
+          <DialogDescription className="sr-only">
+            Upload a file for {title.toLowerCase()}. Accepted file types are {acceptedFileTypes.join(', ')}.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="px-6 pb-6 space-y-4">

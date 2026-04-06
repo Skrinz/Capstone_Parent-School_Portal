@@ -800,34 +800,131 @@ const classesService = {
     return results;
   },
 
-  async importAttendance(rows) {
-    const results = [];
+  async importAttendance(rows, classId) {
     const months = ['Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'];
-    
-    for (const row of rows) {
-      const { lrn, absences } = row; // absences is an object { Jun: X, Jul: Y, ... }
-      if (!lrn) continue;
+    const normalizedRows = rows.filter((row) => row?.lrn);
 
-      const student = await prisma.student.findFirst({
-        where: { lrn_number: String(lrn) },
-      });
+    if (normalizedRows.length === 0) {
+      return [];
+    }
 
-      if (student) {
-        for (const month of months) {
-          if (absences[month] !== undefined) {
-             const updated = await this.updateAttendance({
-              student_id: student.student_id,
-              school_days: 22, // Assuming standard 22 days per month for now or could be dynamic
-              days_present: 22 - (parseInt(absences[month]) || 0),
-              days_absent: parseInt(absences[month]) || 0,
-              month,
-            });
-            results.push(updated);
-          }
+    const uniqueLrns = [...new Set(normalizedRows.map((row) => String(row.lrn).trim()))];
+
+    const students = await prisma.student.findMany({
+      where: {
+        lrn_number: { in: uniqueLrns },
+        ...(classId
+          ? {
+              class_lists: {
+                some: {
+                  clist_id: classId,
+                },
+              },
+            }
+          : {}),
+      },
+      select: {
+        student_id: true,
+        lrn_number: true,
+      },
+    });
+
+    if (students.length === 0) {
+      return [];
+    }
+
+    const studentIdByLrn = new Map(
+      students.map((student) => [String(student.lrn_number), student.student_id]),
+    );
+    const studentIds = students.map((student) => student.student_id);
+
+    const existingRecords = await prisma.attendanceRecord.findMany({
+      where: {
+        student_id: { in: studentIds },
+        month: { in: months },
+      },
+      select: {
+        attendance_id: true,
+        student_id: true,
+        month: true,
+      },
+    });
+
+    const existingRecordMap = new Map(
+      existingRecords.map((record) => [
+        `${record.student_id}:${record.month}`,
+        record.attendance_id,
+      ]),
+    );
+
+    const createPayloads = [];
+    const updateOperations = [];
+
+    for (const row of normalizedRows) {
+      const studentId = studentIdByLrn.get(String(row.lrn).trim());
+      if (!studentId) continue;
+
+      const absences = row.absences ?? {};
+
+      for (const month of months) {
+        if (absences[month] === undefined) continue;
+
+        const parsedAbsences = parseInt(absences[month], 10);
+        const daysAbsent = Number.isFinite(parsedAbsences) ? parsedAbsences : 0;
+        const schoolDays = 22;
+        const daysPresent = schoolDays - daysAbsent;
+
+        if (daysPresent < 0) {
+          throw new Error(
+            "Days present and days absent cannot exceed total school days",
+          );
+        }
+
+        const recordKey = `${studentId}:${month}`;
+        const attendanceId = existingRecordMap.get(recordKey);
+        const payload = {
+          school_days: schoolDays,
+          days_present: daysPresent,
+          days_absent: daysAbsent,
+        };
+
+        if (attendanceId) {
+          updateOperations.push(
+            prisma.attendanceRecord.update({
+              where: { attendance_id: attendanceId },
+              data: payload,
+            }),
+          );
+        } else {
+          createPayloads.push({
+            student_id: studentId,
+            month,
+            ...payload,
+          });
         }
       }
     }
-    return results;
+
+    if (createPayloads.length > 0) {
+      await prisma.attendanceRecord.createMany({
+        data: createPayloads,
+      });
+    }
+
+    if (updateOperations.length > 0) {
+      await prisma.$transaction(updateOperations);
+    }
+
+    return prisma.attendanceRecord.findMany({
+      where: {
+        student_id: { in: studentIds },
+        month: { in: months },
+      },
+      orderBy: [
+        { student_id: 'asc' },
+        { attendance_id: 'asc' },
+      ],
+    });
   },
 
   async importStudents(classId, rows) {
