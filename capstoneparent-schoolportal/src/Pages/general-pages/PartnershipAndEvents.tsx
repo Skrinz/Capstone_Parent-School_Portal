@@ -1,43 +1,84 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
+import EventCard from "@/components/general/EventCard";
 import { usePartnershipEvents } from "@/hooks/usePartnershipEvents";
-import { ArrowUpRight, Search } from "lucide-react";
+import { useAuthStore } from "@/lib/store/authStore";
+import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
-const EventCardImage = ({ src, alt }: { src: string; alt: string }) => {
-  const [imageFailed, setImageFailed] = useState(false);
-
-  if (imageFailed) {
-    return (
-      <div
-        className="relative w-full overflow-hidden bg-linear-to-br from-emerald-200 via-emerald-100 to-yellow-100"
-        style={{ aspectRatio: "16 / 10" }}
-      >
-        <div className="absolute inset-0 bg-black/5" />
-        <p className="absolute bottom-3 left-3 rounded-md bg-white/75 px-2 py-1 text-xs font-semibold text-gray-700 backdrop-blur">
-          Event image unavailable
-        </p>
+const EventListCardSkeleton = ({ showActions }: { showActions: boolean }) => (
+  <div className="flex h-full flex-col gap-3">
+    <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-black/5">
+      <div className="h-48 w-full animate-pulse bg-gray-200" />
+      <div className="flex min-h-56 flex-col bg-(--button-green) p-4">
+        <div className="h-8 w-3/4 animate-pulse rounded bg-white/25" />
+        <div className="mt-3 h-5 w-11/12 animate-pulse rounded bg-white/20" />
+        <div className="mt-2 h-5 w-10/12 animate-pulse rounded bg-white/20" />
+        <div className="mt-2 h-5 w-8/12 animate-pulse rounded bg-white/20" />
+        <div className="mt-auto flex justify-end pt-4">
+          <div className="h-8 w-28 animate-pulse rounded-full bg-white/20" />
+        </div>
       </div>
-    );
-  }
+    </div>
+    {showActions && (
+      <div className="flex items-center justify-end gap-3">
+        <div className="h-9 w-20 animate-pulse rounded-md bg-gray-200" />
+        <div className="h-9 w-24 animate-pulse rounded-md bg-gray-200" />
+      </div>
+    )}
+  </div>
+);
 
-  return (
-    <img
-      src={src}
-      alt={alt}
-      onError={() => setImageFailed(true)}
-      className="w-full object-cover"
-      style={{ aspectRatio: "16 / 10" }}
-      loading="lazy"
-    />
-  );
-};
+const PartnershipEventsSkeleton = ({ showActions }: { showActions: boolean }) => (
+  <>
+    <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <div>
+        <div className="h-10 w-72 animate-pulse rounded bg-gray-200" />
+        <div className="mt-3 h-5 w-96 max-w-full animate-pulse rounded bg-gray-200" />
+      </div>
+      <div className="h-12 w-full animate-pulse rounded-lg bg-gray-200 md:w-96" />
+    </div>
+
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_220px]">
+      <section>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }, (_, index) => (
+            <EventListCardSkeleton key={index} showActions={showActions} />
+          ))}
+        </div>
+
+        <div className="mt-8 flex items-center justify-center gap-2">
+          {Array.from({ length: 5 }, (_, index) => (
+            <div
+              key={index}
+              className="h-8 w-14 animate-pulse rounded-md bg-gray-200"
+            />
+          ))}
+        </div>
+      </section>
+
+      <aside className="h-fit rounded-xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+        <div className="mb-4 h-8 w-24 animate-pulse rounded bg-gray-200" />
+        <div className="space-y-2">
+          {Array.from({ length: 5 }, (_, index) => (
+            <div key={index} className="h-10 w-full animate-pulse rounded-md bg-gray-200" />
+          ))}
+        </div>
+      </aside>
+    </div>
+  </>
+);
 
 export const PartnershipAndEvents = () => {
-  const { events: partnershipEvents, isLoading } = usePartnershipEvents();
+  const { events: partnershipEvents, isLoading, deleteEvent } = usePartnershipEvents();
+  const navigate = useNavigate();
+  const userRole = useAuthStore((state) => state.user?.role);
+  const isAdmin = userRole === "admin";
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState<number | "all">("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [eventToDeleteId, setEventToDeleteId] = useState<number | null>(null);
   const itemsPerPage = 6;
 
   const years = useMemo(
@@ -67,14 +108,21 @@ export const PartnershipAndEvents = () => {
     return filteredEvents.slice(start, start + itemsPerPage);
   }, [filteredEvents, currentPage]);
 
+  const handleDeleteEvent = async () => {
+    if (eventToDeleteId === null) {
+      return;
+    }
+
+    await deleteEvent(eventToDeleteId);
+    setEventToDeleteId(null);
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <RoleAwareNavbar />
       <main className="max-w-7xl mx-auto py-10 px-4">
         {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600">Loading events...</p>
-          </div>
+          <PartnershipEventsSkeleton showActions={isAdmin} />
         ) : (
           <>
             <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -102,29 +150,36 @@ export const PartnershipAndEvents = () => {
           <section>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {paginatedEvents.map((event) => (
-                <Link
-                  key={event.id}
-                  to={`/partnership&events/${event.slug}`}
-                  className="group block h-full"
-                >
-                  <article className="flex h-full flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-black/5 transition-transform group-hover:-translate-y-0.5 group-hover:shadow-md">
-                    <EventCardImage src={event.imageUrl} alt={event.title} />
-                    <div className="flex min-h-56 flex-1 flex-col bg-(--button-green) p-4 text-white">
-                      <h2 className="text-2xl font-bold leading-tight line-clamp-2">
-                        {event.title}
-                      </h2>
-                      <p className="mt-2 text-lg leading-snug line-clamp-4">
-                        {event.description}
-                      </p>
-                      <div className="mt-auto flex items-end justify-end gap-3 pt-4">
-                        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-white/15 px-3 py-1 text-sm font-semibold text-white transition-colors group-hover:bg-white/25">
-                          Read more
-                          <ArrowUpRight className="h-4 w-4" />
-                        </span>
-                      </div>
+                <div key={event.id} className="flex h-full flex-col gap-3">
+                  <Link
+                    to={`/partnership&events/${event.slug}`}
+                    className="group block h-full"
+                  >
+                    <EventCard
+                      title={event.title}
+                      description={event.description}
+                      imageUrl={event.imageUrl}
+                    />
+                  </Link>
+                  {isAdmin && (
+                    <div className="flex items-center justify-end gap-3">
+                      <Button
+                        type="button"
+                        onClick={() => navigate(`/admin-edit-event/${event.id}`)}
+                        className="bg-(--button-green) text-white hover:bg-(--button-green)"
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => setEventToDeleteId(event.id)}
+                      >
+                        Delete
+                      </Button>
                     </div>
-                  </article>
-                </Link>
+                  )}
+                </div>
               ))}
             </div>
 
@@ -207,6 +262,26 @@ export const PartnershipAndEvents = () => {
           </>
         )}
       </main>
+
+      {isAdmin && eventToDeleteId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-w-sm rounded-lg bg-white p-6 shadow-lg">
+            <h2 className="mb-2 text-xl font-bold text-gray-900">Delete Event?</h2>
+            <p className="mb-6 text-gray-600">
+              Are you sure you want to delete this partnership and event? This action cannot be
+              undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setEventToDeleteId(null)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="destructive" onClick={() => void handleDeleteEvent()}>
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

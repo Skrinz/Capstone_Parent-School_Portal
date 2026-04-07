@@ -1,5 +1,4 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
-import { Loader } from "@/components/ui/Loader";
 import { getAuthUser } from "@/lib/auth";
 import { type HistoryContent } from "@/lib/historyContent";
 import { pagesApi } from "@/lib/api/pagesApi";
@@ -13,6 +12,24 @@ const HistoryImage = () => (
     alt="Pagsabungan Elementary School"
     className="w-full h-80 object-cover mb-8"
   />
+);
+
+const HistorySkeleton = ({ showEdit }: { showEdit: boolean }) => (
+  <>
+    <div className="mb-6 flex items-center justify-between gap-4">
+      <div className="h-10 w-56 animate-pulse rounded bg-gray-200" />
+      {showEdit && <div className="h-12 w-12 animate-pulse rounded-full bg-gray-200" />}
+    </div>
+    <div className="mb-8 h-80 w-full animate-pulse rounded bg-gray-200" />
+    <div className="space-y-4">
+      <div className="h-4 w-full animate-pulse rounded bg-gray-200" />
+      <div className="h-4 w-[97%] animate-pulse rounded bg-gray-200" />
+      <div className="h-4 w-[94%] animate-pulse rounded bg-gray-200" />
+      <div className="h-4 w-[92%] animate-pulse rounded bg-gray-200" />
+      <div className="h-4 w-[89%] animate-pulse rounded bg-gray-200" />
+      <div className="h-4 w-[85%] animate-pulse rounded bg-gray-200" />
+    </div>
+  </>
 );
 
 export const History = () => {
@@ -34,7 +51,7 @@ export const History = () => {
       <RoleAwareNavbar />
       <div className="max-w-7xl mx-auto py-12 px-4">
         {isLoading ? (
-          <Loader />
+          <HistorySkeleton showEdit={isAdmin} />
         ) : !content ? (
           <p>No history content available.</p>
         ) : (

@@ -407,13 +407,11 @@ export const RegisterCard = () => {
                   */}
                   <label
                     htmlFor="dob-input"
-                    className="flex h-14 w-full items-center rounded-full border-2 border-gray-900 bg-white px-6 gap-3 cursor-pointer"
+                    className="flex h-14 w-full items-center rounded-full border-2 border-gray-900 bg-white px-6 gap-2 cursor-pointer"
                   >
                     <span className="shrink-0 text-lg text-gray-500 whitespace-nowrap">
                       Date of Birth
                     </span>
-                    {/* Vertical separator — matches the pill border colour */}
-                    <span className="h-6 w-px bg-gray-300 shrink-0" />
                     <input
                       id="dob-input"
                       type="date"

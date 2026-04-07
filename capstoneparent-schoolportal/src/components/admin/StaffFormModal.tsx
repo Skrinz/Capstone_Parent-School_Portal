@@ -24,6 +24,7 @@ interface StaffFormModalProps {
   selectedRoles: string[];
   availableRoles: string[];
   onToggleRole: (role: string) => void;
+  disableSubmit?: boolean;
 }
 
 export const StaffFormModal = ({
@@ -37,6 +38,7 @@ export const StaffFormModal = ({
   selectedRoles,
   availableRoles,
   onToggleRole,
+  disableSubmit = false,
 }: StaffFormModalProps) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
@@ -106,7 +108,8 @@ export const StaffFormModal = ({
         <div className="flex justify-end">
           <Button
             onClick={onSubmit}
-            className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full"
+            disabled={disableSubmit}
+            className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full disabled:bg-gray-400 disabled:text-white disabled:hover:bg-gray-400"
           >
             {submitLabel}
           </Button>

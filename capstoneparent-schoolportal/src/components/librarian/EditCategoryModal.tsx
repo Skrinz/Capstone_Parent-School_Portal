@@ -14,6 +14,7 @@ const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
 	initialCategoryName = "",
 }) => {
 	const [categoryName, setCategoryName] = React.useState(initialCategoryName);
+	const hasChanges = categoryName.trim() !== initialCategoryName.trim();
 
 	const handleEdit = () => {
 		const trimmedCategoryName = categoryName.trim();
@@ -46,7 +47,8 @@ const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
 					<Button
 						type="button"
 						onClick={handleEdit}
-						className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full"
+						disabled={!hasChanges}
+						className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full disabled:bg-gray-400 disabled:text-white disabled:hover:bg-gray-400"
 					>
 						Save
 					</Button>

@@ -180,6 +180,10 @@ export const ManageSection = () => {
     );
   };
 
+  const editFormHasChanges = editingSection
+    ? formData.name.trim() !== editingSection.section_name.trim()
+    : false;
+
   return (
     <div className="min-h-screen bg-[#efefef]">
       <NavbarAdmin />
@@ -312,6 +316,7 @@ export const ManageSection = () => {
         submitLabel="Update"
         formData={formData}
         setFormData={setFormData}
+        disableSubmit={!editFormHasChanges}
       />
 
       <SectionDeleteModal

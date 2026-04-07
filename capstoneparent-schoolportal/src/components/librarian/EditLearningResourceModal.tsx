@@ -24,6 +24,10 @@ const EditLearningResourceModal: React.FC<EditLearningResourceModalProps> = ({
 	const [resourceTitle, setResourceTitle] = React.useState(initialResource?.title ?? '');
 	const [category, setCategory] = React.useState(initialResource?.category ?? 'CATEGORY');
 	const [gradeLevel, setGradeLevel] = React.useState(initialResource?.gradeLevel ?? 'GRADE LEVEL');
+	const hasChanges =
+		resourceTitle.trim() !== (initialResource?.title ?? '').trim() ||
+		category !== (initialResource?.category ?? 'CATEGORY') ||
+		gradeLevel !== (initialResource?.gradeLevel ?? 'GRADE LEVEL');
 
 	const handleSave = () => {
 		if (!resourceTitle.trim() || category === 'CATEGORY' || gradeLevel === 'GRADE LEVEL') {
@@ -85,7 +89,8 @@ const EditLearningResourceModal: React.FC<EditLearningResourceModalProps> = ({
 					<Button
 						type="button"
 						onClick={handleSave}
-						className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full"
+						disabled={!hasChanges}
+						className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full disabled:bg-gray-400 disabled:text-white disabled:hover:bg-gray-400"
 					>
 						Save
 					</Button>

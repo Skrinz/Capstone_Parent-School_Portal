@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FileText, Pencil, Plus, Loader2 } from "lucide-react";
+import { FileText, Pencil, Plus } from "lucide-react";
 import { resolveMediaUrl } from "@/lib/api/base";
 
 export type AnnouncementAttachment = string | { name: string; url: string };
@@ -133,6 +133,37 @@ const AnnouncementAuthorAvatar = ({ post }: { post: AnnouncementPostItem }) => {
   );
 };
 
+const AnnouncementFeedSkeleton = () => (
+  <section className="mx-auto w-full max-w-330 px-3 py-6 text-left sm:px-5 lg:px-6">
+    <div className="space-y-5 sm:space-y-6">
+      {Array.from({ length: 3 }, (_, index) => (
+        <article
+          key={index}
+          className="grid grid-cols-[56px_minmax(0,1fr)] gap-3 sm:grid-cols-[68px_minmax(0,1fr)] sm:gap-5"
+        >
+          <div className="mt-4 h-14 w-14 animate-pulse rounded-full border-2 border-gray-200 bg-gray-200 sm:h-16 sm:w-16" />
+          <div className="w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 p-5 shadow-sm sm:p-7 lg:p-8">
+            <div className="h-7 w-40 animate-pulse rounded bg-gray-200 sm:h-8" />
+            <div className="mt-2 h-4 w-24 animate-pulse rounded bg-gray-200" />
+            <div className="mt-2 h-4 w-32 animate-pulse rounded bg-gray-200" />
+            <div className="mt-5 h-10 w-3/4 animate-pulse rounded bg-gray-200" />
+            <div className="mt-4 space-y-3">
+              <div className="h-4 w-full animate-pulse rounded bg-gray-200" />
+              <div className="h-4 w-[96%] animate-pulse rounded bg-gray-200" />
+              <div className="h-4 w-[88%] animate-pulse rounded bg-gray-200" />
+              <div className="h-4 w-[72%] animate-pulse rounded bg-gray-200" />
+            </div>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <div className="h-11 w-40 animate-pulse rounded-lg bg-gray-200" />
+              <div className="h-11 w-36 animate-pulse rounded-lg bg-gray-200" />
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  </section>
+);
+
 export const AnnouncementPostFeed = ({
   posts,
   isLoading,
@@ -165,11 +196,7 @@ export const AnnouncementPostFeed = ({
   };
 
   if (isLoading) {
-    return (
-      <section className="mx-auto flex h-64 w-full max-w-330 items-center justify-center px-3 py-6 sm:px-5 lg:px-6">
-        <Loader2 className="h-10 w-10 animate-spin text-(--button-green)" />
-      </section>
-    );
+    return <AnnouncementFeedSkeleton />;
   }
 
   return (

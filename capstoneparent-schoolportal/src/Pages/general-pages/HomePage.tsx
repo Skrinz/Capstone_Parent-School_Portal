@@ -1,18 +1,36 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
 import EventCard from "@/components/general/EventCard";
 import { usePartnershipEvents } from "@/hooks/usePartnershipEvents";
+import { useAuthStore } from "@/lib/store/authStore";
 import { Link } from "react-router-dom";
+
+const HomeEventCardSkeleton = () => (
+  <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-black/5">
+    <div className="h-48 w-full animate-pulse bg-gray-200" />
+    <div className="flex min-h-56 flex-col bg-(--button-green) p-4">
+      <div className="h-8 w-3/4 animate-pulse rounded bg-white/25" />
+      <div className="mt-3 h-5 w-11/12 animate-pulse rounded bg-white/20" />
+      <div className="mt-2 h-5 w-10/12 animate-pulse rounded bg-white/20" />
+      <div className="mt-2 h-5 w-8/12 animate-pulse rounded bg-white/20" />
+      <div className="mt-auto flex justify-end pt-4">
+        <div className="h-8 w-28 animate-pulse rounded-full bg-white/20" />
+      </div>
+    </div>
+  </div>
+);
 
 export const HomePage = () => {
   const { events, isLoading } = usePartnershipEvents();
+  const userRole = useAuthStore((state) => state.user?.role);
+  const isAdmin = userRole === "admin";
   const featuredEvents = events.slice(0, 4);
 
   return (
     <div>
       <RoleAwareNavbar />
-      <div className="max-w-7xl mx-auto py-12 px-4">
+      <div className="max-w-7xl mx-auto py-8 px-4">
         <h1 className="text-[24px] font-bold mb-2 text-center">Welcome to</h1>
-        <h1 className="text-4xl font-bold mb-12 text-center">
+        <h1 className="text-4xl font-bold mb-8 text-center">
           Pagsabungan Elementary School
         </h1>
 
@@ -25,8 +43,10 @@ export const HomePage = () => {
           </div>
 
           {isLoading ? (
-            <div className="rounded-xl bg-white p-10 text-center text-gray-500 shadow-sm ring-1 ring-black/5">
-              Loading events...
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }, (_, index) => (
+                <HomeEventCardSkeleton key={index} />
+              ))}
             </div>
           ) : featuredEvents.length === 0 ? (
             <div className="rounded-xl bg-white p-10 text-center text-gray-500 shadow-sm ring-1 ring-black/5">
@@ -35,7 +55,11 @@ export const HomePage = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {featuredEvents.map((event) => (
-                <Link key={event.id} to={`/partnership&events/${event.slug}`} className="block h-full">
+                <Link
+                  key={event.id}
+                  to={isAdmin ? `/admin-edit-event/${event.id}` : `/partnership&events/${event.slug}`}
+                  className="block h-full"
+                >
                   <EventCard
                     title={event.title}
                     description={event.description}
@@ -49,7 +73,7 @@ export const HomePage = () => {
       </div>
 
       {/* Vision & Mission Section */}
-      <div className="relative w-full py-16 mt-11.5">
+      <div className="relative w-full py-14 mt-6">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: "url('/History_Pic.jpg')" }}

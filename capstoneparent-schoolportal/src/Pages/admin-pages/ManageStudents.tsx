@@ -293,6 +293,17 @@ export const ManageStudents = () => {
     }
   };
 
+  const editFormHasChanges = editingStudent
+    ? formData.firstName.trim() !== editingStudent.fname.trim() ||
+      formData.lastName.trim() !== editingStudent.lname.trim() ||
+      formData.sex !== editingStudent.sex ||
+      formData.lrn.trim() !== editingStudent.lrn_number.trim() ||
+      formData.gradeLevelId !== String(editingStudent.gl_id) ||
+      formData.status !== editingStudent.status ||
+      formData.schoolYearStart !== String(editingStudent.syear_start) ||
+      formData.schoolYearEnd !== String(editingStudent.syear_end)
+    : false;
+
   const totalPages = pagination.totalPages;
   const showingStart =
     filteredStudents.length === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
@@ -547,6 +558,7 @@ export const ManageStudents = () => {
         setFormData={setFormData}
         gradeLevels={gradeLevels}
         isSubmitting={isSubmitting}
+        disableSubmit={!editFormHasChanges}
       />
 
       <StudentFormModal

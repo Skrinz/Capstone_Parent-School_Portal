@@ -1,6 +1,5 @@
 import { EditOrganizationalChartModal } from "@/components/admin/EditOrganizationalChartModal";
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
-import { Loader } from "@/components/ui/Loader";
 import { getAuthUser } from "@/lib/auth";
 import { type OrganizationalChartItem } from "@/lib/organizationalChartContent";
 import { pagesApi } from "@/lib/api/pagesApi";
@@ -44,6 +43,32 @@ const ChartPreview = ({
     />
   );
 };
+
+const OrganizationalChartSkeleton = ({ showActions }: { showActions: boolean }) => (
+  <>
+    <div className="mb-8 h-10 w-72 animate-pulse rounded bg-gray-200" />
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+      <div className="lg:col-span-3">
+        <div className="w-full space-y-8 rounded-sm bg-gray-300 p-8">
+          <div className="h-[32rem] w-full animate-pulse rounded bg-gray-200" />
+          <div className="mx-auto h-5 w-40 animate-pulse rounded bg-gray-200" />
+          {showActions && <div className="mx-auto h-9 w-32 animate-pulse rounded bg-gray-200" />}
+        </div>
+        <div className="mx-auto mt-4 h-6 w-36 animate-pulse rounded bg-gray-200" />
+      </div>
+      <div className="mx-auto flex w-fit lg:col-span-1 lg:block lg:w-full">
+        <div className="w-full">
+          <div className="mb-4 h-6 w-14 animate-pulse rounded bg-gray-200" />
+          <div className="space-y-2">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div key={index} className="h-10 w-28 animate-pulse rounded bg-gray-200 lg:w-full" />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </>
+);
 
 export const OrginizationalChart = () => {
   const user = getAuthUser();
@@ -124,7 +149,7 @@ export const OrginizationalChart = () => {
       <RoleAwareNavbar />
       <div className="mx-auto max-w-7xl px-4 py-12">
         {isLoading ? (
-          <Loader />
+          <OrganizationalChartSkeleton showActions={isAdmin} />
         ) : uniqueYears.length === 0 ? (
           <>
             <h1 className="mb-8 text-4xl font-bold">Organizational Chart</h1>

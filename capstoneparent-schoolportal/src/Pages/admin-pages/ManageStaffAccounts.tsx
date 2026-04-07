@@ -175,6 +175,13 @@ export const ManageStaffAccounts = () => {
     setIsDeleteModalOpen(false);
   };
 
+  const editFormHasChanges = editingStaff
+    ? formData.name.trim() !== editingStaff.name.trim() ||
+      formData.contactNo.trim() !== editingStaff.contactNo.trim() ||
+      formData.status !== editingStaff.status ||
+      selectedRoles.join(", ") !== editingStaff.roles
+    : false;
+
   return (
     <div className="min-h-screen">
       <NavbarAdmin />
@@ -302,6 +309,7 @@ export const ManageStaffAccounts = () => {
         selectedRoles={selectedRoles}
         availableRoles={availableRoles}
         onToggleRole={toggleRole}
+        disableSubmit={!editFormHasChanges}
       />
 
       <StaffFormModal

@@ -42,6 +42,15 @@ export const ManageAccountModal = ({ isOpen, onClose, profileData, isSavingProfi
     fileReader.readAsDataURL(selectedFile);
   };
 
+  const hasChanges =
+    formData.fname.trim() !== profileData.fname.trim() ||
+    formData.lname.trim() !== profileData.lname.trim() ||
+    formData.contactNo.trim() !== profileData.contactNo.trim() ||
+    formData.dateOfBirth.trim() !== profileData.dateOfBirth.trim() ||
+    formData.address.trim() !== profileData.address.trim() ||
+    formData.email.trim() !== profileData.email.trim() ||
+    Boolean(profileFile);
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -155,7 +164,7 @@ export const ManageAccountModal = ({ isOpen, onClose, profileData, isSavingProfi
         ) : null}
 
         <div className="flex justify-end pt-2">
-          <Button type="submit" disabled={isSavingProfile} className="h-12 rounded-full bg-(--button-green) px-8 text-xl font-semibold text-white hover:bg-(--button-hover-green)">
+          <Button type="submit" disabled={isSavingProfile || !hasChanges} className="h-12 rounded-full bg-(--button-green) px-8 text-xl font-semibold text-white hover:bg-(--button-hover-green) disabled:bg-gray-400 disabled:text-white disabled:hover:bg-gray-400">
             {isSavingProfile ? "Saving..." : "Save Changes"}
           </Button>
         </div>

@@ -176,6 +176,14 @@ export const EditPartnershipAndEventsModal = ({
     }
   };
 
+  const hasChanges = isEditMode
+    ? formData.title.trim() !== (initialData?.title ?? "").trim() ||
+      formData.description.trim() !== (initialData?.description ?? "").trim() ||
+      formData.imageUrl !== (initialData?.imageUrl ?? "") ||
+      (formData.imageFileName ?? "") !== (inferFileName(initialData?.imageUrl, initialData?.imageFileName) ?? "") ||
+      Boolean(formData.imageFile)
+    : Boolean(formData.title.trim() || formData.description.trim() || formData.imageFileName);
+
   return (
     <Modal
       isOpen={isOpen}
@@ -275,9 +283,10 @@ export const EditPartnershipAndEventsModal = ({
                   isLoading ||
                   !formData.title.trim() ||
                   !formData.description.trim() ||
-                  !formData.imageFileName
+                  !formData.imageFileName ||
+                  (isEditMode && !hasChanges)
                 }
-                className="h-14 min-w-[150px] rounded-3xl bg-(--button-green) px-8 text-xl font-medium text-white hover:bg-(--button-green)"
+                className="h-14 min-w-[150px] rounded-3xl bg-(--button-green) px-8 text-xl font-medium text-white hover:bg-(--button-green) disabled:bg-gray-400 disabled:text-white disabled:hover:bg-gray-400"
               >
                 {isSaving || isLoading
                   ? "Saving..."

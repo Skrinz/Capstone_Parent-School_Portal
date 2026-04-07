@@ -36,6 +36,48 @@ const EventCardImage = ({ src, alt }: { src: string; alt: string }) => {
   );
 };
 
+const ManageEventsCardSkeleton = () => (
+  <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-black/5">
+    <div className="h-48 w-full animate-pulse bg-gray-200" />
+    <div className="flex min-h-56 flex-col bg-(--button-green) p-4">
+      <div className="h-8 w-3/4 animate-pulse rounded bg-white/25" />
+      <div className="mt-3 h-5 w-11/12 animate-pulse rounded bg-white/20" />
+      <div className="mt-2 h-5 w-10/12 animate-pulse rounded bg-white/20" />
+      <div className="mt-2 h-5 w-8/12 animate-pulse rounded bg-white/20" />
+      <div className="mt-auto flex justify-end pt-4">
+        <div className="h-8 w-24 animate-pulse rounded-full bg-white/20" />
+      </div>
+    </div>
+  </div>
+);
+
+const ManageEventsSkeleton = () => (
+  <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_220px]">
+    <section>
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 6 }, (_, index) => (
+          <ManageEventsCardSkeleton key={index} />
+        ))}
+      </div>
+
+      <div className="mt-8 flex items-center justify-center gap-2">
+        {Array.from({ length: 5 }, (_, index) => (
+          <div key={index} className="h-8 w-14 animate-pulse rounded-md bg-gray-200" />
+        ))}
+      </div>
+    </section>
+
+    <aside className="h-fit rounded-xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+      <div className="mb-4 h-8 w-24 animate-pulse rounded bg-gray-200" />
+      <div className="space-y-2">
+        {Array.from({ length: 5 }, (_, index) => (
+          <div key={index} className="h-10 w-full animate-pulse rounded-md bg-gray-200" />
+        ))}
+      </div>
+    </aside>
+  </div>
+);
+
 export const ManagePartnershipAndEvents = () => {
   const { events, isLoading, addEvent } = usePartnershipEvents();
   const navigate = useNavigate();
@@ -117,9 +159,7 @@ export const ManagePartnershipAndEvents = () => {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600">Loading events...</p>
-          </div>
+          <ManageEventsSkeleton />
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_220px]">
             <section>

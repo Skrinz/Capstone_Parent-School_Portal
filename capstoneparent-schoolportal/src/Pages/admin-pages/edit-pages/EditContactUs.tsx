@@ -8,13 +8,17 @@ import { pagesApi } from "@/lib/api/pagesApi";
 export const EditContactUs = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<ContactUsContent | null>(null);
+  const [initialFormData, setInitialFormData] = useState<ContactUsContent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     pagesApi
       .getContactUs()
-      .then(setFormData)
+      .then((data) => {
+        setFormData(data);
+        setInitialFormData(data);
+      })
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, []);
@@ -38,6 +42,16 @@ export const EditContactUs = () => {
       setIsSaving(false);
     }
   };
+
+  const hasChanges =
+    formData && initialFormData
+      ? formData.principalOffice.trim() !== initialFormData.principalOffice.trim() ||
+        formData.libraryOffice.trim() !== initialFormData.libraryOffice.trim() ||
+        formData.facultyOffice.trim() !== initialFormData.facultyOffice.trim() ||
+        formData.facebookPageLabel.trim() !== initialFormData.facebookPageLabel.trim() ||
+        formData.facebookPageUrl.trim() !== initialFormData.facebookPageUrl.trim() ||
+        formData.mapEmbedUrl.trim() !== initialFormData.mapEmbedUrl.trim()
+      : false;
 
   return (
     <div>
@@ -156,8 +170,8 @@ export const EditContactUs = () => {
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={isSaving}
-                className="inline-flex items-center gap-2 rounded-2xl bg-(--button-green) px-6 py-3 text-3xl font-medium text-white transition-colors hover:bg-green-600 disabled:opacity-50"
+                disabled={isSaving || !hasChanges}
+                className="inline-flex items-center gap-2 rounded-2xl bg-(--button-green) px-6 py-3 text-3xl font-medium text-white transition-colors hover:bg-green-600 disabled:bg-gray-400 disabled:text-white disabled:hover:bg-gray-400"
               >
                 {isSaving && (
                   <span className="h-6 w-6 animate-spin rounded-full border-2 border-white/40 border-t-white" />

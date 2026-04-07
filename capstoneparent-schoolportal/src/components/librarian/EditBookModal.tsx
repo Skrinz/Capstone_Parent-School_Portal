@@ -19,6 +19,11 @@ const EditBookModal: React.FC<EditBookModalProps> = ({ onClose, onSave, initialB
 	const [authorName, setAuthorName] = React.useState(initialBook?.author ?? '');
 	const [subject, setSubject] = React.useState(initialBook?.subject ?? 'SUBJECT');
 	const [gradeLevel, setGradeLevel] = React.useState(initialBook?.gradeLevel ?? 'GRADE LEVEL');
+	const hasChanges =
+		bookTitle.trim() !== (initialBook?.title ?? '').trim() ||
+		authorName.trim() !== (initialBook?.author ?? '').trim() ||
+		subject !== (initialBook?.subject ?? 'SUBJECT') ||
+		gradeLevel !== (initialBook?.gradeLevel ?? 'GRADE LEVEL');
 
 	const handleSave = () => {
 		if (!bookTitle.trim() || subject === 'SUBJECT' || gradeLevel === 'GRADE LEVEL') {
@@ -87,7 +92,8 @@ const EditBookModal: React.FC<EditBookModalProps> = ({ onClose, onSave, initialB
 					<Button
 						type="button"
 						onClick={handleSave}
-						className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full"
+						disabled={!hasChanges}
+						className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full disabled:bg-gray-400 disabled:text-white disabled:hover:bg-gray-400"
 					>
 						Save
 					</Button>

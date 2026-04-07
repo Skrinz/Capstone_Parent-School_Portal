@@ -1,6 +1,5 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
 import { EditTransparencyModal } from "@/components/admin/EditTransparencyModal";
-import { Loader } from "@/components/ui/Loader";
 import { getAuthUser } from "@/lib/auth";
 import { type TransparencyContent } from "@/lib/transparencyContent";
 import { pagesApi } from "@/lib/api/pagesApi";
@@ -34,6 +33,18 @@ const TransparencyPreview = ({ imageUrl }: { imageUrl: string }) => {
   );
 };
 
+const TransparencySkeleton = ({ showEdit }: { showEdit: boolean }) => (
+  <>
+    <div className="mb-8 h-10 w-96 max-w-full animate-pulse rounded bg-gray-200" />
+    <div className="w-full rounded-sm bg-gray-300 p-6">
+      <div className="h-[34rem] w-full animate-pulse rounded bg-gray-200" />
+    </div>
+    {showEdit && (
+      <div className="fixed bottom-8 right-8 h-20 w-20 animate-pulse rounded-full bg-gray-200 shadow-lg" />
+    )}
+  </>
+);
+
 export const Transparency = () => {
   const user = getAuthUser();
   const isAdmin = user?.role === "admin" || user?.role === "principal";
@@ -65,7 +76,7 @@ export const Transparency = () => {
       <RoleAwareNavbar />
       <div className="max-w-7xl mx-auto py-12 px-4">
         {isLoading ? (
-          <Loader />
+          <TransparencySkeleton showEdit={isAdmin} />
         ) : !content ? (
           <p>No transparency data available.</p>
         ) : (

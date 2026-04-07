@@ -1,11 +1,34 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
-import { Loader } from "@/components/ui/Loader";
 import { getAuthUser } from "@/lib/auth";
 import { type ContactUsContent } from "@/lib/contactUsContent";
 import { pagesApi } from "@/lib/api/pagesApi";
 import { Pencil } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+
+const ContactUsSkeleton = ({ showEdit }: { showEdit: boolean }) => (
+  <>
+    <div className="mb-8 h-10 w-52 animate-pulse rounded bg-gray-200" />
+    <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+      <div className="rounded-lg bg-gray-200 p-8">
+        <div className="space-y-6">
+          {Array.from({ length: 4 }, (_, index) => (
+            <div key={index} className="space-y-2">
+              <div className="h-5 w-40 animate-pulse rounded bg-gray-300/80" />
+              <div className="h-6 w-3/4 animate-pulse rounded bg-gray-300/80" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="h-100 animate-pulse rounded-lg bg-gray-200 md:h-auto" />
+    </div>
+    {showEdit && (
+      <div className="mt-6 flex justify-center">
+        <div className="h-16 w-16 animate-pulse rounded-full bg-gray-200" />
+      </div>
+    )}
+  </>
+);
 
 export const ContactUs = () => {
   const user = getAuthUser();
@@ -26,7 +49,7 @@ export const ContactUs = () => {
       <RoleAwareNavbar />
       <div className="max-w-7xl mx-auto py-12 px-4">
         {isLoading ? (
-          <Loader />
+          <ContactUsSkeleton showEdit={isAdmin} />
         ) : !content ? (
           <p>No contact information available.</p>
         ) : (
