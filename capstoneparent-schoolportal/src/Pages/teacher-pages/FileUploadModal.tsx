@@ -71,7 +71,7 @@ export const FileUploadModal = ({
       await onUpload(selectedFile);
       handleClose();
     } catch (err) {
-      setError('Failed to upload file. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to upload file. Please try again.');
     } finally {
       setIsUploading(false);
     }

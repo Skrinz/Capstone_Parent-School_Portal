@@ -1,6 +1,11 @@
 const prisma = require("../config/database");
 const { findOrThrow } = require("../utils/findOrThrow");
 const { uploadFile } = require("../utils/supabaseStorage");
+const {
+  buildStudentGradePdf,
+  createZipBuffer,
+  sanitizeFileName,
+} = require("../utils/gradeExport");
 
 const normalizeSex = (sex) => {
   if (sex === "Female" || sex === "F") return "F";
@@ -12,6 +17,12 @@ const ensureStudentMatchesClassGrade = (student, classData) => {
     throw new Error("Student grade level does not match this class");
   }
 };
+
+const normalizeSubjectTitle = (value) =>
+  String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
 
 const syncStudentIntoClassSubjects = async (db, classId, studentId) => {
   const classSubjects = await db.classListSubjectRecord.findMany({
@@ -47,6 +58,220 @@ const removeStudentFromClassSubjects = async (db, classId, studentId) => {
       srecord_id: { in: subjectIds },
     },
   });
+};
+
+const importGradesForSubjectRecord = async (srecord_id, rows) => {
+  const normalizedRows = rows
+    .map((row) => ({
+      lrn: row?.lrn ? String(row.lrn).trim() : "",
+      q1_grade: Number.parseInt(row?.q1, 10) || null,
+      q2_grade: Number.parseInt(row?.q2, 10) || null,
+      q3_grade: Number.parseInt(row?.q3, 10) || null,
+      q4_grade: Number.parseInt(row?.q4, 10) || null,
+    }))
+    .filter((row) => row.lrn);
+
+  if (normalizedRows.length === 0) {
+    return [];
+  }
+
+  const uniqueLrns = [...new Set(normalizedRows.map((row) => row.lrn))];
+  const students = await prisma.student.findMany({
+    where: { lrn_number: { in: uniqueLrns } },
+    select: { student_id: true, lrn_number: true },
+  });
+
+  if (students.length === 0) {
+    return [];
+  }
+
+  const studentIdByLrn = new Map(
+    students.map((student) => [String(student.lrn_number), student.student_id]),
+  );
+  const targetStudentIds = students.map((student) => student.student_id);
+
+  const existingRecords = await prisma.subjectRecordStudent.findMany({
+    where: {
+      srecord_id,
+      student_id: { in: targetStudentIds },
+    },
+    select: {
+      srs_id: true,
+      student_id: true,
+    },
+  });
+
+  const existingRecordByStudentId = new Map(
+    existingRecords.map((record) => [record.student_id, record.srs_id]),
+  );
+
+  const createPayloads = [];
+  const updatePayloads = [];
+  const touchedStudentIds = new Set();
+
+  for (const row of normalizedRows) {
+    const student_id = studentIdByLrn.get(row.lrn);
+    if (!student_id) continue;
+
+    const grades = [row.q1_grade, row.q2_grade, row.q3_grade, row.q4_grade].filter(
+      (grade) => grade !== null,
+    );
+    const avg_grade =
+      grades.length > 0
+        ? Math.round(grades.reduce((sum, grade) => sum + grade, 0) / grades.length)
+        : null;
+    const remarks =
+      avg_grade === null
+        ? "IN_PROGRESS"
+        : avg_grade >= 75
+          ? "PASSED"
+          : "FAILED";
+
+    const payload = {
+      q1_grade: row.q1_grade,
+      q2_grade: row.q2_grade,
+      q3_grade: row.q3_grade,
+      q4_grade: row.q4_grade,
+      avg_grade,
+      remarks,
+    };
+
+    touchedStudentIds.add(student_id);
+
+    const existingId = existingRecordByStudentId.get(student_id);
+    if (existingId) {
+      updatePayloads.push({
+        srs_id: existingId,
+        data: payload,
+      });
+    } else {
+      createPayloads.push({
+        srecord_id,
+        student_id,
+        ...payload,
+      });
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (createPayloads.length > 0) {
+      await tx.subjectRecordStudent.createMany({
+        data: createPayloads,
+        skipDuplicates: true,
+      });
+    }
+
+    if (updatePayloads.length > 0) {
+      await Promise.all(
+        updatePayloads.map((updatePayload) =>
+          tx.subjectRecordStudent.update({
+            where: { srs_id: updatePayload.srs_id },
+            data: updatePayload.data,
+          }),
+        ),
+      );
+    }
+  });
+
+  if (touchedStudentIds.size === 0) {
+    return [];
+  }
+
+  return prisma.subjectRecordStudent.findMany({
+    where: {
+      srecord_id,
+      student_id: { in: [...touchedStudentIds] },
+    },
+    include: {
+      student: true,
+      subject_record: true,
+    },
+    orderBy: { student_id: "asc" },
+  });
+};
+
+const ATTENDANCE_MONTHS = ['Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
+const CALENDAR_MONTH_TO_ENUM = {
+  0: 'Jan',
+  1: 'Feb',
+  2: 'Mar',
+  5: 'Jun',
+  6: 'Jul',
+  7: 'Aug',
+  8: 'Sept',
+  9: 'Oct',
+  10: 'Nov',
+  11: 'Dec',
+};
+
+const parseAttendanceDate = (value) => {
+  const input = String(value ?? "").trim();
+  if (!input) return null;
+
+  let year;
+  let month;
+  let day;
+
+  let match = input.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (match) {
+    year = Number.parseInt(match[1], 10);
+    month = Number.parseInt(match[2], 10);
+    day = Number.parseInt(match[3], 10);
+  } else {
+    match = input.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!match) return null;
+
+    month = Number.parseInt(match[1], 10);
+    day = Number.parseInt(match[2], 10);
+    year = Number.parseInt(match[3], 10);
+  }
+
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return parsed;
+};
+
+const normalizeAttendanceStatus = (value) => {
+  const normalized = String(value ?? "").trim().toLowerCase();
+
+  if (!normalized) return "Absent";
+  if (['present', 'p', '1', 'yes'].includes(normalized)) return "Present";
+  if (['absent', 'a', '0', 'no'].includes(normalized)) return "Absent";
+
+  throw new Error(`Invalid attendance status: ${value}`);
+};
+
+const normalizeAttendanceStudentName = (value) => {
+  const suffixes = new Set(['jr', 'sr', 'ii', 'iii', 'iv']);
+
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9,\s]/g, " ")
+    .replace(/,/g, " ")
+    .split(/\s+/)
+    .filter((token) => token && token.length > 1 && !suffixes.has(token))
+    .join(" ");
+};
+
+const buildAttendanceNameKeys = (student) => {
+  const keys = new Set();
+  const firstLast = normalizeAttendanceStudentName(`${student.fname} ${student.lname}`);
+  const lastFirst = normalizeAttendanceStudentName(`${student.lname}, ${student.fname}`);
+  const lastFirstNoComma = normalizeAttendanceStudentName(`${student.lname} ${student.fname}`);
+
+  if (firstLast) keys.add(firstLast);
+  if (lastFirst) keys.add(lastFirst);
+  if (lastFirstNoComma) keys.add(lastFirstNoComma);
+
+  return [...keys];
 };
 
 const classesService = {
@@ -773,182 +998,261 @@ const classesService = {
   },
 
   async importGrades(srecord_id, rows) {
-    await findOrThrow(
-      () => prisma.subjectRecord.findUnique({ where: { srecord_id } }),
+    const subjectRecord = await findOrThrow(
+      () =>
+        prisma.subjectRecord.findUnique({
+          where: { srecord_id },
+          select: { srecord_id: true, subject_name: true },
+        }),
       "Subject record not found",
+    );
+    const providedSubjectTitles = [
+      ...new Set(
+        rows
+          .map((row) => normalizeSubjectTitle(row?.subject_title))
+          .filter(Boolean),
+      ),
+    ];
+
+    if (
+      providedSubjectTitles.length > 0 &&
+      providedSubjectTitles.some(
+        (subjectTitle) =>
+          subjectTitle !== normalizeSubjectTitle(subjectRecord.subject_name),
+      )
+    ) {
+      throw new Error("Subject title does not match the selected subject");
+    }
+
+    return importGradesForSubjectRecord(srecord_id, rows);
+  },
+
+  async importClassGrades(classId, rows) {
+    await findOrThrow(
+      () => prisma.classList.findUnique({ where: { clist_id: classId } }),
+      "Class not found",
+    );
+
+    const classSubjects = await prisma.classListSubjectRecord.findMany({
+      where: { clist_id: classId },
+      include: {
+        subject_record: {
+          select: {
+            srecord_id: true,
+            subject_name: true,
+          },
+        },
+      },
+    });
+
+    if (classSubjects.length === 0) {
+      throw new Error("No subjects found for this class");
+    }
+
+    const subjectByTitle = new Map(
+      classSubjects.map((item) => [
+        normalizeSubjectTitle(item.subject_record.subject_name),
+        item.subject_record,
+      ]),
     );
 
     const normalizedRows = rows
       .map((row) => ({
-        lrn: row?.lrn ? String(row.lrn).trim() : "",
-        q1_grade: Number.parseInt(row?.q1, 10) || null,
-        q2_grade: Number.parseInt(row?.q2, 10) || null,
-        q3_grade: Number.parseInt(row?.q3, 10) || null,
-        q4_grade: Number.parseInt(row?.q4, 10) || null,
+        subject_title: String(row?.subject_title ?? "").trim(),
+        lrn: String(row?.lrn ?? "").trim(),
+        name: String(row?.name ?? "").trim(),
+        q1: row?.q1,
+        q2: row?.q2,
+        q3: row?.q3,
+        q4: row?.q4,
       }))
-      .filter((row) => row.lrn);
+      .filter((row) => row.subject_title || row.lrn || row.name);
 
     if (normalizedRows.length === 0) {
       return [];
     }
 
-    const uniqueLrns = [...new Set(normalizedRows.map((row) => row.lrn))];
-    const students = await prisma.student.findMany({
-      where: { lrn_number: { in: uniqueLrns } },
-      select: { student_id: true, lrn_number: true },
-    });
-
-    if (students.length === 0) {
-      return [];
+    const rowsMissingSubjectTitle = normalizedRows.some(
+      (row) => (row.lrn || row.name) && !row.subject_title,
+    );
+    if (rowsMissingSubjectTitle) {
+      throw new Error("Subject title is required for class grade imports");
     }
 
-    const studentIdByLrn = new Map(
-      students.map((student) => [String(student.lrn_number), student.student_id]),
-    );
-    const targetStudentIds = students.map((student) => student.student_id);
+    const hasNameBasedRows = normalizedRows.some((row) => row.name && !row.lrn);
+    let studentLrnByName = new Map();
 
-    const existingRecords = await prisma.subjectRecordStudent.findMany({
-      where: {
-        srecord_id,
-        student_id: { in: targetStudentIds },
-      },
-      select: {
-        srs_id: true,
-        student_id: true,
-      },
-    });
+    if (hasNameBasedRows) {
+      const classStudents = await prisma.student.findMany({
+        where: {
+          class_lists: {
+            some: {
+              clist_id: classId,
+            },
+          },
+        },
+        select: {
+          student_id: true,
+          fname: true,
+          lname: true,
+          lrn_number: true,
+        },
+      });
 
-    const existingRecordByStudentId = new Map(
-      existingRecords.map((record) => [record.student_id, record.srs_id]),
-    );
+      studentLrnByName = new Map();
+      classStudents.forEach((student) => {
+        buildAttendanceNameKeys(student).forEach((key) => {
+          const existingLrn = studentLrnByName.get(key);
+          if (existingLrn && existingLrn !== student.lrn_number) {
+            studentLrnByName.set(key, null);
+            return;
+          }
 
-    const createPayloads = [];
-    const updatePayloads = [];
-    const touchedStudentIds = new Set();
+          if (!studentLrnByName.has(key)) {
+            studentLrnByName.set(key, student.lrn_number);
+          }
+        });
+      });
+    }
+
+    const rowsBySubjectId = new Map();
 
     for (const row of normalizedRows) {
-      const student_id = studentIdByLrn.get(row.lrn);
-      if (!student_id) continue;
+      const normalizedTitle = normalizeSubjectTitle(row.subject_title);
+      const subjectRecord = subjectByTitle.get(normalizedTitle);
 
-      const grades = [row.q1_grade, row.q2_grade, row.q3_grade, row.q4_grade].filter(
-        (grade) => grade !== null,
-      );
-      const avg_grade =
-        grades.length > 0
-          ? Math.round(grades.reduce((sum, grade) => sum + grade, 0) / grades.length)
-          : null;
-      const remarks =
-        avg_grade === null
-          ? "IN_PROGRESS"
-          : avg_grade >= 75
-            ? "PASSED"
-            : "FAILED";
-
-      const payload = {
-        q1_grade: row.q1_grade,
-        q2_grade: row.q2_grade,
-        q3_grade: row.q3_grade,
-        q4_grade: row.q4_grade,
-        avg_grade,
-        remarks,
-      };
-
-      touchedStudentIds.add(student_id);
-
-      const existingId = existingRecordByStudentId.get(student_id);
-      if (existingId) {
-        updatePayloads.push({
-          srs_id: existingId,
-          data: payload,
-        });
-      } else {
-        createPayloads.push({
-          srecord_id,
-          student_id,
-          ...payload,
-        });
+      if (!subjectRecord) {
+        throw new Error(`Subject title not found in this class: ${row.subject_title}`);
       }
+
+      const resolvedLrn = row.lrn || studentLrnByName.get(normalizeAttendanceStudentName(row.name));
+      if (row.name && resolvedLrn === null) {
+        throw new Error(`Grade student name is ambiguous: ${row.name}`);
+      }
+      if (row.name && !resolvedLrn) {
+        throw new Error(`Grade student name not found in class: ${row.name}`);
+      }
+
+      const existingRows = rowsBySubjectId.get(subjectRecord.srecord_id) ?? [];
+      existingRows.push({
+        ...row,
+        lrn: resolvedLrn ?? row.lrn,
+      });
+      rowsBySubjectId.set(subjectRecord.srecord_id, existingRows);
     }
 
-    await prisma.$transaction(async (tx) => {
-      if (createPayloads.length > 0) {
-        await tx.subjectRecordStudent.createMany({
-          data: createPayloads,
-          skipDuplicates: true,
-        });
-      }
+    const importedGroups = await Promise.all(
+      [...rowsBySubjectId.entries()].map(([srecord_id, subjectRows]) =>
+        importGradesForSubjectRecord(srecord_id, subjectRows),
+      ),
+    );
 
-      if (updatePayloads.length > 0) {
-        await Promise.all(
-          updatePayloads.map((updatePayload) =>
-            tx.subjectRecordStudent.update({
-              where: { srs_id: updatePayload.srs_id },
-              data: updatePayload.data,
-            }),
-          ),
-        );
-      }
-    });
-
-    if (touchedStudentIds.size === 0) {
-      return [];
-    }
-
-    return prisma.subjectRecordStudent.findMany({
-      where: {
-        srecord_id,
-        student_id: { in: [...touchedStudentIds] },
-      },
-      include: {
-        student: true,
-        subject_record: true,
-      },
-      orderBy: { student_id: "asc" },
-    });
+    return importedGroups.flat();
   },
 
   async importAttendance(rows, classId) {
-    const months = ['Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'];
-    const normalizedRows = rows.filter((row) => row?.lrn);
+    const normalizedRows = rows.filter((row) => row?.lrn || row?.name);
 
     if (normalizedRows.length === 0) {
       return [];
     }
 
-    const uniqueLrns = [...new Set(normalizedRows.map((row) => String(row.lrn).trim()))];
+    const uniqueLrns = [
+      ...new Set(
+        normalizedRows
+          .map((row) => String(row.lrn ?? "").trim())
+          .filter(Boolean),
+      ),
+    ];
+    const hasNameBasedRows = normalizedRows.some((row) => row?.name);
 
-    const students = await prisma.student.findMany({
-      where: {
-        lrn_number: { in: uniqueLrns },
-        ...(classId
-          ? {
-              class_lists: {
-                some: {
-                  clist_id: classId,
+    if (hasNameBasedRows && !classId) {
+      throw new Error("Class ID is required for attendance sheets that identify students by name");
+    }
+
+    const studentsById = new Map();
+
+    if (classId && hasNameBasedRows) {
+      const classStudents = await prisma.student.findMany({
+        where: {
+          class_lists: {
+            some: {
+              clist_id: classId,
+            },
+          },
+        },
+        select: {
+          student_id: true,
+          lrn_number: true,
+          fname: true,
+          lname: true,
+        },
+      });
+
+      classStudents.forEach((student) => {
+        studentsById.set(student.student_id, student);
+      });
+    }
+
+    if (uniqueLrns.length > 0) {
+      const lrnMatchedStudents = await prisma.student.findMany({
+        where: {
+          lrn_number: { in: uniqueLrns },
+          ...(classId
+            ? {
+                class_lists: {
+                  some: {
+                    clist_id: classId,
+                  },
                 },
-              },
-            }
-          : {}),
-      },
-      select: {
-        student_id: true,
-        lrn_number: true,
-      },
-    });
+              }
+            : {}),
+        },
+        select: {
+          student_id: true,
+          lrn_number: true,
+          fname: true,
+          lname: true,
+        },
+      });
+
+      lrnMatchedStudents.forEach((student) => {
+        studentsById.set(student.student_id, student);
+      });
+    }
+
+    const students = [...studentsById.values()];
 
     if (students.length === 0) {
       return [];
     }
 
     const studentIdByLrn = new Map(
-      students.map((student) => [String(student.lrn_number), student.student_id]),
+      students
+        .filter((student) => student.lrn_number)
+        .map((student) => [String(student.lrn_number), student.student_id]),
     );
+    const studentIdByName = new Map();
+
+    students.forEach((student) => {
+      buildAttendanceNameKeys(student).forEach((key) => {
+        const existingStudentId = studentIdByName.get(key);
+        if (existingStudentId && existingStudentId !== student.student_id) {
+          studentIdByName.set(key, null);
+          return;
+        }
+
+        if (!studentIdByName.has(key)) {
+          studentIdByName.set(key, student.student_id);
+        }
+      });
+    });
     const studentIds = students.map((student) => student.student_id);
 
     const existingRecords = await prisma.attendanceRecord.findMany({
       where: {
         student_id: { in: studentIds },
-        month: { in: months },
+        month: { in: ATTENDANCE_MONTHS },
       },
       select: {
         attendance_id: true,
@@ -966,17 +1270,52 @@ const classesService = {
 
     const createPayloads = [];
     const updateOperations = [];
+    const monthlyAttendanceMap = new Map();
 
     for (const row of normalizedRows) {
-      const studentId = studentIdByLrn.get(String(row.lrn).trim());
+      const normalizedLrn = String(row.lrn ?? "").trim();
+      const normalizedName = normalizeAttendanceStudentName(row.name);
+      const studentId = normalizedLrn
+        ? studentIdByLrn.get(normalizedLrn)
+        : studentIdByName.get(normalizedName);
+
+      if (normalizedName && studentId === null) {
+        throw new Error(`Attendance student name is ambiguous: ${row.name}`);
+      }
+
       if (!studentId) continue;
+
+      if (row.date !== undefined) {
+        const parsedDate = parseAttendanceDate(row.date);
+        if (!parsedDate) {
+          throw new Error(`Invalid attendance date for LRN ${row.lrn}: ${row.date}`);
+        }
+
+        const month = CALENDAR_MONTH_TO_ENUM[parsedDate.getUTCMonth()];
+        if (!month) {
+          throw new Error(`Attendance date is outside supported school months: ${row.date}`);
+        }
+
+        const status = normalizeAttendanceStatus(row.status);
+        const dateKey = parsedDate.toISOString().slice(0, 10);
+        const recordKey = `${studentId}:${month}`;
+        const existingMonthRecord = monthlyAttendanceMap.get(recordKey) ?? {
+          student_id: studentId,
+          month,
+          dailyStatuses: new Map(),
+        };
+
+        existingMonthRecord.dailyStatuses.set(dateKey, status);
+        monthlyAttendanceMap.set(recordKey, existingMonthRecord);
+        continue;
+      }
 
       const absences = row.absences ?? {};
 
-      for (const month of months) {
+      for (const month of ATTENDANCE_MONTHS) {
         if (absences[month] === undefined) continue;
 
-        const parsedAbsences = parseInt(absences[month], 10);
+        const parsedAbsences = Number.parseInt(absences[month], 10);
         const daysAbsent = Number.isFinite(parsedAbsences) ? parsedAbsences : 0;
         const schoolDays = 22;
         const daysPresent = schoolDays - daysAbsent;
@@ -987,28 +1326,51 @@ const classesService = {
           );
         }
 
-        const recordKey = `${studentId}:${month}`;
-        const attendanceId = existingRecordMap.get(recordKey);
-        const payload = {
+        monthlyAttendanceMap.set(`${studentId}:${month}`, {
+          student_id: studentId,
+          month,
           school_days: schoolDays,
           days_present: daysPresent,
           days_absent: daysAbsent,
-        };
+        });
+      }
+    }
 
-        if (attendanceId) {
-          updateOperations.push(
-            prisma.attendanceRecord.update({
-              where: { attendance_id: attendanceId },
-              data: payload,
-            }),
-          );
-        } else {
-          createPayloads.push({
-            student_id: studentId,
-            month,
-            ...payload,
-          });
-        }
+    for (const [recordKey, record] of monthlyAttendanceMap.entries()) {
+      const schoolDays = record.dailyStatuses ? record.dailyStatuses.size : record.school_days;
+      const daysAbsent = record.dailyStatuses
+        ? [...record.dailyStatuses.values()].filter((status) => status === "Absent").length
+        : record.days_absent;
+      const daysPresent = record.dailyStatuses
+        ? schoolDays - daysAbsent
+        : record.days_present;
+
+      if (daysPresent < 0) {
+        throw new Error(
+          "Days present and days absent cannot exceed total school days",
+        );
+      }
+
+      const attendanceId = existingRecordMap.get(recordKey);
+      const payload = {
+        school_days: schoolDays,
+        days_present: daysPresent,
+        days_absent: daysAbsent,
+      };
+
+      if (attendanceId) {
+        updateOperations.push(
+          prisma.attendanceRecord.update({
+            where: { attendance_id: attendanceId },
+            data: payload,
+          }),
+        );
+      } else {
+        createPayloads.push({
+          student_id: record.student_id,
+          month: record.month,
+          ...payload,
+        });
       }
     }
 
@@ -1025,7 +1387,7 @@ const classesService = {
     return prisma.attendanceRecord.findMany({
       where: {
         student_id: { in: studentIds },
-        month: { in: months },
+        month: { in: ATTENDANCE_MONTHS },
       },
       orderBy: [
         { student_id: 'asc' },
@@ -1152,6 +1514,59 @@ const classesService = {
 
       return enrolledStudents;
     });
+  },
+
+  async exportAllQuartersGrades(classId) {
+    const classData = await prisma.classList.findUnique({
+      where: { clist_id: classId },
+      include: {
+        grade_level: true,
+        section: true,
+        students: {
+          include: {
+            student: {
+              include: {
+                grade_level: true,
+                subject_records: {
+                  include: {
+                    subject_record: true,
+                  },
+                },
+                attendance_records: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!classData) {
+      throw new Error("Class not found");
+    }
+
+    const classInfo = {
+      grade_level: classData.grade_level?.grade_level ?? "",
+      section_name: classData.section?.section_name ?? "",
+      syear_start: classData.syear_start,
+      syear_end: classData.syear_end,
+    };
+
+    const students = classData.students
+      .map((entry) => entry.student)
+      .sort((left, right) =>
+        `${left.lname} ${left.fname}`.localeCompare(`${right.lname} ${right.fname}`),
+      );
+
+    const zipEntries = students.map((student) => ({
+      name: `${sanitizeFileName(student.lname)}_${sanitizeFileName(student.fname)}_${sanitizeFileName(student.lrn_number)}_grades.pdf`,
+      content: buildStudentGradePdf({ student, classInfo }),
+    }));
+
+    return {
+      fileName: `class-${classId}-quarterly-grades.zip`,
+      contentType: "application/zip",
+      buffer: createZipBuffer(zipEntries),
+    };
   },
 };
 

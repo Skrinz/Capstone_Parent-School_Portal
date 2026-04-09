@@ -27,8 +27,10 @@ import {
   uploadSubjectGradeSheet,
 } from './services/fileService';
 import { fetchStudentById } from './services/api';
+import { useApiFeedbackStore } from '@/lib/store/apiFeedbackStore';
 
 export const ClassList = () => {
+  const showError = useApiFeedbackStore((state) => state.showError);
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<SubjectItem | null>(null);
   const [activeTab, setActiveTab] = useState('class');
@@ -156,7 +158,7 @@ export const ClassList = () => {
     try {
       await downloadGradeSheetTemplate();
     } catch (error) {
-      alert('Failed to download template. Please try again.');
+      showError('Failed to download template. Please try again.');
     }
   };
 
@@ -166,7 +168,7 @@ export const ClassList = () => {
     try {
       await exportAllQuartersGradeSheet(selectedClass.clist_id);
     } catch (error) {
-      alert('Failed to export grades. Please try again.');
+      showError('Failed to export grades. Please try again.');
     }
   };
 
@@ -176,10 +178,9 @@ export const ClassList = () => {
     
     try {
       await uploadGradeSheet(selectedClass.clist_id, file);
-      alert('Grade sheet uploaded successfully!');
       // TODO: Reload student data
     } catch (error) {
-      throw new Error('Failed to upload grade sheet');
+      throw error instanceof Error ? error : new Error('Failed to upload grade sheet');
     }
   };
 
@@ -188,10 +189,9 @@ export const ClassList = () => {
     
     try {
       await uploadAttendanceSheet(selectedClass.clist_id, file);
-      alert('Attendance sheet uploaded successfully!');
       // TODO: Reload data
     } catch (error) {
-      throw new Error('Failed to upload attendance sheet');
+      throw error instanceof Error ? error : new Error('Failed to upload attendance sheet');
     }
   };
 
@@ -200,9 +200,8 @@ export const ClassList = () => {
     
     try {
       await uploadClassSchedulePicture(selectedClass.clist_id, file);
-      alert('Class schedule uploaded successfully!');
     } catch (error) {
-      throw new Error('Failed to upload class schedule');
+      throw error instanceof Error ? error : new Error('Failed to upload class schedule');
     }
   };
 
@@ -211,10 +210,9 @@ export const ClassList = () => {
     
     try {
       await uploadSubjectGradeSheet(selectedSubject.srecord_id, file);
-      alert('Grade sheet uploaded successfully!');
       // TODO: Reload student data
     } catch (error) {
-      throw new Error('Failed to upload grade sheet');
+      throw error instanceof Error ? error : new Error('Failed to upload grade sheet');
     }
   };
 
@@ -240,7 +238,7 @@ export const ClassList = () => {
       });
     } catch (error) {
       console.error('Error fetching student details:', error);
-      alert('Failed to load student details. Please try again.');
+      showError('Failed to load student details. Please try again.');
     } finally {
       setIsLoadingStudentDetail(false);
     }
@@ -610,7 +608,7 @@ export const ClassList = () => {
                           onClick={handleExportAllQuartersGrades}
                         >
                           <Upload className="mr-2 h-4 w-4" />
-                          Export Quarterly Grade Sheet (.csv)
+                          Export Quarterly Grade Sheet (.zip)
                         </Button>
                         <Button 
                           className="bg-(--button-green) hover:bg-green-700 text-white"

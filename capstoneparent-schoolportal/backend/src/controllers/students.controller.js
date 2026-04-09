@@ -213,6 +213,22 @@ const studentsController = {
     }
   },
 
+  async exportQuarterlyGrades(req, res, next) {
+    try {
+      const { id } = req.params;
+      const exportedFile = await studentsService.exportQuarterlyGrades(parseInt(id, 10));
+
+      res.setHeader("Content-Type", exportedFile.contentType);
+      res.setHeader("Content-Disposition", `attachment; filename="${exportedFile.fileName}"`);
+      return res.send(exportedFile.buffer);
+    } catch (error) {
+      if (error.message === "Student not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
+
   async getStudentAttendance(req, res, next) {
     try {
       const { id } = req.params;

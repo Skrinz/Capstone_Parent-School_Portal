@@ -147,6 +147,14 @@ router.get(
   studentsController.getStudentGrades,
 );
 
+router.get(
+  "/:id/export-grades",
+  authorize("Teacher", "Admin", "Principal", "Vice_Principal"),
+  param("id").isInt(),
+  validate,
+  studentsController.exportQuarterlyGrades,
+);
+
 // Get student attendance
 router.get(
   "/:id/attendance",

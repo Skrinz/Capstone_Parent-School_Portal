@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Download } from 'lucide-react';
 import type { Student } from '@/Pages/teacher-pages/types';
+import { exportStudentQuarterlyGrades } from './services/fileService';
 
 interface StudentGradesProps {
   student: Student;
@@ -10,6 +11,13 @@ interface StudentGradesProps {
 }
 
 export const StudentGrades = ({ student, onBack, isLoading = false }: StudentGradesProps) => {
+  const handleExportStudentGrades = async () => {
+    const fallbackName = `${student.lname}_${student.fname}_${student.lrn_number}_grades.pdf`
+      .replace(/\s+/g, '_');
+
+    await exportStudentQuarterlyGrades(student.student_id, fallbackName);
+  };
+
   const getNumericGrade = (value: unknown) => {
     if (value === null || value === undefined || value === '') {
       return null;
@@ -26,7 +34,7 @@ export const StudentGrades = ({ student, onBack, isLoading = false }: StudentGra
   }, [student.subject_records]);
 
   // Calculate attendance totals
-  const months = ['Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'];
+  const months = ['Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
   
   const attendanceMap = useMemo(() => {
     const map: Record<string, { school_days: number; days_present: number; days_absent: number }> = {};
@@ -95,9 +103,12 @@ export const StudentGrades = ({ student, onBack, isLoading = false }: StudentGra
             Back
           </Button>
           
-          <Button className="bg-(--button-green) hover:bg-green-700 text-white">
+          <Button
+            className="bg-(--button-green) hover:bg-green-700 text-white"
+            onClick={handleExportStudentGrades}
+          >
             <Download className="mr-2 h-4 w-4" />
-            Export Quarterly Grades (.xlsx)
+            Export Quarterly Grades (.pdf)
           </Button>
         </div>
       </div>

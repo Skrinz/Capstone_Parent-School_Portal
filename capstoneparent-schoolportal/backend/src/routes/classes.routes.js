@@ -58,6 +58,18 @@ router.get('/sections/all',
   classesController.getAllSections
 );
 
+// Download grade sheet template
+router.get('/grade-sheet-template',
+  authorize('Teacher', 'Admin', 'Principal', 'Vice_Principal'),
+  classesController.downloadGradeSheetTemplate
+);
+
+// Download attendance template
+router.get('/attendance-template',
+  authorize('Teacher', 'Admin', 'Principal', 'Vice_Principal'),
+  classesController.downloadAttendanceTemplate
+);
+
 // Get all grade levels
 router.get('/grade-levels/all',
   authorize('Teacher', 'Admin', 'Principal', 'Vice_Principal'),
@@ -258,6 +270,22 @@ router.post('/students/:studentId/attendance',
   ],
   validate,
   classesController.updateAttendance
+);
+
+router.get('/:id/export-grades-all-quarters',
+  authorize('Teacher', 'Admin', 'Principal', 'Vice_Principal'),
+  param('id').isInt(),
+  validate,
+  classesController.exportAllQuartersGrades
+);
+
+// Import subject grades via CSV
+router.post('/:id/import-grades',
+  authorize('Teacher', 'Admin', 'Principal', 'Vice_Principal'),
+  param('id').isInt(),
+  upload.single('file'),
+  validate,
+  classesController.importClassGrades
 );
 
 // Import subject grades via CSV

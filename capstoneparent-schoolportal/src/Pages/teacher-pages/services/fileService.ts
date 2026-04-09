@@ -1,3 +1,5 @@
+import { apiFetch } from '@/lib/api/base';
+
 // Download functions
 export const downloadGradeSheetTemplate = async () => {
   try {
@@ -14,7 +16,7 @@ export const downloadGradeSheetTemplate = async () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `grade-sheet-template.csv`;
+    a.download = `Grade Template.csv`;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
@@ -63,7 +65,7 @@ export const exportAllQuartersGradeSheet = async (clist_id: number) => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `class-${clist_id}-grades.csv`;
+    a.download = `class-${clist_id}-quarterly-grades.zip`;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
@@ -74,53 +76,61 @@ export const exportAllQuartersGradeSheet = async (clist_id: number) => {
   }
 };
 
+export const exportStudentQuarterlyGrades = async (studentId: number, fallbackName?: string) => {
+  try {
+    const response = await fetch(`/api/students/${studentId}/export-grades`, {
+      method: 'GET',
+    });
+
+    if (!response.ok) throw new Error('Failed to export student grades');
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fallbackName ?? `student-${studentId}-quarterly-grades.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  } catch (error) {
+    console.error('Error exporting student grades:', error);
+    throw error;
+  }
+};
+
 // Upload functions
 export const uploadGradeSheet = async (clist_id: number, file: File) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`/api/classes/${clist_id}/import-grades`, {
+  return apiFetch(`/classes/${clist_id}/import-grades`, {
     method: 'POST',
+    successMessage: 'Grade sheet uploaded successfully.',
     body: formData,
   });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to upload grade sheet' }));
-    throw new Error(error.message || 'Failed to upload grade sheet');
-  }
-
-  return await response.json();
 };
 
 export const uploadAttendanceSheet = async (clist_id: number, file: File) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`/api/classes/${clist_id}/import-attendance`, {
+  return apiFetch(`/classes/${clist_id}/import-attendance`, {
     method: 'POST',
+    successMessage: 'Attendance sheet uploaded successfully.',
     body: formData,
   });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to upload attendance' }));
-    throw new Error(error.message || 'Failed to upload attendance');
-  }
-
-  return await response.json();
 };
 
 export const uploadClassSchedulePicture = async (clist_id: number, file: File) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`/api/classes/${clist_id}/upload-schedule`, {
+  return apiFetch(`/classes/${clist_id}/upload-schedule`, {
     method: 'POST',
+    successMessage: 'Class schedule uploaded successfully.',
     body: formData,
   });
-
-  if (!response.ok) throw new Error('Failed to upload class schedule');
-
-  return await response.json();
 };
 
 export const uploadSubjectGradeSheet = async (srecord_id: number, file: File) => {
@@ -128,12 +138,9 @@ export const uploadSubjectGradeSheet = async (srecord_id: number, file: File) =>
   formData.append('file', file);
 
   // Note: Subject specific grade import might use a different endpoint or shared logic
-  const response = await fetch(`/api/classes/subjects/${srecord_id}/import-grades`, {
+  return apiFetch(`/classes/subjects/${srecord_id}/import-grades`, {
     method: 'POST',
+    successMessage: 'Grade sheet uploaded successfully.',
     body: formData,
   });
-
-  if (!response.ok) throw new Error('Failed to upload subject grade sheet');
-
-  return await response.json();
-};
+};

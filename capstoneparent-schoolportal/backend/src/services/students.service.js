@@ -1,4 +1,8 @@
 const prisma = require("../config/database");
+const {
+  buildStudentGradePdf,
+  sanitizeFileName,
+} = require("../utils/gradeExport");
 
 const normalizeSex = (sex) => {
   if (sex === "Male") return "M";
@@ -520,6 +524,51 @@ const studentsService = {
     });
 
     return attendance;
+  },
+
+  async exportQuarterlyGrades(studentId) {
+    const student = await prisma.student.findUnique({
+      where: { student_id: studentId },
+      include: {
+        grade_level: true,
+        class_lists: {
+          include: {
+            class_list: {
+              include: {
+                grade_level: true,
+                section: true,
+              },
+            },
+          },
+        },
+        subject_records: {
+          include: {
+            subject_record: true,
+          },
+        },
+        attendance_records: true,
+      },
+    });
+
+    if (!student) {
+      throw new Error("Student not found");
+    }
+
+    const firstClass = student.class_lists?.[0]?.class_list;
+    const classInfo = firstClass
+      ? {
+          grade_level: firstClass.grade_level?.grade_level ?? "",
+          section_name: firstClass.section?.section_name ?? "",
+          syear_start: firstClass.syear_start,
+          syear_end: firstClass.syear_end,
+        }
+      : null;
+
+    return {
+      fileName: `${sanitizeFileName(student.lname)}_${sanitizeFileName(student.fname)}_${sanitizeFileName(student.lrn_number)}_grades.pdf`,
+      contentType: "application/pdf",
+      buffer: buildStudentGradePdf({ student, classInfo }),
+    };
   },
 };
 
