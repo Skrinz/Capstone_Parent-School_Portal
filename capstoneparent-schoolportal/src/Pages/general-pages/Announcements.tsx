@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { StatusMessage } from "@/components/ui/StatusMessage";
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
 import {
   AnnouncementPostFeed,
@@ -7,9 +8,9 @@ import {
 import { CreateAnnouncementModal } from "@/components/staff/CreateAnnouncementModal";
 import { EditAnnouncementModal } from "@/components/staff/EditAnnouncementModal";
 import { getAuthUser } from "@/lib/auth";
-import { useAnnouncementPosts } from "@/hooks/useAnnouncementPosts";
 import type { AnnouncementCategory } from "@/lib/announcementPosts";
 import type { UserRole } from "@/lib/store/authStore";
+import { useAnnouncementStore } from "@/lib/store/announcementStore";
 
 /** School staff (excludes parents). Used for announcement type toggle and create/edit. */
 const SCHOOL_STAFF_ROLES: UserRole[] = [
@@ -38,14 +39,21 @@ export const Announcements = () => {
 
   const isSchoolStaff = role !== null && SCHOOL_STAFF_ROLES.includes(role);
 
-  const [viewCategory, setViewCategory] =
-    useState<AnnouncementCategory>("general");
+  const {
+    viewCategory,
+    setViewCategory,
+    postsByCategory,
+    loadingByCategory,
+    feedback,
+    clearFeedback,
+    fetchPosts,
+    createPost,
+    updatePost,
+  } = useAnnouncementStore();
+
   const effectiveCategory: AnnouncementCategory = isSchoolStaff
     ? viewCategory
     : "general";
-
-  const { posts, isLoading, createPost, updatePost } =
-    useAnnouncementPosts(effectiveCategory);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -53,13 +61,17 @@ export const Announcements = () => {
     null,
   );
 
-  const handleCreate = (data: {
+  useEffect(() => {
+    fetchPosts(effectiveCategory).catch(() => undefined);
+  }, [effectiveCategory, fetchPosts]);
+
+  const handleCreate = async (data: {
     title: string;
     content: string;
     category: AnnouncementCategory;
     files?: Array<{ id: string; name: string; file: File }>;
   }) => {
-    createPost(data);
+    await createPost(data);
   };
 
   const handleOpenEdit = (post: AnnouncementPostItem) => {
@@ -89,11 +101,21 @@ export const Announcements = () => {
     [authUser],
   );
 
+  const posts = postsByCategory[effectiveCategory];
+  const isLoading = loadingByCategory[effectiveCategory];
+
   return (
     <div className="min-h-screen bg-white">
       <RoleAwareNavbar />
-      {isSchoolStaff && (
-        <div className="mx-auto w-full max-w-330 px-3 pt-6 sm:px-5 lg:px-6">
+      <div className="mx-auto w-full max-w-330 px-3 pt-6 sm:px-5 lg:px-6">
+        {feedback && (
+          <StatusMessage
+            type={feedback.type}
+            message={feedback.message}
+            className="mb-4"
+          />
+        )}
+        {isSchoolStaff && (
           <div
             className="flex flex-wrap items-baseline gap-x-10 gap-y-2 sm:gap-x-14 lg:gap-x-16"
             role="tablist"
@@ -105,7 +127,10 @@ export const Announcements = () => {
                 type="button"
                 role="tab"
                 aria-selected={effectiveCategory === id}
-                onClick={() => setViewCategory(id)}
+                onClick={() => {
+                  clearFeedback();
+                  setViewCategory(id);
+                }}
                 className={`cursor-pointer border-0 bg-transparent p-0 font-sans text-sm uppercase tracking-wide text-gray-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-950 focus-visible:ring-offset-2 sm:text-base ${
                   effectiveCategory === id ? "font-bold" : "font-normal"
                 }`}
@@ -114,8 +139,8 @@ export const Announcements = () => {
               </button>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
       <AnnouncementPostFeed
         posts={posts}
         isLoading={isLoading}
@@ -133,13 +158,17 @@ export const Announcements = () => {
         <>
           <CreateAnnouncementModal
             isOpen={isCreateModalOpen}
-            onClose={() => setIsCreateModalOpen(false)}
+            onClose={() => {
+              clearFeedback();
+              setIsCreateModalOpen(false);
+            }}
             onCreate={handleCreate}
             defaultCategory={effectiveCategory}
           />
           <EditAnnouncementModal
             isOpen={isEditModalOpen}
             onClose={() => {
+              clearFeedback();
               setIsEditModalOpen(false);
               setSelectedPost(null);
             }}

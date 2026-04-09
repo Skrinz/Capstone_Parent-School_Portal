@@ -37,7 +37,8 @@
     "recharts": "^3.7.0",
     "resend": "^6.9.3",
     "tailwind-merge": "^3.4.0",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.1.18",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

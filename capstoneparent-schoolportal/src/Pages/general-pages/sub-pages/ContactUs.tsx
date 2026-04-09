@@ -1,9 +1,9 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
+import { StatusMessage } from "@/components/ui/StatusMessage";
 import { getAuthUser } from "@/lib/auth";
-import { type ContactUsContent } from "@/lib/contactUsContent";
-import { pagesApi } from "@/lib/api/pagesApi";
+import { useAboutUsStore } from "@/lib/store/aboutUsStore";
 import { Pencil } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 
 const ContactUsSkeleton = ({ showEdit }: { showEdit: boolean }) => (
@@ -33,24 +33,31 @@ const ContactUsSkeleton = ({ showEdit }: { showEdit: boolean }) => (
 export const ContactUs = () => {
   const user = getAuthUser();
   const isAdmin = user?.role === "admin" || user?.role === "principal";
-  const [content, setContent] = useState<ContactUsContent | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const content = useAboutUsStore((state) => state.contactUs);
+  const isLoading = useAboutUsStore((state) => state.loading.contactUs);
+  const feedback = useAboutUsStore((state) => state.feedback);
+  const fetchContactUs = useAboutUsStore((state) => state.fetchContactUs);
 
   useEffect(() => {
-    pagesApi
-      .getContactUs()
-      .then(setContent)
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, []);
+    fetchContactUs().catch(() => undefined);
+  }, [fetchContactUs]);
+
+  const hasContent = Object.values(content).some((value) => value.trim().length > 0);
 
   return (
     <div>
       <RoleAwareNavbar />
       <div className="max-w-7xl mx-auto py-12 px-4">
+        {feedback?.section === "contactUs" && (
+          <StatusMessage
+            type={feedback.type}
+            message={feedback.message}
+            className="mb-4"
+          />
+        )}
         {isLoading ? (
           <ContactUsSkeleton showEdit={isAdmin} />
-        ) : !content ? (
+        ) : !hasContent ? (
           <p>No contact information available.</p>
         ) : (
           <>

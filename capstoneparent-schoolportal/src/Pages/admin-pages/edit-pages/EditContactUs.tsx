@@ -1,27 +1,28 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
 import { Loader } from "@/components/ui/Loader";
 import { type ContactUsContent } from "@/lib/contactUsContent";
+import { useAboutUsStore } from "@/lib/store/aboutUsStore";
 import { useState, useEffect, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { pagesApi } from "@/lib/api/pagesApi";
 
 export const EditContactUs = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<ContactUsContent | null>(null);
   const [initialFormData, setInitialFormData] = useState<ContactUsContent | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const contactUs = useAboutUsStore((state) => state.contactUs);
+  const isLoading = useAboutUsStore((state) => state.loading.contactUs);
+  const fetchContactUs = useAboutUsStore((state) => state.fetchContactUs);
+  const updateContactUs = useAboutUsStore((state) => state.updateContactUs);
 
   useEffect(() => {
-    pagesApi
-      .getContactUs()
-      .then((data) => {
-        setFormData(data);
-        setInitialFormData(data);
-      })
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, []);
+    fetchContactUs().catch(() => undefined);
+  }, [fetchContactUs]);
+
+  useEffect(() => {
+    setFormData(contactUs);
+    setInitialFormData(contactUs);
+  }, [contactUs]);
 
   const handleChange =
     (field: keyof ContactUsContent) =>
@@ -35,7 +36,7 @@ export const EditContactUs = () => {
     if (!formData) return;
     try {
       setIsSaving(true);
-      await pagesApi.updateContactUs(formData);
+      await updateContactUs(formData);
       navigate("/contactus");
     } catch (error) {
       console.error("Failed to save", error);

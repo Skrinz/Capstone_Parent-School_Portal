@@ -1,11 +1,12 @@
 import { EditOrganizationalChartModal } from "@/components/admin/EditOrganizationalChartModal";
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
+import { StatusMessage } from "@/components/ui/StatusMessage";
 import { getAuthUser } from "@/lib/auth";
 import { type OrganizationalChartItem } from "@/lib/organizationalChartContent";
-import { pagesApi } from "@/lib/api/pagesApi";
 import { resolveMediaUrl } from "@/lib/api/base";
+import { useAboutUsStore } from "@/lib/store/aboutUsStore";
 import { Pencil, Plus } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const fabClassName =
   "inline-flex h-20 w-20 items-center justify-center rounded-full bg-(--button-green) text-white shadow-lg transition-transform hover:scale-105 focus:outline-none focus-visible:ring-4 focus-visible:ring-(--button-green)/40";
@@ -74,39 +75,49 @@ export const OrginizationalChart = () => {
   const user = getAuthUser();
   const isAdmin = user?.role === "admin" || user?.role === "principal";
 
-  const [charts, setCharts] = useState<OrganizationalChartItem[]>([]);
+  const charts = useAboutUsStore((state) => state.orgCharts);
+  const isLoading = useAboutUsStore((state) => state.loading.orgCharts);
+  const feedback = useAboutUsStore((state) => state.feedback);
+  const fetchOrgCharts = useAboutUsStore((state) => state.fetchOrgCharts);
+  const updateOrgChart = useAboutUsStore((state) => state.updateOrgChart);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [selectedChartId, setSelectedChartId] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
 
-  const loadCharts = () =>
-    pagesApi.getOrgCharts().then((data) => {
-      setCharts(data);
-      if (data.length > 0) {
-        setSelectedYear((prev) => {
-          if (prev && data.some((c) => c.year === prev)) {
-            return prev;
-          }
-          return data[0].year;
-        });
-      } else {
-        setSelectedYear(null);
-      }
-    });
+  useEffect(() => {
+    fetchOrgCharts().catch(() => undefined);
+  }, [fetchOrgCharts]);
 
   useEffect(() => {
-    loadCharts().catch(console.error).finally(() => setIsLoading(false));
-  }, []);
+    if (charts.length > 0) {
+      setSelectedYear((prev) => {
+        if (prev && charts.some((chart) => chart.year === prev)) {
+          return prev;
+        }
 
-  const groupedCharts = charts.reduce((acc, chart) => {
-    if (!acc[chart.year]) {
-      acc[chart.year] = [];
+        return charts[0].year;
+      });
+      return;
     }
-    acc[chart.year].push(chart);
-    return acc;
-  }, {} as Record<string, OrganizationalChartItem[]>);
+
+    setSelectedYear(null);
+  }, [charts]);
+
+  const groupedCharts = useMemo(
+    () =>
+      charts.reduce(
+        (acc, chart) => {
+          if (!acc[chart.year]) {
+            acc[chart.year] = [];
+          }
+          acc[chart.year].push(chart);
+          return acc;
+        },
+        {} as Record<string, OrganizationalChartItem[]>,
+      ),
+    [charts],
+  );
 
   const uniqueYears = Object.keys(groupedCharts).sort((a, b) => b.localeCompare(a));
   const selectedYearCharts = selectedYear ? groupedCharts[selectedYear] : [];
@@ -115,39 +126,34 @@ export const OrginizationalChart = () => {
     chart: OrganizationalChartItem,
     file?: File,
   ) => {
-    try {
-      await pagesApi.updateOrgChart(chart, file);
-      await loadCharts();
-      setAddModalOpen(false);
-    } catch (error) {
-      console.error("Failed to save organizational chart", error);
-      throw error;
-    }
+    await updateOrgChart(chart, file);
+    setAddModalOpen(false);
   };
 
   const handleEditOrgChart = async (
     chart: OrganizationalChartItem,
     file?: File,
   ) => {
-    try {
-      await pagesApi.updateOrgChart(
-        chart,
-        file,
-        selectedYearCharts.find((c) => c.id === (chart.id || selectedChartId))?.year,
-      );
-      await loadCharts();
-      setEditModalOpen(false);
-      setSelectedChartId(null);
-    } catch (error) {
-      console.error("Failed to save organizational chart", error);
-      throw error; // Re-throw so modal can catch and display
-    }
+    await updateOrgChart(
+      chart,
+      file,
+      selectedYearCharts.find((c) => c.id === (chart.id || selectedChartId))?.year,
+    );
+    setEditModalOpen(false);
+    setSelectedChartId(null);
   };
 
   return (
     <div>
       <RoleAwareNavbar />
       <div className="mx-auto max-w-7xl px-4 py-12">
+        {feedback?.section === "orgCharts" && (
+          <StatusMessage
+            type={feedback.type}
+            message={feedback.message}
+            className="mb-4"
+          />
+        )}
         {isLoading ? (
           <OrganizationalChartSkeleton showActions={isAdmin} />
         ) : uniqueYears.length === 0 ? (

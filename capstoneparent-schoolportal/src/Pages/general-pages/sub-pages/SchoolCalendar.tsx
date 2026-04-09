@@ -1,11 +1,12 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
 import { EditSchoolCalendarModal } from "@/components/admin/EditSchoolCalendarModal";
+import { StatusMessage } from "@/components/ui/StatusMessage";
 import { getAuthUser } from "@/lib/auth";
 import { type SchoolCalendarItem } from "@/lib/schoolCalendarContent";
-import { pagesApi } from "@/lib/api/pagesApi";
 import { resolveMediaUrl } from "@/lib/api/base";
+import { useAboutUsStore } from "@/lib/store/aboutUsStore";
 import { Pencil } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const CalendarPreview = ({ imageUrl }: { imageUrl: string }) => {
   const [hasImageError, setHasImageError] = useState(false);
@@ -46,36 +47,35 @@ const SchoolCalendarSkeleton = ({ showEdit }: { showEdit: boolean }) => (
 export const SchoolCalendar = () => {
   const user = getAuthUser();
   const isAdmin = user?.role === "admin" || user?.role === "principal";
-
-  const [schoolCalendars, setSchoolCalendars] = useState<SchoolCalendarItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const schoolCalendars = useAboutUsStore((state) => state.schoolCalendars);
+  const isLoading = useAboutUsStore((state) => state.loading.schoolCalendars);
+  const feedback = useAboutUsStore((state) => state.feedback);
+  const fetchSchoolCalendars = useAboutUsStore((state) => state.fetchSchoolCalendars);
+  const updateSchoolCalendar = useAboutUsStore((state) => state.updateSchoolCalendar);
 
   useEffect(() => {
-    pagesApi
-      .getSchoolCalendars()
-      .then((data) => setSchoolCalendars(data))
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, []);
+    fetchSchoolCalendars().catch(() => undefined);
+  }, [fetchSchoolCalendars]);
 
   const calendar = schoolCalendars[0];
 
   const handleSave = async (updatedCalendar: SchoolCalendarItem, file?: File) => {
-    try {
-      await pagesApi.updateSchoolCalendar(updatedCalendar, file);
-      const data = await pagesApi.getSchoolCalendars();
-      setSchoolCalendars(data);
-      setIsModalOpen(false);
-    } catch (error) {
-      console.error("Failed to save calendar", error);
-    }
+    await updateSchoolCalendar(updatedCalendar, file);
+    setIsModalOpen(false);
   };
 
   return (
     <div>
       <RoleAwareNavbar />
       <div className="mx-auto max-w-7xl px-4 py-12">
+        {feedback?.section === "schoolCalendars" && (
+          <StatusMessage
+            type={feedback.type}
+            message={feedback.message}
+            className="mb-4"
+          />
+        )}
         {isLoading ? (
           <SchoolCalendarSkeleton showEdit={isAdmin} />
         ) : !calendar ? (

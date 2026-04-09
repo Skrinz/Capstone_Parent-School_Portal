@@ -1,9 +1,9 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
+import { StatusMessage } from "@/components/ui/StatusMessage";
 import { getAuthUser } from "@/lib/auth";
-import { type HistoryContent } from "@/lib/historyContent";
-import { pagesApi } from "@/lib/api/pagesApi";
+import { useAboutUsStore } from "@/lib/store/aboutUsStore";
 import { Pencil } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 
 const HistoryImage = () => (
@@ -35,24 +35,31 @@ const HistorySkeleton = ({ showEdit }: { showEdit: boolean }) => (
 export const History = () => {
   const user = getAuthUser();
   const isAdmin = user?.role === "admin" || user?.role === "principal";
-  const [content, setContent] = useState<HistoryContent | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const content = useAboutUsStore((state) => state.history);
+  const isLoading = useAboutUsStore((state) => state.loading.history);
+  const feedback = useAboutUsStore((state) => state.feedback);
+  const fetchHistory = useAboutUsStore((state) => state.fetchHistory);
 
   useEffect(() => {
-    pagesApi
-      .getHistory()
-      .then(setContent)
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, []);
+    fetchHistory().catch(() => undefined);
+  }, [fetchHistory]);
+
+  const hasContent = Boolean(content.title || content.body || content.imageUrl);
 
   return (
     <div>
       <RoleAwareNavbar />
       <div className="max-w-7xl mx-auto py-12 px-4">
+        {feedback?.section === "history" && (
+          <StatusMessage
+            type={feedback.type}
+            message={feedback.message}
+            className="mb-4"
+          />
+        )}
         {isLoading ? (
           <HistorySkeleton showEdit={isAdmin} />
-        ) : !content ? (
+        ) : !hasContent ? (
           <p>No history content available.</p>
         ) : (
           <>

@@ -26,7 +26,7 @@ interface AnnouncementData {
 interface CreateAnnouncementModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (data: AnnouncementData) => void;
+  onCreate: (data: AnnouncementData) => Promise<void>;
   defaultCategory?: AnnouncementCategory;
 }
 
@@ -107,11 +107,14 @@ export const CreateAnnouncementModal = ({
         files,
       };
 
-      await Promise.resolve();
-      onCreate(data);
+      await onCreate(data);
       onClose();
-    } catch {
-      setError("Failed to create announcement");
+    } catch (err) {
+      if (err instanceof Error && err.message.trim()) {
+        setError(err.message);
+      } else {
+        setError("Failed to create announcement");
+      }
     } finally {
       setSubmitting(false);
     }

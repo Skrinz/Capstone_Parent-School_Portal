@@ -22,7 +22,7 @@ interface EditAnnouncementModalProps {
     files?: Array<{ id: string; name: string; file: File }>;
     replaceAttachments?: boolean;
     removeFileIds?: number[];
-  }) => void;
+  }) => Promise<void>;
 }
 
 interface UploadedFile {
@@ -133,20 +133,22 @@ export const EditAnnouncementModal = ({
 
     setSubmitting(true);
     try {
-      await Promise.resolve(
-        onUpdate({
-          announcementId: post.announcement_id,
-          title: title.trim(),
-          content: content.trim(),
-          category: announcementType,
-          files,
-          replaceAttachments: false,
-          removeFileIds: removedFileIds,
-        }),
-      );
+      await onUpdate({
+        announcementId: post.announcement_id,
+        title: title.trim(),
+        content: content.trim(),
+        category: announcementType,
+        files,
+        replaceAttachments: false,
+        removeFileIds: removedFileIds,
+      });
       onClose();
-    } catch {
-      setError("Failed to update announcement");
+    } catch (err) {
+      if (err instanceof Error && err.message.trim()) {
+        setError(err.message);
+      } else {
+        setError("Failed to update announcement");
+      }
     } finally {
       setSubmitting(false);
     }
