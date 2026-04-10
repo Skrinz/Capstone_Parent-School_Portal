@@ -1,5 +1,5 @@
 const prisma = require("../config/database");
-const { uploadFiles, uploadFile, deleteFileByUrl } = require("../utils/supabaseStorage");
+const { uploadFiles, replaceFile } = require("../utils/supabaseStorage");
 const { findOrThrow } = require("../utils/findOrThrow");
 const { hashPassword, comparePassword } = require("../utils/hashUtil");
 
@@ -171,8 +171,12 @@ const usersService = {
       throw new Error("User not found");
     }
 
-    const oldPhotoPath = existingUser.photo_path;
-    const newPhotoPath = await uploadFile(file, "profile_photo");
+    const newPhotoPath = await replaceFile(
+      file,
+      existingUser.photo_path,
+      "profile_photo",
+      "users.service",
+    );
 
     const updatedUser = await prisma.user.update({
       where: { user_id: userId },
@@ -188,22 +192,6 @@ const usersService = {
         updated_at: true,
       },
     });
-
-    if (oldPhotoPath && oldPhotoPath !== newPhotoPath) {
-      try {
-        const deleted = await deleteFileByUrl(oldPhotoPath);
-        if (!deleted) {
-          console.warn(
-            `[users.service] Could not parse old profile photo URL for deletion: ${oldPhotoPath}`,
-          );
-        }
-      } catch (error) {
-        console.error(
-          `[users.service] Failed deleting old profile photo from Supabase: ${oldPhotoPath}`,
-          error,
-        );
-      }
-    }
 
     return updatedUser;
   },

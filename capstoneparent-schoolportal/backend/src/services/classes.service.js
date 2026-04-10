@@ -1,6 +1,6 @@
 const prisma = require("../config/database");
 const { findOrThrow } = require("../utils/findOrThrow");
-const { uploadFile } = require("../utils/supabaseStorage");
+const { replaceFile } = require("../utils/supabaseStorage");
 const {
   buildStudentGradePdf,
   createZipBuffer,
@@ -516,12 +516,17 @@ const classesService = {
   },
 
   async uploadClassSchedule(classId, file) {
-    await findOrThrow(
+    const existingClass = await findOrThrow(
       () => prisma.classList.findUnique({ where: { clist_id: classId } }),
       "Class not found",
     );
 
-    const scheduleUrl = await uploadFile(file, "teacher_files");
+    const scheduleUrl = await replaceFile(
+      file,
+      existingClass.class_sched,
+      "teacher_files",
+      "classes.service",
+    );
 
     return prisma.classList.update({
       where: { clist_id: classId },

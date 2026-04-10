@@ -280,6 +280,33 @@ const uploadFiles = async (files, targetKey = "parent_docs") => {
   return Promise.all(files.map((file) => uploadFile(file, targetKey)));
 };
 
+const replaceFile = async (
+  file,
+  previousFileUrl,
+  targetKey = "parent_docs",
+  logContext = "supabaseStorage",
+) => {
+  const nextFileUrl = await uploadFile(file, targetKey);
+
+  if (previousFileUrl && previousFileUrl !== nextFileUrl) {
+    try {
+      const deleted = await deleteFileByUrl(previousFileUrl);
+      if (!deleted) {
+        console.warn(
+          `[${logContext}] Could not parse old file URL for deletion: ${previousFileUrl}`,
+        );
+      }
+    } catch (error) {
+      console.error(
+        `[${logContext}] Failed deleting old Supabase file: ${previousFileUrl}`,
+        error,
+      );
+    }
+  }
+
+  return nextFileUrl;
+};
+
 const deleteFileByUrl = async (fileUrl) => {
   const supabase = getClient();
   const parsedStorageRef = parseSupabaseStorageUrl(fileUrl);
@@ -301,6 +328,7 @@ const deleteFileByUrl = async (fileUrl) => {
 module.exports = {
   uploadFile,
   uploadFiles,
+  replaceFile,
   deleteFileByUrl,
   refreshSignedUrl,
   STORAGE_TARGETS,

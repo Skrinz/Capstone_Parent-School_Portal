@@ -1,5 +1,5 @@
 const prisma = require('../config/database');
-const { uploadFile, deleteFileByUrl } = require("../utils/supabaseStorage");
+const { uploadFile, replaceFile } = require("../utils/supabaseStorage");
 
 const eventsService = {
   async getAllEvents({ page, limit }) {
@@ -111,7 +111,12 @@ const eventsService = {
     const { file, ...restUpdateData } = updateData;
 
     if (file) {
-      restUpdateData.photo_path = await uploadFile(file, "events");
+      restUpdateData.photo_path = await replaceFile(
+        file,
+        existingEvent.photo_path,
+        "events",
+        "events.service",
+      );
     }
 
     if (restUpdateData.event_date) {
@@ -131,22 +136,6 @@ const eventsService = {
         }
       }
     });
-
-    if (
-      file &&
-      existingEvent.photo_path &&
-      existingEvent.photo_path !== event.photo_path
-    ) {
-      try {
-        await deleteFileByUrl(existingEvent.photo_path);
-      } catch (error) {
-        console.error(
-          `[events.service] Failed deleting old event asset: ${existingEvent.photo_path}`,
-          error,
-        );
-      }
-    }
-
     return event;
   },
 

@@ -1,8 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
-const fs = require("fs").promises;
-const path = require("path");
 const prisma = new PrismaClient();
-const { uploadFile } = require("../utils/supabaseStorage");
+const { replaceFile } = require("../utils/supabaseStorage");
 
 exports.getContactUs = async (req, res) => {
   try {
@@ -110,7 +108,12 @@ exports.updateHistory = async (req, res) => {
     };
 
     if (file) {
-      updateData.file_path = await uploadFile(file, "about_us");
+      updateData.file_path = await replaceFile(
+        file,
+        section?.file_path,
+        "about_us",
+        "pages.controller",
+      );
       updateData.file_name = file.originalname;
     }
 
@@ -173,7 +176,12 @@ exports.updateTransparency = async (req, res) => {
     };
 
     if (file) {
-      updateData.file_path = await uploadFile(file, "about_us");
+      updateData.file_path = await replaceFile(
+        file,
+        section?.file_path,
+        "about_us",
+        "pages.controller",
+      );
       updateData.file_name = file.originalname;
     }
 
@@ -240,7 +248,12 @@ exports.updateSchoolCalendar = async (req, res) => {
     };
 
     if (file) {
-      updateData.file_path = await uploadFile(file, "about_us");
+      updateData.file_path = await replaceFile(
+        file,
+        section?.file_path,
+        "about_us",
+        "pages.controller",
+      );
       updateData.file_name = file.originalname;
     }
 
@@ -337,7 +350,12 @@ exports.updateOrgChart = async (req, res) => {
     };
 
     if (file) {
-      updateData.file_path = await uploadFile(file, "about_us");
+      updateData.file_path = await replaceFile(
+        file,
+        chart?.file_path,
+        "about_us",
+        "pages.controller",
+      );
       updateData.file_name = file.originalname;
     }
 
