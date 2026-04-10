@@ -1,6 +1,7 @@
 const prisma = require("../config/database");
 const { findOrThrow } = require("../utils/findOrThrow");
 const { deleteFileByUrl, refreshSignedUrl } = require("../utils/supabaseStorage");
+const { sendParentVerifiedEmail } = require("../utils/emailUtil");
 const PENDING_REGISTRATION_TTL_MS = 10 * 60 * 1000;
 
 /**
@@ -318,6 +319,12 @@ const parentsService = {
 
     if (status === "VERIFIED" || status === "DENIED") {
       await parentsService.deleteRegistrationFiles(existingRegistration.files || []);
+    }
+
+    if (status === "VERIFIED" && registration.parent?.email) {
+      const parentName =
+        `${registration.parent.fname || ""} ${registration.parent.lname || ""}`.trim();
+      await sendParentVerifiedEmail(registration.parent.email, parentName);
     }
 
     return registration;

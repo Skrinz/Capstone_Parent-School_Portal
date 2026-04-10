@@ -30,16 +30,21 @@ const FieldLabel = ({
   label,
   required = false,
   hint,
+  htmlFor,
 }: {
   label: string;
   required?: boolean;
   hint?: string;
+  htmlFor?: string;
 }) => (
   <div className="mb-2">
     <div className="flex items-center justify-between gap-3">
-      <span className="text-sm font-semibold uppercase tracking-wide text-gray-700">
+      <label
+        htmlFor={htmlFor}
+        className="text-sm font-semibold uppercase tracking-wide text-gray-700"
+      >
         {label}
-      </span>
+      </label>
       {required ? (
         <span className="rounded-full bg-red-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700">
           Required
@@ -405,8 +410,10 @@ export const RegisterCard = () => {
 
                 <div className="space-y-4">
                   <div>
-                    <FieldLabel label="First Name" required />
+                    <FieldLabel label="First Name" required htmlFor="first-name" />
                     <Input
+                      id="first-name"
+                      name="firstName"
                       type="text"
                       placeholder="First Name"
                       value={formData.firstName}
@@ -417,8 +424,10 @@ export const RegisterCard = () => {
                     />
                   </div>
                   <div>
-                    <FieldLabel label="Last Name" required />
+                    <FieldLabel label="Last Name" required htmlFor="last-name" />
                     <Input
+                      id="last-name"
+                      name="lastName"
                       type="text"
                       placeholder="Last Name"
                       value={formData.lastName}
@@ -429,7 +438,7 @@ export const RegisterCard = () => {
                     />
                   </div>
                   <div>
-                    <FieldLabel label="Date of Birth" required />
+                    <FieldLabel label="Date of Birth" required htmlFor="dob-input" />
                     <label
                       htmlFor="dob-input"
                       className="flex h-14 w-full items-center rounded-full border-2 border-gray-900 bg-white px-6 gap-2 cursor-pointer"
@@ -439,6 +448,7 @@ export const RegisterCard = () => {
                       </span>
                       <input
                         id="dob-input"
+                        name="dateOfBirth"
                         type="date"
                         max={todayISO}
                         value={formData.dateOfBirth}
@@ -450,8 +460,14 @@ export const RegisterCard = () => {
                     </label>
                   </div>
                   <div>
-                    <FieldLabel label="Contact Number" required />
+                    <FieldLabel
+                      label="Contact Number"
+                      required
+                      htmlFor="contact-number"
+                    />
                     <Input
+                      id="contact-number"
+                      name="contact"
                       type="tel"
                       placeholder="Contact Number"
                       value={formData.contact}
@@ -462,8 +478,10 @@ export const RegisterCard = () => {
                     />
                   </div>
                   <div>
-                    <FieldLabel label="Address" required />
+                    <FieldLabel label="Address" required htmlFor="address" />
                     <Input
+                      id="address"
+                      name="address"
                       type="text"
                       placeholder="Address"
                       value={formData.address}
@@ -474,8 +492,10 @@ export const RegisterCard = () => {
                     />
                   </div>
                   <div>
-                    <FieldLabel label="Email" required />
+                    <FieldLabel label="Email" required htmlFor="email" />
                     <Input
+                      id="email"
+                      name="email"
                       type="email"
                       placeholder="Email"
                       value={formData.email}
@@ -486,10 +506,13 @@ export const RegisterCard = () => {
                     />
                   </div>
                   <div>
-                    <FieldLabel label="Password" required />
+                    <FieldLabel label="Password" required htmlFor="password" />
                     <Input
+                      id="password"
+                      name="password"
                       type="password"
-                      placeholder="Password"
+                      minLength={8}
+                      placeholder="Password (at least 8 characters)"
                       value={formData.password}
                       onChange={(e) =>
                         handleInputChange("password", e.target.value)
@@ -498,8 +521,14 @@ export const RegisterCard = () => {
                     />
                   </div>
                   <div>
-                    <FieldLabel label="Confirm Password" required />
+                    <FieldLabel
+                      label="Confirm Password"
+                      required
+                      htmlFor="confirm-password"
+                    />
                     <Input
+                      id="confirm-password"
+                      name="confirmPassword"
                       type="password"
                       placeholder="Confirm Password"
                       value={formData.confirmPassword}
@@ -785,9 +814,12 @@ export const RegisterCard = () => {
                 label="OTP Code"
                 required
                 hint="Enter exactly 6 digits"
+                htmlFor="otp-code"
               />
             </div>
             <Input
+              id="otp-code"
+              name="otpCode"
               type="text"
               inputMode="numeric"
               placeholder="6-digit OTP"

@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("path");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
@@ -58,10 +59,29 @@ app.get("/health", (req, res) => {
 // API routes
 app.use("/api", routes);
 
+// Serve static files from the frontend build
+const distPath = path.join(__dirname, "../..", "dist");
+app.use(express.static(distPath));
+
+// Catch-all route to serve the frontend SPA
+// Express 5 / path-to-regexp no longer accepts bare "*" route patterns.
+app.get(/.*/, (req, res, next) => {
+  // If request is for an API route but it wasn't matched, let it fall through to 404
+  if (req.path.startsWith("/api")) {
+    return next();
+  }
+  // Otherwise, serve the SPA index.html
+  res.sendFile(path.join(distPath, "index.html"), (err) => {
+    if (err) {
+      next();
+    }
+  });
+});
+
 // Error handling middleware (must be last)
 app.use(errorHandler);
 
-// 404 handler
+// 404 handler for unmatched API routes
 app.use((req, res) => {
   res.status(404).json({ error: "Route not found" });
 });

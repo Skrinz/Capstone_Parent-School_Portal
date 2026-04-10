@@ -20,6 +20,16 @@ const defaultProfileModalData: ProfileModalData = {
   profilePicture: "",
 };
 
+const normalizeDateForInput = (value?: string | null): string => {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  if (/^\d{4}-\d{2}-\d{2}T/.test(value)) return value.slice(0, 10);
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toISOString().slice(0, 10);
+};
+
 export const buildProfileModalData = (authUser: SessionUser | null): ProfileModalData => {
   const [fname = "", ...rest] = (authUser?.name ?? "").split(" ");
   const lname = rest.join(" ");
@@ -31,7 +41,7 @@ export const buildProfileModalData = (authUser: SessionUser | null): ProfileModa
     email: authUser?.email ?? defaultProfileModalData.email,
     contactNo: authUser?.contact_num ?? defaultProfileModalData.contactNo,
     address: authUser?.address ?? defaultProfileModalData.address,
-    dateOfBirth: authUser?.date_of_birth ? authUser.date_of_birth.substring(0, 10) : defaultProfileModalData.dateOfBirth,
+    dateOfBirth: normalizeDateForInput(authUser?.date_of_birth),
     profilePicture: authUser?.photo_path ?? defaultProfileModalData.profilePicture,
   };
 };

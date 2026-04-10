@@ -6,7 +6,7 @@
 import { useApiFeedbackStore } from "@/lib/store/apiFeedbackStore";
 
 function normalizeApiBaseUrl(url?: string): string {
-  const fallback = import.meta.env.DEV ? "/api" : "http://localhost:5000/api";
+  const fallback = "/api";
   const trimmed = url?.trim();
 
   if (!trimmed) return fallback;

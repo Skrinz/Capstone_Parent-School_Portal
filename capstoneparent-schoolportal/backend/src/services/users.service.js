@@ -84,6 +84,7 @@ const usersService = {
           address: true,
           account_status: true,
           created_at: true,
+          date_of_birth: true,
           roles: true,
         },
         orderBy: {
@@ -329,4 +330,3 @@ const usersService = {
 };
 
 module.exports = usersService;
-

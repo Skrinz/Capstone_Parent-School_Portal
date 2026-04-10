@@ -2,15 +2,43 @@
  * src/lib/api/usersApi.ts
  */
 import { apiFetch } from "./base";
-import type { ApiData, ApiMessage, AuthUser } from "./types";
+import type { ApiData, ApiList, ApiMessage, AuthUser } from "./types";
 
 export const usersApi = {
+  list(params?: { role?: string; limit?: number; page?: number }) {
+    const query = new URLSearchParams();
+    if (params?.role) query.set("role", params.role);
+    if (typeof params?.limit === "number") query.set("limit", String(params.limit));
+    if (typeof params?.page === "number") query.set("page", String(params.page));
+    const suffix = query.toString();
+    return apiFetch<ApiList<AuthUser>>(`/users${suffix ? `?${suffix}` : ""}`);
+  },
+
   updateProfile(userId: number, data: any) {
     return apiFetch<ApiData<AuthUser>>(`/users/${userId}`, {
       method: "PUT",
       successMessage: "Profile updated successfully.",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
+    });
+  },
+
+  updateAccountSettings(
+    userId: number,
+    data: { account_status?: "Active" | "Inactive"; roles?: string[] },
+  ) {
+    return apiFetch<ApiData<AuthUser>>(`/users/${userId}/account`, {
+      method: "PATCH",
+      successMessage: "Account settings updated successfully.",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete(userId: number) {
+    return apiFetch<ApiMessage>(`/users/${userId}`, {
+      method: "DELETE",
+      successMessage: "Staff account deleted successfully.",
     });
   },
 

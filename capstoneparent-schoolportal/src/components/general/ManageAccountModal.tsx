@@ -111,9 +111,11 @@ export const ManageAccountModal = ({ isOpen, onClose, profileData, isSavingProfi
           <label htmlFor="date-of-birth" className="text-lg font-medium text-gray-900">Date of Birth:</label>
           <Input
             id="date-of-birth"
+            type="date"
             value={formData.dateOfBirth}
             onChange={(event) => handleFieldChange("dateOfBirth", event.target.value)}
-            className="h-12 rounded-md border border-gray-300 bg-white px-4 text-lg font-semibold text-gray-900"
+            max={new Date().toISOString().split("T")[0]}
+            className="h-12 rounded-md border border-gray-300 bg-white px-4 text-lg font-semibold text-gray-900 [color-scheme:light]"
           />
         </div>
 

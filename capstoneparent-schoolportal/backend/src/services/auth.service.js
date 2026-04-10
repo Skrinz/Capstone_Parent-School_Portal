@@ -215,7 +215,11 @@ const authService = {
       })),
     });
 
-    const emailSent = await sendOTPEmail(email, otpCode);
+    const emailSent = await sendOTPEmail(email, otpCode, {
+      name: `${fname} ${lname}`.trim(),
+      roles: resolvedRoles,
+      temporaryPassword: password,
+    });
     if (!emailSent) {
       cleanupTempFiles(getPendingRegistration(email));
       clearPendingRegistration(email);

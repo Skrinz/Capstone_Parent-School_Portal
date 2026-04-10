@@ -1,10 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { NavbarAdmin } from "../../components/admin/NavbarAdmin";
 import { Button } from "../../components/ui/button";
 import { StatusDropdown } from "../../components/general/StatusDropdown";
 import { StaffFormModal } from "../../components/admin/StaffFormModal";
 import { StaffDeleteModal } from "../../components/admin/StaffDeleteModal";
+import { authApi, usersApi, type AuthUser } from "@/lib/api";
+import { useAuthStore } from "@/lib/store/authStore";
 
 interface Staff {
   id: number;
@@ -12,19 +14,15 @@ interface Staff {
   contactNo: string;
   roles: string;
   status: "ACTIVE" | "INACTIVE";
+  dateOfBirth: string;
+  address: string;
+  email: string;
 }
 
 export const ManageStaffAccounts = () => {
-  // Sample data - replace with actual data from your backend
-  const [staffList, setStaffList] = useState<Staff[]>([
-    { id: 1, name: "Johnathan Doe", contactNo: "0913 812 1213", roles: "Librarian", status: "ACTIVE" },
-    { id: 2, name: "Emily Carter", contactNo: "0917 123 4567", roles: "Admin, Teacher", status: "ACTIVE" },
-    { id: 3, name: "Marcus Lee", contactNo: "0927 456 7890", roles: "Teacher", status: "ACTIVE" },
-    { id: 4, name: "Priya Desai", contactNo: "0915 234 6789", roles: "Teacher", status: "ACTIVE" },
-    { id: 5, name: "David Johnson", contactNo: "0905 789 1234", roles: "Teacher", status: "ACTIVE" },
-    { id: 6, name: "Sofia Martinez", contactNo: "0926 345 9876", roles: "Teacher, Librarian", status: "ACTIVE" },
-    { id: 7, name: "Liam O'Connor", contactNo: "0918 654 3210", roles: "Teacher", status: "INACTIVE" },
-  ]);
+  const currentUserId = useAuthStore((s) => s.user?.userId);
+  const TEMPORARY_PASSWORD = "Temporary123!";
+  const [staffList, setStaffList] = useState<Staff[]>([]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
@@ -44,28 +42,152 @@ export const ManageStaffAccounts = () => {
   });
 
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAddingStaff, setIsAddingStaff] = useState(false);
 
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
   const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null);
 
-  const availableRoles = ["Librarian", "Teacher", "Admin", "Principal", "Vice Principal"];
+  const availableRoles = [
+    "Librarian",
+    "Teacher",
+    "Admin",
+    "Principal",
+    "Vice Principal",
+  ];
+
+  const emptyFormState = {
+    name: "",
+    contactNo: "",
+    dateOfBirth: "",
+    address: "",
+    email: "",
+    status: "ACTIVE" as "ACTIVE" | "INACTIVE",
+  };
+
+  const toTitleCase = (value: string) =>
+    value
+      .toLowerCase()
+      .split("_")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+
+  const normalizeRoleLabel = (role: string): string => {
+    const clean = role.trim();
+    if (!clean) return "";
+    if (clean.toLowerCase() === "vice principal") return "Vice Principal";
+    if (clean.toLowerCase() === "vice_principal") return "Vice Principal";
+    return toTitleCase(clean.replace(/\s+/g, "_"));
+  };
+
+  const toApiRole = (role: string): string => {
+    const clean = role.trim().toLowerCase();
+    if (clean === "vice principal" || clean === "vice_principal")
+      return "Vice_Principal";
+    if (clean === "librarian") return "Librarian";
+    if (clean === "teacher") return "Teacher";
+    if (clean === "admin") return "Admin";
+    if (clean === "principal") return "Principal";
+    return role.trim();
+  };
+
+  const normalizeStatus = (status: string): "ACTIVE" | "INACTIVE" =>
+    status.toLowerCase() === "active" ? "ACTIVE" : "INACTIVE";
+
+  const normalizeDateForInput = (value?: string | null): string => {
+    if (!value) return "";
+    // Keep valid HTML date input format as-is.
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+
+    // Support ISO timestamps like "2026-04-10T00:00:00.000Z".
+    if (/^\d{4}-\d{2}-\d{2}T/.test(value)) return value.slice(0, 10);
+
+    // Fallback for other date-like strings.
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return parsed.toISOString().slice(0, 10);
+  };
+
+  const mapUserToStaff = (user: AuthUser): Staff => {
+    const normalizedRoles = user.roles
+      .map((r) => normalizeRoleLabel(r.role))
+      .filter(Boolean);
+
+    return {
+      id: user.user_id,
+      name: `${user.fname} ${user.lname}`.trim(),
+      contactNo: user.contact_num || "",
+      roles: normalizedRoles.join(", "),
+      status: normalizeStatus(user.account_status),
+      dateOfBirth: normalizeDateForInput(user.date_of_birth),
+      address: user.address || "",
+      email: user.email || "",
+    };
+  };
+
+  const fetchStaffAccounts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [teachers, admins, librarians, principals, vicePrincipals] =
+        await Promise.all([
+          usersApi.list({ role: "Teacher", limit: 1000 }),
+          usersApi.list({ role: "Admin", limit: 1000 }),
+          usersApi.list({ role: "Librarian", limit: 1000 }),
+          usersApi.list({ role: "Principal", limit: 1000 }),
+          usersApi.list({ role: "Vice_Principal", limit: 1000 }),
+        ]);
+
+      const merged = new Map<number, Staff>();
+      const allUsers = [
+        ...teachers.data,
+        ...admins.data,
+        ...librarians.data,
+        ...principals.data,
+        ...vicePrincipals.data,
+      ];
+
+      allUsers.forEach((user) => {
+        const mapped = mapUserToStaff(user);
+        if (!merged.has(mapped.id)) {
+          merged.set(mapped.id, mapped);
+          return;
+        }
+
+        const existing = merged.get(mapped.id)!;
+        const roleSet = new Set(
+          [...existing.roles.split(", "), ...mapped.roles.split(", ")].filter(
+            Boolean,
+          ),
+        );
+        merged.set(mapped.id, { ...existing, roles: Array.from(roleSet).join(", ") });
+      });
+
+      setStaffList(Array.from(merged.values()));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchStaffAccounts();
+  }, [fetchStaffAccounts]);
 
   const toggleRole = (role: string) => {
     setSelectedRoles((prev) =>
-      prev.includes(role)
-        ? prev.filter((r) => r !== role)
-        : [...prev, role]
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
     );
   };
 
   // Filtered staff
   const filteredStaff = useMemo(() => {
     let filtered = staffList.filter((staff) =>
-      staff.name.toLowerCase().includes(searchQuery.toLowerCase())
+      staff.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
 
     if (roleFilter !== "all") {
-      filtered = filtered.filter((s) => s.roles.toLowerCase().includes(roleFilter.toLowerCase()));
+      filtered = filtered.filter((s) =>
+        s.roles.toLowerCase().includes(roleFilter.toLowerCase()),
+      );
     }
 
     if (statusFilter !== "all") {
@@ -90,28 +212,40 @@ export const ManageStaffAccounts = () => {
   const roles = ["all", "Admin", "Teacher", "Librarian"];
 
   // Add staff handler
-  const handleAddStaff = () => {
-    if (!formData.name.trim() || !formData.contactNo.trim() || selectedRoles.length === 0) return;
+  const handleAddStaff = async () => {
+    if (
+      !formData.name.trim() ||
+      !formData.contactNo.trim() ||
+      !formData.dateOfBirth.trim() ||
+      !formData.address.trim() ||
+      !formData.email.trim() ||
+      selectedRoles.length === 0
+    )
+      return;
 
-    const newStaff: Staff = {
-      id: Math.max(...staffList.map((s) => s.id), 0) + 1,
-      name: formData.name,
-      contactNo: formData.contactNo,
-      roles: selectedRoles.join(", "),
-      status: formData.status,
-    };
+    const [firstName, ...restNames] = formData.name.trim().split(/\s+/);
+    const lastName = restNames.join(" ") || "-";
+    const payload = new FormData();
+    payload.append("fname", firstName);
+    payload.append("lname", lastName);
+    payload.append("date_of_birth", formData.dateOfBirth.trim());
+    payload.append("contact_num", formData.contactNo.trim());
+    payload.append("address", formData.address.trim());
+    payload.append("email", formData.email.trim());
+    payload.append("password", TEMPORARY_PASSWORD);
+    payload.append("account_status", "Active");
+    selectedRoles.forEach((role) => payload.append("roles", toApiRole(role)));
 
-    setStaffList([...staffList, newStaff]);
-    setFormData({
-      name: "",
-      contactNo: "",
-      dateOfBirth: "",
-      address: "",
-      email: "",
-      status: "ACTIVE",
-    });
-    setSelectedRoles([]);
-    setIsAddModalOpen(false);
+    setIsAddingStaff(true);
+    try {
+      await authApi.registerEmployee(payload);
+      await fetchStaffAccounts();
+      setFormData(emptyFormState);
+      setSelectedRoles([]);
+      setIsAddModalOpen(false);
+    } finally {
+      setIsAddingStaff(false);
+    }
   };
 
   // Edit staff handlers
@@ -120,40 +254,41 @@ export const ManageStaffAccounts = () => {
     setFormData({
       name: staff.name,
       contactNo: staff.contactNo,
-      dateOfBirth: "",
-      address: "",
-      email: "",
+      dateOfBirth: staff.dateOfBirth,
+      address: staff.address,
+      email: staff.email,
       status: staff.status,
     });
-    setSelectedRoles(staff.roles.split(", ").map(r => r.trim()));
+    setSelectedRoles(staff.roles.split(", ").map((r) => r.trim()));
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateStaff = () => {
-    if (!editingStaff || !formData.name.trim() || !formData.contactNo.trim() || selectedRoles.length === 0)
+  const handleUpdateStaff = async () => {
+    if (
+      !editingStaff ||
+      !formData.name.trim() ||
+      !formData.contactNo.trim() ||
+      selectedRoles.length === 0
+    )
       return;
 
-    setStaffList(
-      staffList.map((staff) =>
-        staff.id === editingStaff.id
-          ? {
-              ...staff,
-              name: formData.name,
-              contactNo: formData.contactNo,
-              roles: selectedRoles.join(", "),
-              status: formData.status,
-            }
-          : staff,
-      ),
-    );
-    setFormData({
-      name: "",
-      contactNo: "",
-      dateOfBirth: "",
-      address: "",
-      email: "",
-      status: "ACTIVE",
+    const [firstName, ...restNames] = formData.name.trim().split(/\s+/);
+    const lastName = restNames.join(" ") || "-";
+
+    await usersApi.updateProfile(editingStaff.id, {
+      fname: firstName,
+      lname: lastName,
+      date_of_birth: formData.dateOfBirth.trim(),
+      contact_num: formData.contactNo.trim(),
+      address: formData.address.trim(),
+      email: formData.email.trim(),
     });
+    await usersApi.updateAccountSettings(editingStaff.id, {
+      account_status: formData.status === "ACTIVE" ? "Active" : "Inactive",
+      roles: selectedRoles.map(toApiRole),
+    });
+    await fetchStaffAccounts();
+    setFormData(emptyFormState);
     setSelectedRoles([]);
     setEditingStaff(null);
     setIsEditModalOpen(false);
@@ -165,22 +300,22 @@ export const ManageStaffAccounts = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const handleDeleteStaff = () => {
+  const handleDeleteStaff = async () => {
     if (!deletingStaff) return;
 
-    setStaffList(
-      staffList.filter((staff) => staff.id !== deletingStaff.id),
-    );
+    await usersApi.delete(deletingStaff.id);
+    await fetchStaffAccounts();
     setDeletingStaff(null);
     setIsDeleteModalOpen(false);
   };
 
-  const editFormHasChanges = editingStaff
-    ? formData.name.trim() !== editingStaff.name.trim() ||
-      formData.contactNo.trim() !== editingStaff.contactNo.trim() ||
-      formData.status !== editingStaff.status ||
-      selectedRoles.join(", ") !== editingStaff.roles
-    : false;
+  const addFormIsValid =
+    formData.name.trim().length > 0 &&
+    formData.contactNo.trim().length > 0 &&
+    formData.dateOfBirth.trim().length > 0 &&
+    formData.address.trim().length > 0 &&
+    formData.email.trim().length > 0 &&
+    selectedRoles.length > 0;
 
   return (
     <div className="min-h-screen">
@@ -192,19 +327,12 @@ export const ManageStaffAccounts = () => {
             <Button
               className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-6 py-2"
               onClick={() => {
-                setFormData({
-                  name: "",
-                  contactNo: "",
-                  dateOfBirth: "",
-                  address: "",
-                  email: "",
-                  status: "ACTIVE",
-                });
+                setFormData(emptyFormState);
                 setSelectedRoles([]);
                 setIsAddModalOpen(true);
               }}
             >
-              Add Teacher
+              Add Staff
             </Button>
           </div>
 
@@ -221,9 +349,9 @@ export const ManageStaffAccounts = () => {
               value={roleFilter}
               onChange={setRoleFilter}
               placeholder="Role"
-              options={roles.map(role => ({
+              options={roles.map((role) => ({
                 value: role,
-                label: role === "all" ? "Role" : role
+                label: role === "all" ? "Role" : role,
               }))}
             />
             <StatusDropdown
@@ -232,13 +360,24 @@ export const ManageStaffAccounts = () => {
               placeholder="Status"
               options={[
                 { value: "all", label: "Status" },
-                { value: "ACTIVE", label: "Active", className: "text-(--status-active)" },
-                { value: "INACTIVE", label: "Inactive", className: "text-(--status-inactive)" },
+                {
+                  value: "ACTIVE",
+                  label: "Active",
+                  className: "text-(--status-active)",
+                },
+                {
+                  value: "INACTIVE",
+                  label: "Inactive",
+                  className: "text-(--status-inactive)",
+                },
               ]}
             />
           </div>
 
           {/* Table */}
+          {isLoading && (
+            <p className="mb-4 text-sm text-gray-500">Loading staff accounts...</p>
+          )}
           {filteredStaff.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
@@ -284,6 +423,9 @@ export const ManageStaffAccounts = () => {
               </table>
             </div>
           )}
+          {!isLoading && filteredStaff.length === 0 && (
+            <p className="text-sm text-gray-500">No staff accounts found.</p>
+          )}
         </div>
       </div>
 
@@ -291,25 +433,21 @@ export const ManageStaffAccounts = () => {
         isOpen={isAddModalOpen}
         onClose={() => {
           setIsAddModalOpen(false);
-          setFormData({
-            name: "",
-            contactNo: "",
-            dateOfBirth: "",
-            address: "",
-            email: "",
-            status: "ACTIVE",
-          });
+          setFormData(emptyFormState);
           setSelectedRoles([]);
         }}
         onSubmit={handleAddStaff}
-        title="Add Staff"
+        title="Add Account"
         submitLabel="Add"
         formData={formData}
         setFormData={setFormData}
         selectedRoles={selectedRoles}
         availableRoles={availableRoles}
         onToggleRole={toggleRole}
-        disableSubmit={!editFormHasChanges}
+        disableSubmit={!addFormIsValid}
+        temporaryPassword={TEMPORARY_PASSWORD}
+        showStatusField={false}
+        isSubmitting={isAddingStaff}
       />
 
       <StaffFormModal
@@ -317,14 +455,7 @@ export const ManageStaffAccounts = () => {
         onClose={() => {
           setIsEditModalOpen(false);
           setEditingStaff(null);
-          setFormData({
-            name: "",
-            contactNo: "",
-            dateOfBirth: "",
-            address: "",
-            email: "",
-            status: "ACTIVE",
-          });
+          setFormData(emptyFormState);
           setSelectedRoles([]);
         }}
         onSubmit={handleUpdateStaff}
@@ -335,6 +466,9 @@ export const ManageStaffAccounts = () => {
         selectedRoles={selectedRoles}
         availableRoles={availableRoles}
         onToggleRole={toggleRole}
+        showStatusField
+        useEditDisplayStyle
+        isEditingSelf={editingStaff?.id === currentUserId}
       />
 
       <StaffDeleteModal
