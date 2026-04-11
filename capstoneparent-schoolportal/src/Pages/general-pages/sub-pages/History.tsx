@@ -2,7 +2,7 @@ import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { getAuthUser } from "@/lib/auth";
 import { useAboutUsStore } from "@/lib/store/aboutUsStore";
-import { Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 
@@ -59,34 +59,43 @@ export const History = () => {
         )}
         {isLoading ? (
           <HistorySkeleton showEdit={isAdmin} />
-        ) : !hasContent ? (
-          <p>No history content available.</p>
         ) : (
           <>
             <div className="mb-6 flex items-center justify-between gap-4">
-              <h1 className="text-3xl font-bold text-center">{content.title || "History"}</h1>
-              {isAdmin && (
-                <Link
-                  to="/edithistory"
-                  className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-(--button-green) text-white shadow-md transition-transform hover:scale-105"
-                  aria-label="Edit History"
-                >
-                  <Pencil className="h-6 w-6" />
-                </Link>
-              )}
+              <h1 className="text-3xl font-bold text-center">
+                {content.title || (hasContent ? "History" : "No history content available.")}
+              </h1>
+            {isAdmin && (
+              <Link
+                to="/edithistory"
+                className="fixed bottom-8 right-8 inline-flex h-20 w-20 items-center justify-center rounded-full bg-(--button-green) text-white shadow-lg transition-transform hover:scale-105"
+                aria-label={hasContent ? "Edit History" : "Add History"}
+              >
+                {hasContent ? (
+                  <Pencil className="h-10 w-10" />
+                ) : (
+                  <Plus className="h-10 w-10" />
+                )}
+              </Link>
+            )}
             </div>
 
-            <HistoryImage />
-
-            <div className="space-y-5 text-justify text-base leading-8 md:text-lg">
-              {content.body
-                ? content.body
-                    .split(/\n\s*\n/)
-                    .map((paragraph) => paragraph.trim())
-                    .filter(Boolean)
-                    .map((paragraph, idx) => <p key={idx}>{paragraph}</p>)
-                : "No history content available."}
-            </div>
+            {hasContent ? (
+              <>
+                <HistoryImage />
+                <div className="space-y-5 text-justify text-base leading-8 md:text-lg">
+                  {content.body
+                    ? content.body
+                        .split(/\n\s*\n/)
+                        .map((paragraph) => paragraph.trim())
+                        .filter(Boolean)
+                        .map((paragraph, idx) => <p key={idx}>{paragraph}</p>)
+                    : "No history content available."}
+                </div>
+              </>
+            ) : (
+              !isAdmin && <p>No history content available.</p>
+            )}
           </>
         )}
       </div>

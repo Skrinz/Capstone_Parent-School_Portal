@@ -216,8 +216,8 @@ exports.getSchoolCalendars = async (req, res) => {
     const mapped = sections.map(sec => {
       const data = sec.content ? JSON.parse(sec.content) : {};
       return {
-        year: sec.start_year.toString(),
-        label: data.label || `${sec.start_year} - ${sec.start_year + 1}`,
+        year: sec.start_year?.toString() ?? "",
+        label: data.label || (sec.start_year ? `${sec.start_year} - ${sec.start_year + 1}` : "Unknown Year"),
         imageUrl: sec.file_path ?? "",
         fileName: sec.file_name ?? "",
       };
@@ -272,9 +272,10 @@ exports.updateSchoolCalendar = async (req, res) => {
       });
     }
 
+    const contentData = section.content ? JSON.parse(section.content) : {};
     res.json({
-      year: section.start_year.toString(),
-      label: JSON.parse(section.content).label || `${section.start_year} - ${section.start_year + 1}`,
+      year: section.start_year?.toString() ?? "",
+      label: contentData.label || (section.start_year ? `${section.start_year} - ${section.start_year + 1}` : ""),
       imageUrl: section.file_path,
       fileName: section.file_name
     });
@@ -291,7 +292,7 @@ exports.getOrgCharts = async (req, res) => {
     });
     
     const mapped = charts.map(chart => ({
-      year: chart.school_year.toString(),
+      year: chart.school_year?.toString() ?? "",
       imageUrl: chart.file_path ?? "",
       fileName: chart.file_name ?? "",
       id: chart.chart_id,
@@ -374,7 +375,7 @@ exports.updateOrgChart = async (req, res) => {
     }
 
     res.json({
-      year: chart.school_year.toString(),
+      year: chart.school_year?.toString() ?? "",
       imageUrl: chart.file_path,
       fileName: chart.file_name,
       id: chart.chart_id,

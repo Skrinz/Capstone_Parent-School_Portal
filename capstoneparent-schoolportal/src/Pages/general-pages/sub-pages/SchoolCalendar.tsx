@@ -5,7 +5,7 @@ import { getAuthUser } from "@/lib/auth";
 import { type SchoolCalendarItem } from "@/lib/schoolCalendarContent";
 import { resolveMediaUrl } from "@/lib/api/base";
 import { useAboutUsStore } from "@/lib/store/aboutUsStore";
-import { Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const CalendarPreview = ({ imageUrl }: { imageUrl: string }) => {
@@ -78,35 +78,32 @@ export const SchoolCalendar = () => {
         )}
         {isLoading ? (
           <SchoolCalendarSkeleton showEdit={isAdmin} />
-        ) : !calendar ? (
-          <>
-            <h1 className="mb-8 text-4xl font-bold">School Calendar</h1>
-            <p>No school calendar data available.</p>
-            {isAdmin && (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="mt-4 inline-flex items-center justify-center rounded-md bg-(--button-green) px-4 py-2 text-white"
-              >
-                Add Calendar
-              </button>
-            )}
-          </>
         ) : (
           <>
             <h1 className="mb-8 text-4xl font-bold">
               School Calendar
-              {calendar.year ? ` (${calendar.year})` : ""}
+              {calendar?.year ? ` (${calendar.year})` : ""}
             </h1>
-            <div className="w-full rounded-sm bg-gray-300 p-8">
-              <CalendarPreview imageUrl={calendar.imageUrl} />
-            </div>
+
+            {calendar ? (
+              <div className="w-full rounded-sm bg-gray-300 p-8">
+                <CalendarPreview imageUrl={calendar.imageUrl} />
+              </div>
+            ) : (
+              <p>No school calendar data available.</p>
+            )}
+
             {isAdmin && (
               <button
                 onClick={() => setIsModalOpen(true)}
                 className="fixed bottom-8 right-8 inline-flex h-20 w-20 items-center justify-center rounded-full bg-(--button-green) text-white shadow-lg transition-transform hover:scale-105"
-                aria-label="Edit School Calendar"
+                aria-label={calendar ? "Edit School Calendar" : "Add School Calendar"}
               >
-                <Pencil className="h-10 w-10" />
+                {calendar ? (
+                  <Pencil className="h-10 w-10" />
+                ) : (
+                  <Plus className="h-10 w-10" />
+                )}
               </button>
             )}
           </>

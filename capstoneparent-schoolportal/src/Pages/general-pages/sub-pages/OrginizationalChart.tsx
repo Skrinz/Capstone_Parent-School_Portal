@@ -159,7 +159,7 @@ export const OrginizationalChart = () => {
         ) : uniqueYears.length === 0 ? (
           <>
             <h1 className="mb-8 text-4xl font-bold">Organizational Chart</h1>
-            <p>No organizational chart data available.</p>
+
             {isAdmin && (
               <div className="fixed bottom-8 right-8 flex flex-col gap-3">
                 <button

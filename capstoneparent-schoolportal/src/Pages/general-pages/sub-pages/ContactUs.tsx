@@ -2,7 +2,7 @@ import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { getAuthUser } from "@/lib/auth";
 import { useAboutUsStore } from "@/lib/store/aboutUsStore";
-import { Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 
@@ -57,80 +57,86 @@ export const ContactUs = () => {
         )}
         {isLoading ? (
           <ContactUsSkeleton showEdit={isAdmin} />
-        ) : !hasContent ? (
-          <p>No contact information available.</p>
         ) : (
           <>
-            <h1 className="text-4xl font-bold mb-8">Contact us</h1>
+            <h1 className="text-4xl font-bold mb-8">
+              {hasContent ? "Contact us" : "No contact information available."}
+            </h1>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Contact Information Box */}
-              <div className="bg-(--button-green) text-white p-8 rounded-lg">
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-xl font-semibold mb-2">Principal's Office:</h2>
-                    <p className="text-lg">{content.principalOffice || "Not set"}</p>
-                  </div>
+            {hasContent ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Contact Information Box */}
+                <div className="bg-(--button-green) text-white p-8 rounded-lg">
+                  <div className="space-y-6">
+                    <div>
+                      <h2 className="text-xl font-semibold mb-2">Principal's Office:</h2>
+                      <p className="text-lg">{content.principalOffice || "Not set"}</p>
+                    </div>
 
-                  <div>
-                    <h2 className="text-xl font-semibold mb-2">Library Office:</h2>
-                    <p className="text-lg">{content.libraryOffice || "Not set"}</p>
-                  </div>
+                    <div>
+                      <h2 className="text-xl font-semibold mb-2">Library Office:</h2>
+                      <p className="text-lg">{content.libraryOffice || "Not set"}</p>
+                    </div>
 
-                  <div>
-                    <h2 className="text-xl font-semibold mb-2">Faculty Office:</h2>
-                    <p className="text-lg">{content.facultyOffice || "Not set"}</p>
-                  </div>
+                    <div>
+                      <h2 className="text-xl font-semibold mb-2">Faculty Office:</h2>
+                      <p className="text-lg">{content.facultyOffice || "Not set"}</p>
+                    </div>
 
-                  <div>
-                    <h2 className="text-xl font-semibold mb-2">Facebook Page:</h2>
-                    {content.facebookPageUrl ? (
-                      <a
-                        href={content.facebookPageUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-yellow-300 text-lg hover:underline"
-                      >
-                        {content.facebookPageLabel || "Go to Page"}
-                      </a>
-                    ) : (
-                      <p className="text-lg">Not set</p>
-                    )}
+                    <div>
+                      <h2 className="text-xl font-semibold mb-2">Facebook Page:</h2>
+                      {content.facebookPageUrl ? (
+                        <a
+                          href={content.facebookPageUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-yellow-300 text-lg hover:underline"
+                        >
+                          {content.facebookPageLabel || "Go to Page"}
+                        </a>
+                      ) : (
+                        <p className="text-lg">Not set</p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Map Box */}
-              <div className="rounded-lg overflow-hidden shadow-lg h-100 md:h-auto">
-                {content.mapEmbedUrl ? (
-                  <iframe
-                    src={content.mapEmbedUrl}
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    title="Pagsabungan Elementary School Location"
-                  />
-                ) : (
-                  <div className="h-full flex items-center justify-center bg-gray-200">
-                    Map not set
-                  </div>
-                )}
+                {/* Map Box */}
+                <div className="rounded-lg overflow-hidden shadow-lg h-100 md:h-auto">
+                  {content.mapEmbedUrl ? (
+                    <iframe
+                      src={content.mapEmbedUrl}
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      title="Pagsabungan Elementary School Location"
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center bg-gray-200">
+                      Map not set
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              !isAdmin && <p>No contact information available.</p>
+            )}
 
             {isAdmin && (
-              <div className="mt-6 flex justify-center">
-                <Link
-                  to="/editcontactus"
-                  className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-(--button-green) text-white shadow-lg transition-transform hover:scale-105"
-                  aria-label="Edit Contact Us"
-                >
-                  <Pencil className="h-8 w-8" />
-                </Link>
-              </div>
+              <Link
+                to="/editcontactus"
+                className="fixed bottom-8 right-8 inline-flex h-20 w-20 items-center justify-center rounded-full bg-(--button-green) text-white shadow-lg transition-transform hover:scale-105"
+                aria-label={hasContent ? "Edit Contact Us" : "Add Contact Info"}
+              >
+                {hasContent ? (
+                  <Pencil className="h-10 w-10" />
+                ) : (
+                  <Plus className="h-10 w-10" />
+                )}
+              </Link>
             )}
           </>
         )}

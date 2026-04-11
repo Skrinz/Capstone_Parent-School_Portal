@@ -5,7 +5,7 @@ import { getAuthUser } from "@/lib/auth";
 import { type TransparencyContent } from "@/lib/transparencyContent";
 import { resolveMediaUrl } from "@/lib/api/base";
 import { useAboutUsStore } from "@/lib/store/aboutUsStore";
-import { Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const TransparencyPreview = ({ imageUrl }: { imageUrl: string }) => {
@@ -80,21 +80,33 @@ export const Transparency = () => {
         )}
         {isLoading ? (
           <TransparencySkeleton showEdit={isAdmin} />
-        ) : !hasContent ? (
-          <p>No transparency data available.</p>
         ) : (
           <>
-            <h1 className="text-4xl font-bold mb-8">Transparency & Monthly Budget Proposal</h1>
-            <div className="w-full rounded-sm bg-gray-300 p-6">
-              <TransparencyPreview imageUrl={content.imageUrl} />
-            </div>
+            <h1 className="text-4xl font-bold mb-8">
+              {hasContent
+                ? "Transparency & Monthly Budget Proposal"
+                : "No transparency data available."}
+            </h1>
+
+            {hasContent ? (
+              <div className="w-full rounded-sm bg-gray-300 p-6">
+                <TransparencyPreview imageUrl={content.imageUrl} />
+              </div>
+            ) : (
+              !isAdmin && <p>No transparency data available.</p>
+            )}
+
             {isAdmin && (
               <button
                 onClick={() => setIsModalOpen(true)}
                 className="fixed bottom-8 right-8 inline-flex h-20 w-20 items-center justify-center rounded-full bg-(--button-green) text-white shadow-lg transition-transform hover:scale-105"
-                aria-label="Edit Transparency"
+                aria-label={hasContent ? "Edit Transparency" : "Add Transparency"}
               >
-                <Pencil className="h-10 w-10" />
+                {hasContent ? (
+                  <Pencil className="h-10 w-10" />
+                ) : (
+                  <Plus className="h-10 w-10" />
+                )}
               </button>
             )}
           </>
