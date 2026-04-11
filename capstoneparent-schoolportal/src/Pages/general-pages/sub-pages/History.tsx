@@ -1,5 +1,4 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
-import { StatusMessage } from "@/components/ui/StatusMessage";
 import { getAuthUser } from "@/lib/auth";
 import { useAboutUsStore } from "@/lib/store/aboutUsStore";
 import { Pencil, Plus } from "lucide-react";
@@ -37,7 +36,6 @@ export const History = () => {
   const isAdmin = user?.role === "admin";
   const content = useAboutUsStore((state) => state.history);
   const isLoading = useAboutUsStore((state) => state.loading.history);
-  const feedback = useAboutUsStore((state) => state.feedback);
   const fetchHistory = useAboutUsStore((state) => state.fetchHistory);
 
   useEffect(() => {
@@ -50,13 +48,6 @@ export const History = () => {
     <div>
       <RoleAwareNavbar />
       <div className="max-w-7xl mx-auto py-12 px-4">
-        {feedback?.section === "history" && (
-          <StatusMessage
-            type={feedback.type}
-            message={feedback.message}
-            className="mb-4"
-          />
-        )}
         {isLoading ? (
           <HistorySkeleton showEdit={isAdmin} />
         ) : (

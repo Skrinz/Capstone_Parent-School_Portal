@@ -18,7 +18,7 @@ export const StatusMessage = ({
     <div
       role="status"
       aria-live="polite"
-      className={`rounded-lg border px-4 py-3 text-sm font-medium ${palette} ${className}`.trim()}
+      className={`rounded-xl border px-6 py-3.5 text-base font-semibold shadow-2xl ${palette} ${className}`.trim()}
     >
       {message}
     </div>

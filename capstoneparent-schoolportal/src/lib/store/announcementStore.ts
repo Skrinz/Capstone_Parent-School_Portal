@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { AnnouncementPostItem } from "@/components/staff/AnnouncementPostFeed";
+import { useApiFeedbackStore } from "./apiFeedbackStore";
 import {
   createAnnouncement,
   getAnnouncements,
@@ -7,10 +8,6 @@ import {
 } from "@/lib/api/announcementsApi";
 import type { AnnouncementCategory } from "@/lib/announcementPosts";
 
-type StoreFeedback = {
-  type: "success" | "error";
-  message: string;
-} | null;
 
 type CreateAnnouncementInput = {
   title: string;
@@ -78,9 +75,7 @@ interface AnnouncementStore {
   postsByCategory: Record<AnnouncementCategory, AnnouncementPostItem[]>;
   loadingByCategory: Record<AnnouncementCategory, boolean>;
   loadedByCategory: Record<AnnouncementCategory, boolean>;
-  feedback: StoreFeedback;
   setViewCategory: (category: AnnouncementCategory) => void;
-  clearFeedback: () => void;
   fetchPosts: (category: AnnouncementCategory, force?: boolean) => Promise<void>;
   createPost: (data: CreateAnnouncementInput) => Promise<void>;
   updatePost: (data: UpdateAnnouncementInput) => Promise<void>;
@@ -109,7 +104,6 @@ export const useAnnouncementStore = create<AnnouncementStore>((set, get) => ({
         ...state.loadingByCategory,
         [category]: true,
       },
-      feedback: null,
     }));
 
     try {
@@ -143,11 +137,8 @@ export const useAnnouncementStore = create<AnnouncementStore>((set, get) => ({
           ...state.loadingByCategory,
           [category]: false,
         },
-        feedback: {
-          type: "error",
-          message,
-        },
       }));
+      useApiFeedbackStore.getState().showError(message);
 
       throw error;
     }
@@ -164,22 +155,11 @@ export const useAnnouncementStore = create<AnnouncementStore>((set, get) => ({
 
       await get().fetchPosts(data.category, true);
 
-      set({
-        feedback: {
-          type: "success",
-          message: "Announcement posted successfully.",
-        },
-      });
+      useApiFeedbackStore.getState().showSuccess("Announcement posted successfully.");
     } catch (error) {
-      set({
-        feedback: {
-          type: "error",
-          message: getErrorMessage(
-            error,
-            "Failed to create announcement.",
-          ),
-        },
-      });
+      useApiFeedbackStore.getState().showError(
+        getErrorMessage(error, "Failed to create announcement.")
+      );
       throw error;
     }
   },
@@ -206,22 +186,11 @@ export const useAnnouncementStore = create<AnnouncementStore>((set, get) => ({
         await get().fetchPosts(existingCategory, true);
       }
 
-      set({
-        feedback: {
-          type: "success",
-          message: "Announcement updated successfully.",
-        },
-      });
+      useApiFeedbackStore.getState().showSuccess("Announcement updated successfully.");
     } catch (error) {
-      set({
-        feedback: {
-          type: "error",
-          message: getErrorMessage(
-            error,
-            "Failed to update announcement.",
-          ),
-        },
-      });
+      useApiFeedbackStore.getState().showError(
+        getErrorMessage(error, "Failed to update announcement.")
+      );
       throw error;
     }
   },

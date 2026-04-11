@@ -1,6 +1,5 @@
 import { EditOrganizationalChartModal } from "@/components/admin/EditOrganizationalChartModal";
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
-import { StatusMessage } from "@/components/ui/StatusMessage";
 import { getAuthUser } from "@/lib/auth";
 import { type OrganizationalChartItem } from "@/lib/organizationalChartContent";
 import { resolveMediaUrl } from "@/lib/api/base";
@@ -77,7 +76,6 @@ export const OrginizationalChart = () => {
 
   const charts = useAboutUsStore((state) => state.orgCharts);
   const isLoading = useAboutUsStore((state) => state.loading.orgCharts);
-  const feedback = useAboutUsStore((state) => state.feedback);
   const fetchOrgCharts = useAboutUsStore((state) => state.fetchOrgCharts);
   const updateOrgChart = useAboutUsStore((state) => state.updateOrgChart);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
@@ -147,13 +145,6 @@ export const OrginizationalChart = () => {
     <div>
       <RoleAwareNavbar />
       <div className="mx-auto max-w-7xl px-4 py-12">
-        {feedback?.section === "orgCharts" && (
-          <StatusMessage
-            type={feedback.type}
-            message={feedback.message}
-            className="mb-4"
-          />
-        )}
         {isLoading ? (
           <OrganizationalChartSkeleton showActions={isAdmin} />
         ) : uniqueYears.length === 0 ? (

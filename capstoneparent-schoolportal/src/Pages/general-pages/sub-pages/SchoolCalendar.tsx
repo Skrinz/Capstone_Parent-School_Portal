@@ -1,6 +1,5 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
 import { EditSchoolCalendarModal } from "@/components/admin/EditSchoolCalendarModal";
-import { StatusMessage } from "@/components/ui/StatusMessage";
 import { getAuthUser } from "@/lib/auth";
 import { type SchoolCalendarItem } from "@/lib/schoolCalendarContent";
 import { resolveMediaUrl } from "@/lib/api/base";
@@ -50,7 +49,6 @@ export const SchoolCalendar = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const schoolCalendars = useAboutUsStore((state) => state.schoolCalendars);
   const isLoading = useAboutUsStore((state) => state.loading.schoolCalendars);
-  const feedback = useAboutUsStore((state) => state.feedback);
   const fetchSchoolCalendars = useAboutUsStore((state) => state.fetchSchoolCalendars);
   const updateSchoolCalendar = useAboutUsStore((state) => state.updateSchoolCalendar);
 
@@ -69,13 +67,6 @@ export const SchoolCalendar = () => {
     <div>
       <RoleAwareNavbar />
       <div className="mx-auto max-w-7xl px-4 py-12">
-        {feedback?.section === "schoolCalendars" && (
-          <StatusMessage
-            type={feedback.type}
-            message={feedback.message}
-            className="mb-4"
-          />
-        )}
         {isLoading ? (
           <SchoolCalendarSkeleton showEdit={isAdmin} />
         ) : (

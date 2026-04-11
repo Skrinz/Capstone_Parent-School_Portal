@@ -25,11 +25,11 @@ export const GlobalApiFeedback = () => {
   }
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-4 z-[100] flex justify-center px-4">
+    <div className="pointer-events-none fixed right-8 top-8 z-[100] flex justify-end px-4">
       <StatusMessage
         type={feedback.type}
         message={feedback.message}
-        className="pointer-events-auto w-full max-w-xl shadow-lg"
+        className="pointer-events-auto w-full max-w-lg shadow-xl"
       />
     </div>
   );

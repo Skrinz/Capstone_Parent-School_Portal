@@ -1,5 +1,4 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
-import { StatusMessage } from "@/components/ui/StatusMessage";
 import { getAuthUser } from "@/lib/auth";
 import { useAboutUsStore } from "@/lib/store/aboutUsStore";
 import { Pencil, Plus } from "lucide-react";
@@ -35,7 +34,6 @@ export const ContactUs = () => {
   const isAdmin = user?.role === "admin";
   const content = useAboutUsStore((state) => state.contactUs);
   const isLoading = useAboutUsStore((state) => state.loading.contactUs);
-  const feedback = useAboutUsStore((state) => state.feedback);
   const fetchContactUs = useAboutUsStore((state) => state.fetchContactUs);
 
   useEffect(() => {
@@ -48,13 +46,6 @@ export const ContactUs = () => {
     <div>
       <RoleAwareNavbar />
       <div className="max-w-7xl mx-auto py-12 px-4">
-        {feedback?.section === "contactUs" && (
-          <StatusMessage
-            type={feedback.type}
-            message={feedback.message}
-            className="mb-4"
-          />
-        )}
         {isLoading ? (
           <ContactUsSkeleton showEdit={isAdmin} />
         ) : (

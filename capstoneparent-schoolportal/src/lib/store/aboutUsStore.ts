@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { pagesApi } from "@/lib/api/pagesApi";
+import { useApiFeedbackStore } from "./apiFeedbackStore";
 import {
   DEFAULT_CONTACT_US_CONTENT,
   type ContactUsContent,
@@ -28,11 +29,6 @@ type AboutUsSection =
   | "schoolCalendars"
   | "orgCharts";
 
-type StoreFeedback = {
-  type: "success" | "error";
-  message: string;
-  section: AboutUsSection;
-} | null;
 
 const defaultLoadingState: Record<AboutUsSection, boolean> = {
   contactUs: false,
@@ -69,8 +65,6 @@ interface AboutUsStore {
   orgCharts: OrganizationalChartItem[];
   loading: Record<AboutUsSection, boolean>;
   loaded: Record<AboutUsSection, boolean>;
-  feedback: StoreFeedback;
-  clearFeedback: () => void;
   fetchContactUs: (force?: boolean) => Promise<ContactUsContent>;
   updateContactUs: (data: ContactUsContent) => Promise<ContactUsContent>;
   fetchHistory: (force?: boolean) => Promise<HistoryContent>;
@@ -101,9 +95,6 @@ export const useAboutUsStore = create<AboutUsStore>((set, get) => ({
   orgCharts: DEFAULT_ORGANIZATIONAL_CHARTS,
   loading: defaultLoadingState,
   loaded: defaultLoadedState,
-  feedback: null,
-
-  clearFeedback: () => set({ feedback: null }),
 
   fetchContactUs: async (force = false) => {
     const { contactUs, loaded } = get();
@@ -132,15 +123,10 @@ export const useAboutUsStore = create<AboutUsStore>((set, get) => ({
     } catch (error) {
       set((state) => ({
         loading: { ...state.loading, contactUs: false },
-        feedback: {
-          type: "error",
-          section: "contactUs",
-          message: getErrorMessage(
-            error,
-            "Failed to load Contact Us content.",
-          ),
-        },
       }));
+      useApiFeedbackStore.getState().showError(
+        getErrorMessage(error, "Failed to load Contact Us content.")
+      );
       throw error;
     }
   },
@@ -155,25 +141,14 @@ export const useAboutUsStore = create<AboutUsStore>((set, get) => ({
       set({
         contactUs: updated,
         loaded: { ...get().loaded, contactUs: true },
-        feedback: {
-          type: "success",
-          section: "contactUs",
-          message: "Contact Us updated successfully.",
-        },
       });
+      useApiFeedbackStore.getState().showSuccess("Contact Us updated successfully.");
 
       return updated;
     } catch (error) {
-      set({
-        feedback: {
-          type: "error",
-          section: "contactUs",
-          message: getErrorMessage(
-            error,
-            "Failed to update Contact Us.",
-          ),
-        },
-      });
+      useApiFeedbackStore.getState().showError(
+        getErrorMessage(error, "Failed to update Contact Us.")
+      );
       throw error;
     }
   },
@@ -205,12 +180,10 @@ export const useAboutUsStore = create<AboutUsStore>((set, get) => ({
     } catch (error) {
       set((state) => ({
         loading: { ...state.loading, history: false },
-        feedback: {
-          type: "error",
-          section: "history",
-          message: getErrorMessage(error, "Failed to load History content."),
-        },
       }));
+      useApiFeedbackStore.getState().showError(
+        getErrorMessage(error, "Failed to load History content.")
+      );
       throw error;
     }
   },
@@ -225,22 +198,14 @@ export const useAboutUsStore = create<AboutUsStore>((set, get) => ({
       set({
         history: updated,
         loaded: { ...get().loaded, history: true },
-        feedback: {
-          type: "success",
-          section: "history",
-          message: "History updated successfully.",
-        },
       });
+      useApiFeedbackStore.getState().showSuccess("History updated successfully.");
 
       return updated;
     } catch (error) {
-      set({
-        feedback: {
-          type: "error",
-          section: "history",
-          message: getErrorMessage(error, "Failed to update History."),
-        },
-      });
+      useApiFeedbackStore.getState().showError(
+        getErrorMessage(error, "Failed to update History.")
+      );
       throw error;
     }
   },
@@ -272,15 +237,10 @@ export const useAboutUsStore = create<AboutUsStore>((set, get) => ({
     } catch (error) {
       set((state) => ({
         loading: { ...state.loading, transparency: false },
-        feedback: {
-          type: "error",
-          section: "transparency",
-          message: getErrorMessage(
-            error,
-            "Failed to load Transparency content.",
-          ),
-        },
       }));
+      useApiFeedbackStore.getState().showError(
+        getErrorMessage(error, "Failed to load Transparency content.")
+      );
       throw error;
     }
   },
@@ -295,25 +255,14 @@ export const useAboutUsStore = create<AboutUsStore>((set, get) => ({
       set({
         transparency: updated,
         loaded: { ...get().loaded, transparency: true },
-        feedback: {
-          type: "success",
-          section: "transparency",
-          message: "Transparency updated successfully.",
-        },
       });
+      useApiFeedbackStore.getState().showSuccess("Transparency updated successfully.");
 
       return updated;
     } catch (error) {
-      set({
-        feedback: {
-          type: "error",
-          section: "transparency",
-          message: getErrorMessage(
-            error,
-            "Failed to update Transparency.",
-          ),
-        },
-      });
+      useApiFeedbackStore.getState().showError(
+        getErrorMessage(error, "Failed to update Transparency.")
+      );
       throw error;
     }
   },
@@ -342,15 +291,10 @@ export const useAboutUsStore = create<AboutUsStore>((set, get) => ({
     } catch (error) {
       set((state) => ({
         loading: { ...state.loading, schoolCalendars: false },
-        feedback: {
-          type: "error",
-          section: "schoolCalendars",
-          message: getErrorMessage(
-            error,
-            "Failed to load School Calendar content.",
-          ),
-        },
       }));
+      useApiFeedbackStore.getState().showError(
+        getErrorMessage(error, "Failed to load School Calendar content.")
+      );
       throw error;
     }
   },
@@ -363,25 +307,14 @@ export const useAboutUsStore = create<AboutUsStore>((set, get) => ({
       set({
         schoolCalendars: calendars,
         loaded: { ...get().loaded, schoolCalendars: true },
-        feedback: {
-          type: "success",
-          section: "schoolCalendars",
-          message: `School Calendar ${updated.year} saved successfully.`,
-        },
       });
+      useApiFeedbackStore.getState().showSuccess(`School Calendar ${updated.year} saved successfully.`);
 
       return updated;
     } catch (error) {
-      set({
-        feedback: {
-          type: "error",
-          section: "schoolCalendars",
-          message: getErrorMessage(
-            error,
-            "Failed to update School Calendar.",
-          ),
-        },
-      });
+      useApiFeedbackStore.getState().showError(
+        getErrorMessage(error, "Failed to update School Calendar.")
+      );
       throw error;
     }
   },
@@ -410,15 +343,10 @@ export const useAboutUsStore = create<AboutUsStore>((set, get) => ({
     } catch (error) {
       set((state) => ({
         loading: { ...state.loading, orgCharts: false },
-        feedback: {
-          type: "error",
-          section: "orgCharts",
-          message: getErrorMessage(
-            error,
-            "Failed to load Organizational Chart content.",
-          ),
-        },
       }));
+      useApiFeedbackStore.getState().showError(
+        getErrorMessage(error, "Failed to load Organizational Chart content.")
+      );
       throw error;
     }
   },
@@ -431,25 +359,14 @@ export const useAboutUsStore = create<AboutUsStore>((set, get) => ({
       set({
         orgCharts: charts,
         loaded: { ...get().loaded, orgCharts: true },
-        feedback: {
-          type: "success",
-          section: "orgCharts",
-          message: `Organizational Chart ${updated.year} saved successfully.`,
-        },
       });
+      useApiFeedbackStore.getState().showSuccess(`Organizational Chart ${updated.year} saved successfully.`);
 
       return updated;
     } catch (error) {
-      set({
-        feedback: {
-          type: "error",
-          section: "orgCharts",
-          message: getErrorMessage(
-            error,
-            "Failed to update Organizational Chart.",
-          ),
-        },
-      });
+      useApiFeedbackStore.getState().showError(
+        getErrorMessage(error, "Failed to update Organizational Chart.")
+      );
       throw error;
     }
   },

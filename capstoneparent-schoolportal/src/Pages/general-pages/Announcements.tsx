@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { StatusMessage } from "@/components/ui/StatusMessage";
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
 import {
   AnnouncementPostFeed,
@@ -44,8 +43,6 @@ export const Announcements = () => {
     setViewCategory,
     postsByCategory,
     loadingByCategory,
-    feedback,
-    clearFeedback,
     fetchPosts,
     createPost,
     updatePost,
@@ -108,13 +105,6 @@ export const Announcements = () => {
     <div className="min-h-screen bg-white">
       <RoleAwareNavbar />
       <div className="mx-auto w-full max-w-330 px-3 pt-6 sm:px-5 lg:px-6">
-        {feedback && (
-          <StatusMessage
-            type={feedback.type}
-            message={feedback.message}
-            className="mb-4"
-          />
-        )}
         {isSchoolStaff && (
           <div
             className="flex flex-wrap items-baseline gap-x-10 gap-y-2 sm:gap-x-14 lg:gap-x-16"
@@ -128,7 +118,6 @@ export const Announcements = () => {
                 role="tab"
                 aria-selected={effectiveCategory === id}
                 onClick={() => {
-                  clearFeedback();
                   setViewCategory(id);
                 }}
                 className={`cursor-pointer border-0 bg-transparent p-0 font-sans text-sm uppercase tracking-wide text-gray-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-950 focus-visible:ring-offset-2 sm:text-base ${
@@ -159,7 +148,6 @@ export const Announcements = () => {
           <CreateAnnouncementModal
             isOpen={isCreateModalOpen}
             onClose={() => {
-              clearFeedback();
               setIsCreateModalOpen(false);
             }}
             onCreate={handleCreate}
@@ -168,7 +156,6 @@ export const Announcements = () => {
           <EditAnnouncementModal
             isOpen={isEditModalOpen}
             onClose={() => {
-              clearFeedback();
               setIsEditModalOpen(false);
               setSelectedPost(null);
             }}

@@ -1,6 +1,5 @@
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
 import { EditTransparencyModal } from "@/components/admin/EditTransparencyModal";
-import { StatusMessage } from "@/components/ui/StatusMessage";
 import { getAuthUser } from "@/lib/auth";
 import { type TransparencyContent } from "@/lib/transparencyContent";
 import { resolveMediaUrl } from "@/lib/api/base";
@@ -52,7 +51,6 @@ export const Transparency = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const content = useAboutUsStore((state) => state.transparency);
   const isLoading = useAboutUsStore((state) => state.loading.transparency);
-  const feedback = useAboutUsStore((state) => state.feedback);
   const fetchTransparency = useAboutUsStore((state) => state.fetchTransparency);
   const updateTransparency = useAboutUsStore((state) => state.updateTransparency);
 
@@ -71,13 +69,6 @@ export const Transparency = () => {
     <div>
       <RoleAwareNavbar />
       <div className="max-w-7xl mx-auto py-12 px-4">
-        {feedback?.section === "transparency" && (
-          <StatusMessage
-            type={feedback.type}
-            message={feedback.message}
-            className="mb-4"
-          />
-        )}
         {isLoading ? (
           <TransparencySkeleton showEdit={isAdmin} />
         ) : (
