@@ -18,17 +18,7 @@ const PENDING_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const MIN_PASSWORD_LENGTH = 8;
 
 // ─── Password Reset Token Store ─────────────────────────────────────────────
-const passwordResetTokens = new Map();
-const passwordResetByEmail = new Map();
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
-
-function invalidateResetToken(email) {
-  const oldToken = passwordResetByEmail.get(email);
-  if (oldToken) {
-    passwordResetTokens.delete(oldToken);
-    passwordResetByEmail.delete(email);
-  }
-}
 
 // ─── Pending Registration Helpers ───────────────────────────────────────────
 
@@ -452,20 +442,28 @@ const authService = {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return true;
 
-    invalidateResetToken(email);
+    await prisma.userPasswordResetToken.deleteMany({
+      where: { user_id: user.user_id },
+    });
 
     const rawToken = crypto.randomBytes(32).toString("hex");
-    const expiresAt = Date.now() + RESET_TOKEN_TTL_MS;
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
 
-    passwordResetTokens.set(rawToken, { email, expiresAt });
-    passwordResetByEmail.set(email, rawToken);
+    await prisma.userPasswordResetToken.create({
+      data: {
+        user_id: user.user_id,
+        token: rawToken,
+        expires_at: expiresAt,
+      },
+    });
 
     const resetLink = `${process.env.FRONTEND_URL || "http://localhost:3000"}/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`;
 
     const emailSent = await sendPasswordResetEmail(email, resetLink);
     if (!emailSent) {
-      passwordResetTokens.delete(rawToken);
-      passwordResetByEmail.delete(email);
+      await prisma.userPasswordResetToken.deleteMany({
+        where: { user_id: user.user_id },
+      });
       throw new Error("Failed to send password reset email");
     }
 
@@ -480,52 +478,58 @@ const authService = {
       );
     }
 
-    const entry = passwordResetTokens.get(token);
-
-    if (!entry) {
-      throw new Error("Invalid or expired reset token");
-    }
-
-    if (Date.now() > entry.expiresAt) {
-      passwordResetTokens.delete(token);
-      passwordResetByEmail.delete(entry.email);
-      throw new Error("Invalid or expired reset token");
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: entry.email },
+    const entry = await prisma.userPasswordResetToken.findUnique({
+      where: { token },
+      include: { user: true },
     });
+
+    if (!entry || entry.used) {
+      throw new Error("Invalid or expired reset token");
+    }
+
+    if (new Date() > entry.expires_at) {
+      await prisma.userPasswordResetToken.delete({ where: { prt_id: entry.prt_id } });
+      throw new Error("Invalid or expired reset token");
+    }
+
+    const user = entry.user;
     if (!user) {
-      passwordResetTokens.delete(token);
-      passwordResetByEmail.delete(entry.email);
       throw new Error("User not found");
     }
 
     const hashedPassword = await hashPassword(newPassword);
-    await prisma.user.update({
-      where: { user_id: user.user_id },
-      data: { password: hashedPassword },
-    });
-
-    passwordResetTokens.delete(token);
-    passwordResetByEmail.delete(entry.email);
+    
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { user_id: user.user_id },
+        data: { password: hashedPassword },
+      }),
+      prisma.userPasswordResetToken.delete({
+        where: { prt_id: entry.prt_id },
+      }),
+    ]);
 
     return true;
   },
 
   //http://localhost:5000/api/auth/reset-password-info?token=
-  getResetPasswordInfo(token) {
-    const entry = passwordResetTokens.get(token);
+  async getResetPasswordInfo(token) {
+    const entry = await prisma.userPasswordResetToken.findUnique({
+      where: { token },
+      include: { user: true },
+    });
 
-    if (!entry || Date.now() > entry.expiresAt) {
-      if (entry) {
-        passwordResetTokens.delete(token);
-        passwordResetByEmail.delete(entry.email);
-      }
+    if (!entry || entry.used) {
       throw new Error("Invalid or expired reset token");
     }
 
-    const [local, domain] = entry.email.split("@");
+    if (new Date() > entry.expires_at) {
+      await prisma.userPasswordResetToken.delete({ where: { prt_id: entry.prt_id } });
+      throw new Error("Invalid or expired reset token");
+    }
+
+    const email = entry.user.email;
+    const [local, domain] = email.split("@");
     const maskedLocal =
       local.length <= 2
         ? local[0] + "*".repeat(Math.max(0, local.length - 1))

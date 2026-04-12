@@ -105,6 +105,7 @@ model User {
   // Relations
   otp_codes                    UserOTPCode[]
   trusted_devices              UserTrustedDevice[]
+  password_reset_tokens        UserPasswordResetToken[]
   roles                        UserRole_Model[]
   announcements                Announcement[]
   files                        File[]
@@ -144,6 +145,20 @@ model UserTrustedDevice {
   user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@map("user_trusted_devices")
+}
+
+model UserPasswordResetToken {
+  prt_id     Int      @id @default(autoincrement())
+  user_id    Int
+  token      String   @unique @db.Char(64)
+  expires_at DateTime
+  used       Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([token])
+  @@map("user_password_reset_tokens")
 }
 
 model UserRole_Model {

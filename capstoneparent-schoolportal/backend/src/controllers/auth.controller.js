@@ -219,7 +219,7 @@ const authController = {
   async getResetPasswordInfo(req, res, next) {
     try {
       const { token } = req.query;
-      const result = authService.getResetPasswordInfo(token);
+      const result = await authService.getResetPasswordInfo(token);
       res.status(200).json({ data: result });
     } catch (error) {
       if (error.message === "Invalid or expired reset token") {
