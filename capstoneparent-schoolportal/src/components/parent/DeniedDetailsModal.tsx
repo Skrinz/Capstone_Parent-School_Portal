@@ -140,9 +140,8 @@ export const DeniedDetailsModal = ({
 
             <div className="space-y-3 text-sm text-gray-800">
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="mb-2 flex items-start sm:items-center justify-between gap-2">
-                  <p className="font-medium text-sm">Parent Birth Certificate</p>
-                  <span className="text-xs font-semibold text-red-600 shrink-0">Required*</span>
+                <div className="mb-2">
+                  <p className="font-medium text-sm">Parent Birth Certificate <span className="text-red-600">*</span></p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-3 py-2">
                   <span className="truncate text-xs flex-1">{deniedUploads.parentBirthCertificate || "No file selected"}</span>
@@ -159,9 +158,8 @@ export const DeniedDetailsModal = ({
               </div>
 
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="mb-2 flex items-start sm:items-center justify-between gap-2">
+                <div className="mb-2">
                   <p className="font-medium text-sm">Government-issued ID</p>
-                  <span className="text-xs font-semibold text-gray-500 shrink-0">Optional</span>
                 </div>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-3 py-2">
                   <span className="truncate text-xs flex-1">{deniedUploads.governmentId || "No file selected"}</span>
@@ -178,9 +176,8 @@ export const DeniedDetailsModal = ({
               </div>
 
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="mb-2 flex items-start sm:items-center justify-between gap-2">
-                  <p className="font-medium text-sm">Child Birth Certificate</p>
-                  <span className="text-xs font-semibold text-red-600 shrink-0">Required*</span>
+                <div className="mb-2">
+                  <p className="font-medium text-sm">Child Birth Certificate <span className="text-red-600">*</span></p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-3 py-2">
                   <span className="truncate text-xs flex-1">{deniedUploads.childBirthCertificate || "No file selected"}</span>

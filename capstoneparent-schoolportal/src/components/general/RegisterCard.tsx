@@ -38,19 +38,13 @@ const FieldLabel = ({
   htmlFor?: string;
 }) => (
   <div className="mb-2">
-    <div className="flex items-center justify-between gap-3">
-      <label
-        htmlFor={htmlFor}
-        className="text-sm font-semibold uppercase tracking-wide text-gray-700"
-      >
-        {label}
-      </label>
-      {required ? (
-        <span className="rounded-full bg-red-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700">
-          Required
-        </span>
-      ) : null}
-    </div>
+    <label
+      htmlFor={htmlFor}
+      className="text-sm font-semibold uppercase tracking-wide text-gray-700"
+    >
+      {label}
+      {required && <span className="ml-1 text-red-600">*</span>}
+    </label>
     {hint ? (
       <p className="mt-1 text-xs font-medium text-gray-500">{hint}</p>
     ) : null}
@@ -743,25 +737,27 @@ export const RegisterCard = () => {
                   </Button>
                 </div>
 
-                <div
-                  className={`border-4 border-dashed ${isDragging ? "border-green-600 bg-green-50" : "border-gray-400"} rounded-2xl p-8 text-center bg-white transition-colors cursor-pointer hover:border-green-500 hover:bg-green-50`}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  onClick={() =>
-                    document.getElementById(FILE_INPUT_ID)?.click()
-                  }
-                >
-                  <div className="flex flex-col items-center gap-3">
-                    <Upload className="w-12 h-12 text-gray-600" />
-                    <p className="text-xl font-medium text-gray-800">
-                      Drag & Drop or Click to Upload Files
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Accepted files: JPG, JPEG, PNG, PDF. Maximum of 10 files.
-                    </p>
+                {uploadedFiles.length === 0 && (
+                  <div
+                    className={`border-4 border-dashed ${isDragging ? "border-green-600 bg-green-50" : "border-gray-400"} rounded-2xl p-8 text-center bg-white transition-colors cursor-pointer hover:border-green-500 hover:bg-green-50`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() =>
+                      document.getElementById(FILE_INPUT_ID)?.click()
+                    }
+                  >
+                    <div className="flex flex-col items-center gap-3">
+                      <Upload className="w-12 h-12 text-gray-600" />
+                      <p className="text-xl font-medium text-gray-800">
+                        Drag & Drop or Click to Upload Files
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Accepted: JPG, JPEG, PNG, PDF · Max 10 MB per file · Up to 10 files.
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="space-y-3">
                   {uploadedFiles.map((fileObj, index) => (
