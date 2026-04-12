@@ -28,7 +28,18 @@ if (!global.__parentRegistrationCleanupTimer) {
 const app = express();
 
 // Security middleware
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "img-src": ["'self'", "data:", "https://*.supabase.co", "blob:"],
+        "frame-src": ["'self'", "https://www.google.com", "https://*.google.com"],
+        "connect-src": ["'self'", "https://*.supabase.co"],
+      },
+    },
+  }),
+);
 
 // CORS configuration
 app.use(
