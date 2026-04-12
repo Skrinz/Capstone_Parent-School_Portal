@@ -819,8 +819,7 @@ export const RegisterCard = () => {
                 onClick={() => {
                   setStep("form");
                   setOtpCode("");
-                  setErrorMessage("");
-                  setInfoMessage("");
+                  clearFeedback();
                 }}
               >
                 Back
