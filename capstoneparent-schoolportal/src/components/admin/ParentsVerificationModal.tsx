@@ -23,6 +23,7 @@ interface ParentsVerificationModalProps {
 	isOpen: boolean;
 	verification: ParentVerificationRecord | null;
 	remarks: string;
+	submittingState: "approving" | "denying" | null;
 	onRemarksChange: (value: string) => void;
 	onApprove: () => void;
 	onDeny: () => void;
@@ -58,6 +59,7 @@ export const ParentsVerificationModal = ({
 	isOpen,
 	verification,
 	remarks,
+	submittingState,
 	onRemarksChange,
 	onApprove,
 	onDeny,
@@ -143,20 +145,26 @@ export const ParentsVerificationModal = ({
               <div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {uploadedFiles.map((file) => (
-                    <div
+                    <a
                       key={file.name}
-                      className="flex min-h-[120px] flex-col items-center rounded-md bg-[#bebebe] px-2 py-3 text-center shadow-sm"
+                      href={file.filePath}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex min-h-[120px] flex-col items-center rounded-md bg-[#bebebe] px-2 py-3 text-center shadow-sm transition-all hover:bg-[#b0b0b0] hover:shadow-md active:scale-95"
+                      title={`Click to view ${file.name}`}
                     >
                       <div className="flex h-16 w-16 items-center justify-center rounded-sm bg-red-500 text-white shadow-sm">
                         <div className="flex flex-col items-center gap-0.5">
                           <FileText className="h-7 w-7" strokeWidth={2.3} />
-                          <span className="text-[9px] font-bold tracking-wide">PDF</span>
+                          <span className="text-[9px] font-bold tracking-wide">
+                            {file.name.toLowerCase().endsWith(".pdf") ? "PDF" : "FILE"}
+                          </span>
                         </div>
                       </div>
-                      <p className="mt-2 w-full truncate text-[11px] text-neutral-700">
+                      <p className="mt-2 w-full truncate text-[11px] font-medium text-neutral-800">
                         {file.name}
                       </p>
-                    </div>
+                    </a>
                   ))}
                 </div>
               </div>
@@ -168,21 +176,20 @@ export const ParentsVerificationModal = ({
           <button
             type="button"
             onClick={onApprove}
-            disabled={!isPending}
+            disabled={!isPending || submittingState !== null}
             className="rounded-full px-6 py-3 text-[18px] font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50 sm:px-7"
             style={{ backgroundColor: "#4ea85d" }}
           >
-            Approve Registration
+            {submittingState === "approving" ? "Approving..." : "Approve Registration"}
           </button>
-
           <button
             type="button"
             onClick={onDeny}
-            disabled={!isPending}
+            disabled={!isPending || submittingState !== null}
             className="rounded-full px-6 py-3 text-[18px] font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50 sm:px-7"
             style={{ backgroundColor: "#cd301e" }}
           >
-            Deny Registration
+            {submittingState === "denying" ? "Denying..." : "Deny Registration"}
           </button>
         </div>
       </div>

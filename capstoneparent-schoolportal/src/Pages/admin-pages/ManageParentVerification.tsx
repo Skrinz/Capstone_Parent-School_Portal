@@ -26,6 +26,7 @@ export const ManageParentVerification = () => {
   const [toDate, setToDate] = useState("");
   const [selectedVerificationId, setSelectedVerificationId] = useState<number | null>(null);
   const [modalRemarks, setModalRemarks] = useState("");
+  const [submittingState, setSubmittingState] = useState<"approving" | "denying" | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { showError, clearFeedback } = useApiFeedbackStore();
 
@@ -139,6 +140,7 @@ export const ManageParentVerification = () => {
   const updateVerification = async (nextStatus: "VERIFIED" | "DENIED") => {
     if (!selectedVerification) return;
 
+    setSubmittingState(nextStatus === "VERIFIED" ? "approving" : "denying");
     try {
       await parentsApi.verifyRegistration(selectedVerification.id, {
         status: nextStatus,
@@ -150,6 +152,8 @@ export const ManageParentVerification = () => {
       showError(
         error instanceof Error ? error.message : "Failed to update verification",
       );
+    } finally {
+      setSubmittingState(null);
     }
   };
 
@@ -281,6 +285,7 @@ export const ManageParentVerification = () => {
         isOpen={Boolean(selectedVerification)}
         verification={selectedVerification}
         remarks={modalRemarks}
+        submittingState={submittingState}
         onRemarksChange={setModalRemarks}
         onApprove={() => void updateVerification("VERIFIED")}
         onDeny={() => void updateVerification("DENIED")}
