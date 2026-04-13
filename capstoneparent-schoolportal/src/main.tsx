@@ -68,6 +68,7 @@ import { ManageClassLists } from "./Pages/principal-pages/ManageClassLists";
 
 import { usePageTitle } from "./hooks/usePageTitle";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { GuestRoute } from "./components/auth/GuestRoute";
 import { GlobalApiFeedback } from "./components/ui/GlobalApiFeedback";
 import "./styles/index.css";
 
@@ -115,8 +116,22 @@ const App = () => {
         />
         <Route path="/forgotpassword" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route
+          path="/login"
+          element={
+            <GuestRoute>
+              <Login />
+            </GuestRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <GuestRoute>
+              <Register />
+            </GuestRoute>
+          }
+        />
         <Route path="/partnership&events" element={<PartnershipAndEvents />} />
         <Route
           path="/partnership&events/:eventSlug"
