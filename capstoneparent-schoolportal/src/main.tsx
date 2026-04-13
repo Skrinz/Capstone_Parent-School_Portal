@@ -81,18 +81,37 @@ const App = () => {
         {/*General Pages */}
         <Route path="/" element={<Navigate to="/homepage" replace />} />
         <Route path="/homepage" element={<HomePage />} />
-        <Route path="/announcements" element={<Announcements />} />
+        <Route
+          path="/announcements"
+          element={
+            <ProtectedRoute>
+              <Announcements />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/generalannouncement"
-          element={<Navigate to="/announcements" replace />}
+          element={
+            <ProtectedRoute>
+              <Navigate to="/announcements" replace />
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/staffannouncement"
-          element={<Navigate to="/announcements" replace />}
+          element={
+            <ProtectedRoute>
+              <Navigate to="/announcements" replace />
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/memorandumannouncement"
-          element={<Navigate to="/announcements" replace />}
+          element={
+            <ProtectedRoute>
+              <Navigate to="/announcements" replace />
+            </ProtectedRoute>
+          }
         />
         <Route path="/forgotpassword" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
