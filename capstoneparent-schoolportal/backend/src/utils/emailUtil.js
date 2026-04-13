@@ -112,7 +112,7 @@ const sendPasswordResetEmail = async (email, resetLink) => {
           <div style="margin: 24px 0;">
             <a href="${resetLink}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
           </div>
-          <p>This link will expire in 1 hour.</p>
+          <p>This link will expire in 10 minutes.</p>
           <div style="margin-top: 24px; font-size: 14px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 16px;">
             <p>If you didn't request this, please ignore this email.</p>
           </div>

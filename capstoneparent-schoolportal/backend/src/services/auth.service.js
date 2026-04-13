@@ -22,7 +22,7 @@ const PENDING_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const MIN_PASSWORD_LENGTH = 8;
 
 // ─── Password Reset Token Store ─────────────────────────────────────────────
-const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+const RESET_TOKEN_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 // ─── Pending Registration Helpers ───────────────────────────────────────────
 

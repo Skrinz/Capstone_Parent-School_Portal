@@ -18,7 +18,7 @@ export const ForgotPasswordCard = () => {
       const result = await authApi.forgotPassword(email);
       showSuccess(
         result.message ||
-          "If that email is registered, a password reset link has been sent. The link expires in 1 hour.",
+          "If that email is registered, a password reset link has been sent. The link expires in 10 minutes.",
       );
       setEmail("");
     } catch (err) {

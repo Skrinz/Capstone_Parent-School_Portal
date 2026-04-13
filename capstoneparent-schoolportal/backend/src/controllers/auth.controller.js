@@ -186,7 +186,7 @@ const authController = {
       await authService.forgotPassword(email);
       res.status(200).json({
         message:
-          "If that email is registered, a password reset link has been sent. The link expires in 1 hour.",
+          "If that email is registered, a password reset link has been sent. The link expires in 10 minutes.",
       });
     } catch (error) {
       if (error.message === "Failed to send password reset email") {
