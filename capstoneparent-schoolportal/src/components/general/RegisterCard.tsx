@@ -453,7 +453,7 @@ export const RegisterCard = () => {
                       placeholder="Contact Number"
                       value={formData.contact}
                       onChange={(e) =>
-                        handleInputChange("contact", e.target.value)
+                        handleInputChange("contact", e.target.value.replace(/\D/g, ""))
                       }
                       className="h-14 rounded-full border-2 border-gray-900 bg-white px-6 text-lg placeholder:text-gray-500"
                     />
@@ -599,8 +599,11 @@ export const RegisterCard = () => {
                         >
                           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
                           <Input
-                            type="text"
+                            type="tel"
                             inputMode="numeric"
+                            pattern="[0-9]{12}"
+                            minLength={12}
+                            maxLength={12}
                             placeholder="Type LRN then press Enter to search"
                             value={row.query}
                             onChange={(e) =>
@@ -730,6 +733,9 @@ export const RegisterCard = () => {
                   >
                     File Upload <Plus className="h-5 w-5" />
                   </Button>
+                  <p className="mt-2 text-xs text-gray-500 text-center">
+                    Accepted: JPG, JPEG, PNG, PDF · Max 10 MB per file
+                  </p>
                 </div>
 
                 {uploadedFiles.length === 0 && (
@@ -746,9 +752,6 @@ export const RegisterCard = () => {
                       <Upload className="w-12 h-12 text-gray-600" />
                       <p className="text-xl font-medium text-gray-800">
                         Drag & Drop or Click to Upload Files
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Accepted: JPG, JPEG, PNG, PDF · Max 10 MB per file · Up to 10 files.
                       </p>
                     </div>
                   </div>

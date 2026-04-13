@@ -74,8 +74,11 @@ export const StudentFormModal = ({
           <option value="F">Female</option>
         </select>
         <input
-          type="text"
+          type="tel"
           inputMode="numeric"
+          pattern="[0-9]{12}"
+          minLength={12}
+          maxLength={12}
           placeholder="LRN Number"
           value={formData.lrn}
           onChange={(e) =>

@@ -121,8 +121,9 @@ export const ManageAccountModal = ({ isOpen, onClose, profileData, isSavingProfi
           <label htmlFor="contact-no" className="text-lg font-medium text-gray-900">Contact No:</label>
           <Input
             id="contact-no"
+            type="tel"
             value={formData.contactNo}
-            onChange={(event) => handleFieldChange("contactNo", event.target.value)}
+            onChange={(event) => handleFieldChange("contactNo", event.target.value.replace(/\D/g, ""))}
             className="h-12 rounded-md border border-gray-300 bg-white px-4 text-lg font-semibold text-gray-900"
           />
         </div>
