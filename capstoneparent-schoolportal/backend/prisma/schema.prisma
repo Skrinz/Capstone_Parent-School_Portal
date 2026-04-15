@@ -246,6 +246,7 @@ model GradeLevel {
   grade_level        String
   class_lists        ClassList[]
   learning_materials LearningMaterial[]
+  predefined_subjects GradeLevelSubject[]
   students           Student[]
 
   @@map("grade_levels")
@@ -294,10 +295,23 @@ model Subject {
   subject_id         Int                @id @default(autoincrement())
   name               String             @unique
   created_at         DateTime           @default(now())
+  deleted_at         DateTime?
+  grade_levels       GradeLevelSubject[]
   learning_materials LearningMaterial[]
   subject_records    SubjectRecord[]
 
   @@map("subjects")
+}
+
+model GradeLevelSubject {
+  gls_id       Int        @id @default(autoincrement())
+  gl_id        Int
+  subject_id   Int
+  grade_level  GradeLevel @relation(fields: [gl_id], references: [gl_id], onDelete: Cascade)
+  subject      Subject    @relation(fields: [subject_id], references: [subject_id], onDelete: Cascade)
+
+  @@unique([gl_id, subject_id])
+  @@map("grade_level_subjects")
 }
 
 model SubjectRecord {

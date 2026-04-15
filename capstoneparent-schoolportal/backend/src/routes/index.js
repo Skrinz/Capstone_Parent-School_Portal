@@ -6,6 +6,7 @@ const eventsRoutes = require("./events.routes");
 const studentsRoutes = require("./students.routes");
 const parentsRoutes = require("./parents.routes");
 const classesRoutes = require("./classes.routes");
+const predefinedSubjectsRoutes = require("./predefined-subjects.routes");
 const libraryRoutes = require("./library.routes");
 const pagesRoutes = require("./pages.routes");
 const templatesRoutes = require("./templates.routes");
@@ -53,6 +54,7 @@ router.use(
 );
 router.use("/classes/students/:studentId/attendance", gradeLimiter);
 router.use("/classes", globalLimiter);
+router.use("/predefined-subjects", globalLimiter);
 
 // ─── Announcements ───────────────────────────────────────────────────────────
 router.use("/announcements", globalLimiter);
@@ -73,6 +75,7 @@ router.use("/events", eventsRoutes);
 router.use("/students", studentsRoutes);
 router.use("/parents", parentsRoutes);
 router.use("/classes", classesRoutes);
+router.use("/predefined-subjects", predefinedSubjectsRoutes);
 router.use("/library", libraryRoutes);
 router.use("/pages", pagesRoutes);
 router.use("/templates", templatesRoutes);
