@@ -52,7 +52,7 @@ const AddLearningResourceModal: React.FC<AddLearningResourceModalProps> = ({
 					<select
 						value={categoryId}
 						onChange={(event) => setCategoryId(Number(event.target.value))}
-						className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+						className="w-full bg-white px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
 					>
 						<option value="" disabled>CATEGORY</option>
 						{categories.map((cat) => (
@@ -64,7 +64,7 @@ const AddLearningResourceModal: React.FC<AddLearningResourceModalProps> = ({
 					<select
 						value={glId}
 						onChange={(event) => setGlId(Number(event.target.value))}
-						className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+						className="w-full bg-white px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
 					>
 						<option value="" disabled>GRADE LEVEL</option>
 						{GRADE_LEVELS.map((g) => (

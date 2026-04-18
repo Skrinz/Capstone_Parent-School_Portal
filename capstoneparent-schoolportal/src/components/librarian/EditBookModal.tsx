@@ -69,7 +69,7 @@ const EditBookModal: React.FC<EditBookModalProps> = ({ onClose, onSave, initialB
 					<select
 						value={subjectId}
 						onChange={(event) => setSubjectId(Number(event.target.value))}
-						className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+						className="w-full bg-white px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
 					>
 						<option value="" disabled>SUBJECT</option>
 						{subjects.map((subject) => (
@@ -81,7 +81,7 @@ const EditBookModal: React.FC<EditBookModalProps> = ({ onClose, onSave, initialB
 					<select
 						value={glId}
 						onChange={(event) => setGlId(Number(event.target.value))}
-						className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+						className="w-full bg-white px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
 					>
 						<option value="" disabled>GRADE LEVEL</option>
 						{GRADE_LEVELS.map((g) => (

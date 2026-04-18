@@ -112,7 +112,7 @@ const BookCopyModal: React.FC<BookCopyModalProps> = ({
             <select
               value={filterStatus}
               onChange={(event) => setFilterStatus(event.target.value)}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-(--button-green)"
             >
               <option value="Status">Status</option>
               <option value="AVAILABLE">Available</option>
