@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   setDeviceToken,
   getDeviceToken,
+  clearDeviceToken,
   getDefaultRouteForRole,
 } from "@/lib/auth";
 import { authApi, type AuthUser } from "@/lib/api";
@@ -30,10 +31,10 @@ export const SignInCard = () => {
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   // ── Finish: store session and navigate ──────────────────────────────────────
-  const finalise = (token: string, user: AuthUser, rawDeviceToken?: string) => {
-    // loginSuccess stores the JWT, resolves all roles, picks default role
-    useAuthStore.getState().loginSuccess(token, user, rawDeviceToken);
-    if (rawDeviceToken) setDeviceToken(rawDeviceToken, user.email);
+  // NOTE: device token is always written per-email BEFORE calling finalise,
+  // so no rawDeviceToken parameter is needed here.
+  const finalise = (token: string, user: AuthUser) => {
+    useAuthStore.getState().loginSuccess(token, user);
 
     const role = useAuthStore.getState().user?.role ?? "staff";
     navigate(getDefaultRouteForRole(role));
@@ -84,7 +85,7 @@ export const SignInCard = () => {
       const msg = err instanceof Error ? err.message : "Something went wrong";
 
       if (msg.toLowerCase().includes("unrecognized device")) {
-        setDeviceToken("", normalizedEmail);
+        clearDeviceToken(normalizedEmail);
         try {
           await authApi.sendOtp(normalizedEmail);
           setEmail(normalizedEmail);
@@ -119,7 +120,11 @@ export const SignInCard = () => {
 
     try {
       const res = await authApi.verifyOtp(normalizedEmail, otpCode);
-      finalise(res.data.token, res.data.user, res.data.deviceToken);
+      // Save device token keyed to this specific email
+      if (res.data.deviceToken) {
+        setDeviceToken(res.data.deviceToken, normalizedEmail);
+      }
+      finalise(res.data.token, res.data.user);
     } catch (err) {
       showError(err instanceof Error ? err.message : "Invalid OTP");
     } finally {
@@ -185,7 +190,11 @@ export const SignInCard = () => {
       .verifyOtp(emailFromLink, normalizedOtpFromLink)
       .then((res) => {
         showSuccess("OTP verified successfully.");
-        finalise(res.data.token, res.data.user, res.data.deviceToken);
+        // Save device token keyed to this specific email
+        if (res.data.deviceToken) {
+          setDeviceToken(res.data.deviceToken, emailFromLink);
+        }
+        finalise(res.data.token, res.data.user);
       })
       .catch((err) => {
         setLoading(false);

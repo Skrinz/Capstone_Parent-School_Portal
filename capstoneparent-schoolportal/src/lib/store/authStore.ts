@@ -27,7 +27,7 @@ export interface SessionUser {
 interface AuthState {
   user: SessionUser | null;
   token: string | null;
-  deviceTokens: Record<string, string>;
+  deviceToken: string | null;
   isAuthenticated: boolean;
 
   // ── Actions ──────────────────────────────────────────────────────────────
@@ -38,14 +38,14 @@ interface AuthState {
     newDeviceToken?: string,
   ) => void;
 
-  /** Clears session but preserves deviceTokens so OTP is skipped next login. */
+  /** Clears session but preserves deviceToken so OTP is skipped next login. */
   logout: () => void;
 
   /** Switch active role (only to a role the user actually has). */
   switchRole: (role: UserRole) => void;
 
-  setDeviceToken: (email: string, token: string) => void;
-  clearDeviceToken: (email: string) => void;
+  setDeviceToken: (token: string) => void;
+  clearDeviceToken: () => void;
   setUser: (user: SessionUser) => void;
 }
 
@@ -97,7 +97,7 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       token: null,
-      deviceTokens: {},
+      deviceToken: null,
       isAuthenticated: false,
 
       loginSuccess(token, apiUser, newDeviceToken) {
@@ -116,27 +116,21 @@ export const useAuthStore = create<AuthState>()(
           photo_path: apiUser.photo_path,
         };
 
-        set((prev) => {
-          const updatedDeviceTokens = { ...prev.deviceTokens };
-          if (newDeviceToken) {
-            updatedDeviceTokens[apiUser.email.toLowerCase()] = newDeviceToken;
-          }
-
-          return {
-            user: sessionUser,
-            token,
-            deviceTokens: updatedDeviceTokens,
-            isAuthenticated: true,
-          };
-        });
+        set((prev) => ({
+          user: sessionUser,
+          token,
+          deviceToken: newDeviceToken ?? prev.deviceToken,
+          isAuthenticated: true,
+        }));
       },
 
       logout() {
-        set({
+        set((prev) => ({
           user: null,
           token: null,
           isAuthenticated: false,
-        });
+          deviceToken: prev.deviceToken,
+        }));
       },
 
       switchRole(role) {
@@ -147,21 +141,12 @@ export const useAuthStore = create<AuthState>()(
         set({ user: { ...user, role } });
       },
 
-      setDeviceToken(email, token) {
-        set((prev) => ({
-          deviceTokens: {
-            ...prev.deviceTokens,
-            [email.toLowerCase()]: token,
-          },
-        }));
+      setDeviceToken(token) {
+        set({ deviceToken: token });
       },
 
-      clearDeviceToken(email) {
-        set((prev) => {
-          const updated = { ...prev.deviceTokens };
-          delete updated[email.toLowerCase()];
-          return { deviceTokens: updated };
-        });
+      clearDeviceToken() {
+        set({ deviceToken: null });
       },
 
       setUser(user) {
@@ -173,7 +158,7 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         token: state.token,
-        deviceTokens: state.deviceTokens,
+        deviceToken: state.deviceToken,
         isAuthenticated: state.isAuthenticated,
       }),
     },

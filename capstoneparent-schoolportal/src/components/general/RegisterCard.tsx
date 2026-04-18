@@ -284,7 +284,7 @@ export const RegisterCard = () => {
       .verifyRegistrationOtp(emailFromLink, normalizedOtpFromLink)
       .then((res) => {
         showSuccess(res.message || "OTP verified successfully.");
-        if (res.data?.deviceToken) setDeviceToken(res.data.deviceToken, emailFromLink);
+        if (res.data?.deviceToken) setDeviceToken(res.data.deviceToken);
         setStep("complete");
       })
       .catch((err) => {
@@ -473,7 +473,7 @@ export const RegisterCard = () => {
         otpCode,
       );
       if (otpResult.data?.deviceToken)
-        setDeviceToken(otpResult.data.deviceToken, pendingEmail);
+        setDeviceToken(otpResult.data.deviceToken);
       setStep("complete");
       showSuccess(otpResult.message || "Email verified successfully");
     } catch (error) {

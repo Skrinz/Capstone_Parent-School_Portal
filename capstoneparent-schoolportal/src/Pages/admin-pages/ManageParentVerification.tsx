@@ -28,7 +28,7 @@ export const ManageParentVerification = () => {
   const [modalRemarks, setModalRemarks] = useState("");
   const [submittingState, setSubmittingState] = useState<"approving" | "denying" | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { showError, clearFeedback } = useApiFeedbackStore();
+  const { showSuccess, showError, clearFeedback } = useApiFeedbackStore();
 
   const selectedVerification = useMemo(
     () =>
@@ -48,9 +48,9 @@ export const ManageParentVerification = () => {
     }).format(parsedDate);
   };
 
-  const loadRegistrations = useCallback(async () => {
+  const loadRegistrations = useCallback(async (silent = false) => {
     setIsLoading(true);
-    clearFeedback();
+    if (!silent) clearFeedback();
 
     try {
       const response = await parentsApi.getRegistrations(statusFilter);
@@ -62,7 +62,7 @@ export const ManageParentVerification = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, clearFeedback, showError]);
 
   useEffect(() => {
     void loadRegistrations();
@@ -142,12 +142,19 @@ export const ManageParentVerification = () => {
 
     setSubmittingState(nextStatus === "VERIFIED" ? "approving" : "denying");
     try {
-      await parentsApi.verifyRegistration(selectedVerification.id, {
-        status: nextStatus,
-        remarks: modalRemarks.trim() || undefined,
-      });
-      await loadRegistrations();
+      await parentsApi.verifyRegistration(
+        selectedVerification.id,
+        { status: nextStatus, remarks: modalRemarks.trim() || undefined },
+        { skipSuccessFeedback: true },
+      );
+      // Reload silently so the success toast is not cleared
+      await loadRegistrations(true);
       closeVerification();
+      if (nextStatus === "VERIFIED") {
+        showSuccess("Registration approved. A confirmation email has been sent to the parent.");
+      } else {
+        showSuccess("Registration denied successfully.");
+      }
     } catch (error) {
       showError(
         error instanceof Error ? error.message : "Failed to update verification",
