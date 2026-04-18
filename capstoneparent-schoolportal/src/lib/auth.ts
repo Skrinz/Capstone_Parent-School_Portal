@@ -22,16 +22,16 @@ export function getJwt(): string | null {
 
 // ─── Device token ─────────────────────────────────────────────────────────────
 
-export function setDeviceToken(token: string): void {
+export function setDeviceToken(token: string, email: string): void {
   if (!token) {
-    useAuthStore.getState().clearDeviceToken();
+    useAuthStore.getState().clearDeviceToken(email);
   } else {
-    useAuthStore.getState().setDeviceToken(token);
+    useAuthStore.getState().setDeviceToken(email, token);
   }
 }
 
-export function getDeviceToken(): string | null {
-  return useAuthStore.getState().deviceToken || null;
+export function getDeviceToken(email: string): string | null {
+  return useAuthStore.getState().deviceTokens[email.toLowerCase()] || null;
 }
 
 // ─── Session user ─────────────────────────────────────────────────────────────

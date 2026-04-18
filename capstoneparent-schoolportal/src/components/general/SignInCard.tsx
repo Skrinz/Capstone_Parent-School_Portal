@@ -33,7 +33,7 @@ export const SignInCard = () => {
   const finalise = (token: string, user: AuthUser, rawDeviceToken?: string) => {
     // loginSuccess stores the JWT, resolves all roles, picks default role
     useAuthStore.getState().loginSuccess(token, user, rawDeviceToken);
-    if (rawDeviceToken) setDeviceToken(rawDeviceToken);
+    if (rawDeviceToken) setDeviceToken(rawDeviceToken, user.email);
 
     const role = useAuthStore.getState().user?.role ?? "staff";
     navigate(getDefaultRouteForRole(role));
@@ -70,7 +70,7 @@ export const SignInCard = () => {
     setLoading(true);
 
     try {
-      const storedDeviceToken = getDeviceToken();
+      const storedDeviceToken = getDeviceToken(normalizedEmail);
 
       if (storedDeviceToken) {
         const res = await authApi.login(normalizedEmail, password, storedDeviceToken);
@@ -84,7 +84,7 @@ export const SignInCard = () => {
       const msg = err instanceof Error ? err.message : "Something went wrong";
 
       if (msg.toLowerCase().includes("unrecognized device")) {
-        setDeviceToken("");
+        setDeviceToken("", normalizedEmail);
         try {
           await authApi.sendOtp(normalizedEmail);
           setEmail(normalizedEmail);
