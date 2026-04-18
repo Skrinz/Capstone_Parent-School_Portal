@@ -71,6 +71,7 @@ import { usePageTitle } from "./hooks/usePageTitle";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { GuestRoute } from "./components/auth/GuestRoute";
 import { GlobalApiFeedback } from "./components/ui/GlobalApiFeedback";
+import { PrivacyPolicyGuard } from "./components/auth/PrivacyPolicyGuard";
 import "./styles/index.css";
 
 const App = () => {
@@ -79,6 +80,7 @@ const App = () => {
   return (
     <>
       <GlobalApiFeedback />
+      <PrivacyPolicyGuard />
       <Routes>
         {/*General Pages */}
         <Route path="/" element={<Navigate to="/homepage" replace />} />
