@@ -47,6 +47,8 @@ interface AuthState {
   setDeviceToken: (token: string) => void;
   clearDeviceToken: () => void;
   setUser: (user: SessionUser) => void;
+  hasAcceptedPrivacy: boolean;
+  acceptPrivacy: () => void;
 }
 
 // ─── Role helpers ─────────────────────────────────────────────────────────────
@@ -95,10 +97,10 @@ function resolveDefaultRole(roles: { role: string }[]): UserRole {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      user: null,
       token: null,
       deviceToken: null,
       isAuthenticated: false,
+      hasAcceptedPrivacy: false,
 
       loginSuccess(token, apiUser, newDeviceToken) {
         const allRoles = resolveAllRoles(apiUser.roles ?? []);
@@ -121,15 +123,16 @@ export const useAuthStore = create<AuthState>()(
           token,
           deviceToken: newDeviceToken ?? prev.deviceToken,
           isAuthenticated: true,
+          hasAcceptedPrivacy: false,
         }));
       },
 
       logout() {
         set((prev) => ({
-          user: null,
           token: null,
           isAuthenticated: false,
           deviceToken: prev.deviceToken,
+          hasAcceptedPrivacy: false,
         }));
       },
 
@@ -152,6 +155,10 @@ export const useAuthStore = create<AuthState>()(
       setUser(user) {
         set({ user });
       },
+
+      acceptPrivacy() {
+        set({ hasAcceptedPrivacy: true });
+      },
     }),
     {
       name: "auth-session",
@@ -160,6 +167,7 @@ export const useAuthStore = create<AuthState>()(
         token: state.token,
         deviceToken: state.deviceToken,
         isAuthenticated: state.isAuthenticated,
+        hasAcceptedPrivacy: state.hasAcceptedPrivacy,
       }),
     },
   ),
