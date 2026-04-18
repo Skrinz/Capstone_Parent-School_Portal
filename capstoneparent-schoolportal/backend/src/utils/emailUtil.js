@@ -7,9 +7,10 @@ const FROM_ADDRESS =
   "Pagsabungan Elementary School Email Verification <noreply@yourdomain.com>";
 
 const LOGIN_URL = `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`;
+const REGISTER_URL = `${process.env.FRONTEND_URL || "http://localhost:5173"}/register`;
 
-const buildAutoVerifyLoginUrl = (email, otpCode) =>
-  `${LOGIN_URL}?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otpCode)}&autoVerify=1`;
+const buildAutoVerifyUrl = (baseUrl, email, otpCode) =>
+  `${baseUrl}?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otpCode)}&autoVerify=1`;
 
 /**
  * Send OTP email
@@ -24,7 +25,11 @@ const sendOTPEmail = async (email, otpCode, options = {}) => {
         ? options.temporaryPassword
         : "";
     const includeAutoVerifyLink = options?.includeAutoVerifyLink !== false;
-    const autoVerifyUrl = buildAutoVerifyLoginUrl(email, otpCode);
+    const isRegistration = options?.isRegistration === true;
+    
+    // Choose base URL based on whether this is for registration or login
+    const baseUrl = isRegistration ? REGISTER_URL : LOGIN_URL;
+    const autoVerifyUrl = buildAutoVerifyUrl(baseUrl, email, otpCode);
 
     const accountInfoSection =
       roleText || temporaryPassword

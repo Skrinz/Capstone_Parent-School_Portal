@@ -38,6 +38,15 @@ export const SignInCard = () => {
     const role = useAuthStore.getState().user?.role ?? "staff";
     navigate(getDefaultRouteForRole(role));
   };
+  //masking the email
+  const maskEmail = (email: string): string => {
+  const [local, domain] = email.split("@");
+  if (!domain) return email;
+  if (local.length <= 2) {
+    return local[0] + "*".repeat(local.length - 1) + "@" + domain;
+  }
+  return local.slice(0, 2) + "*".repeat(local.length - 2) + "@" + domain;
+};
 
   // ── Step 1: credentials ─────────────────────────────────────────────────────
   const handleCredentials = async (e: React.FormEvent) => {
@@ -179,13 +188,11 @@ export const SignInCard = () => {
         finalise(res.data.token, res.data.user, res.data.deviceToken);
       })
       .catch((err) => {
+        setLoading(false);
         sessionStorage.removeItem(autoVerifyKey);
         showError(
           err instanceof Error ? err.message : "Automatic OTP verification failed",
         );
-      })
-      .finally(() => {
-        setLoading(false);
         const next = new URLSearchParams(searchParams);
         next.delete("otp");
         next.delete("autoVerify");
@@ -258,7 +265,7 @@ export const SignInCard = () => {
           <form onSubmit={handleOtp} className="space-y-5">
             <p className="text-sm text-gray-600">
               A 6-digit code was sent to{" "}
-              <span className="font-semibold">{email}</span>. Enter it below to
+              <span className="font-semibold">{maskEmail(email)}</span>. Enter it below to
               verify this device.
             </p>
             <p className="text-sm text-gray-600">
