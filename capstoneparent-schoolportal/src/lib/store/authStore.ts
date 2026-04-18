@@ -97,6 +97,7 @@ function resolveDefaultRole(roles: { role: string }[]): UserRole {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
+      user: null,
       token: null,
       deviceToken: null,
       isAuthenticated: false,
@@ -129,6 +130,7 @@ export const useAuthStore = create<AuthState>()(
 
       logout() {
         set((prev) => ({
+          user: null,
           token: null,
           isAuthenticated: false,
           deviceToken: prev.deviceToken,

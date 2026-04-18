@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/store/authStore";
-import { ShieldCheck, Lock, Eye, FileText } from "lucide-react";
+import { Lock, Eye, FileText } from "lucide-react";
 
 export const PrivacyPolicyModal = () => {
   const { hasAcceptedPrivacy, acceptPrivacy } = useAuthStore();
