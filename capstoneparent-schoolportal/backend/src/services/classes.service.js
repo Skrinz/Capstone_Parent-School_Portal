@@ -24,6 +24,64 @@ const normalizeSubjectTitle = (value) =>
     .replace(/\s+/g, " ")
     .toLowerCase();
 
+const DEFAULT_SUBJECT_TIME_START = "07:00";
+const DEFAULT_SUBJECT_TIME_END = "08:00";
+
+const createSubjectRecordTime = (time, fallback) =>
+  new Date(`1970-01-01T${time || fallback}:00`);
+
+const seedPredefinedSubjectsForClass = async (db, classId, gradeLevelId) => {
+  const predefinedSubjects = await db.gradeLevelSubject.findMany({
+    where: {
+      gl_id: gradeLevelId,
+      subject: {
+        deleted_at: null,
+      },
+    },
+    include: {
+      subject: {
+        select: {
+          subject_id: true,
+          name: true,
+        },
+      },
+    },
+    orderBy: {
+      subject: {
+        name: "asc",
+      },
+    },
+  });
+
+  if (predefinedSubjects.length === 0) {
+    return [];
+  }
+
+  const subjectRecords = [];
+
+  for (const predefinedSubject of predefinedSubjects) {
+    const subjectRecord = await db.subjectRecord.create({
+      data: {
+        subject_name: predefinedSubject.subject.name,
+        subject_id: predefinedSubject.subject.subject_id,
+        time_start: createSubjectRecordTime(null, DEFAULT_SUBJECT_TIME_START),
+        time_end: createSubjectRecordTime(null, DEFAULT_SUBJECT_TIME_END),
+      },
+    });
+
+    subjectRecords.push(subjectRecord);
+  }
+
+  await db.classListSubjectRecord.createMany({
+    data: subjectRecords.map((subjectRecord) => ({
+      clist_id: classId,
+      srecord_id: subjectRecord.srecord_id,
+    })),
+  });
+
+  return subjectRecords;
+};
+
 const syncStudentIntoClassSubjects = async (db, classId, studentId) => {
   const classSubjects = await db.classListSubjectRecord.findMany({
     where: { clist_id: classId },
@@ -500,21 +558,33 @@ const classesService = {
       );
     }
 
-    return prisma.classList.create({
-      data: {
-        gl_id,
-        section_id,
-        class_adviser,
-        syear_start,
-        syear_end,
-        class_sched,
+    return prisma.$transaction(
+      async (tx) => {
+        const createdClass = await tx.classList.create({
+          data: {
+            gl_id,
+            section_id,
+            class_adviser,
+            syear_start,
+            syear_end,
+            class_sched,
+          },
+          include: {
+            grade_level: true,
+            section: true,
+            adviser: { select: { user_id: true, fname: true, lname: true } },
+          },
+        });
+
+        await seedPredefinedSubjectsForClass(tx, createdClass.clist_id, gl_id);
+
+        return createdClass;
       },
-      include: {
-        grade_level: true,
-        section: true,
-        adviser: { select: { user_id: true, fname: true, lname: true } },
+      {
+        maxWait: 10000,
+        timeout: 20000,
       },
-    });
+    );
   },
 
   async updateClass(classId, updateData) {
@@ -589,8 +659,8 @@ const classesService = {
       const subjectRecord = await tx.subjectRecord.create({
         data: {
           subject_name,
-          time_start: new Date(`1970-01-01T${time_start || "07:00"}:00`),
-          time_end: new Date(`1970-01-01T${time_end || "08:00"}:00`),
+          time_start: createSubjectRecordTime(time_start, DEFAULT_SUBJECT_TIME_START),
+          time_end: createSubjectRecordTime(time_end, DEFAULT_SUBJECT_TIME_END),
           subject_teacher: subject_teacher ?? null,
         },
       });

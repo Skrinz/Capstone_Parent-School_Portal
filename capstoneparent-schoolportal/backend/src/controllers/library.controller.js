@@ -9,6 +9,7 @@ const libraryController = {
         item_type,
         category_id,
         grade_level,
+        subject_id,
       } = req.query;
       const result = await libraryService.getAllMaterials({
         page,
@@ -16,6 +17,7 @@ const libraryController = {
         item_type,
         category_id,
         grade_level,
+        subject_id,
       });
 
       res.status(200).json({
@@ -66,6 +68,9 @@ const libraryController = {
       if (error.message === "Grade level not found") {
         return res.status(404).json({ message: error.message });
       }
+      if (error.message === "Subject not found") {
+        return res.status(404).json({ message: error.message });
+      }
       next(error);
     }
   },
@@ -86,6 +91,15 @@ const libraryController = {
       });
     } catch (error) {
       if (error.message === "Material not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message === "Category not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message === "Grade level not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message === "Subject not found") {
         return res.status(404).json({ message: error.message });
       }
       next(error);
@@ -126,7 +140,10 @@ const libraryController = {
       if (error.message === "Material not found") {
         return res.status(404).json({ message: error.message });
       }
-      if (error.message === "Copy code already exists") {
+      if (
+        error.message === "Copy code already exists" ||
+        error.message === "Copy code already exists for this material"
+      ) {
         return res.status(409).json({ message: error.message });
       }
       next(error);
@@ -171,6 +188,9 @@ const libraryController = {
       if (error.message === "Material copy is not available for borrowing") {
         return res.status(409).json({ message: error.message });
       }
+      if (error.message === "A valid borrower is required") {
+        return res.status(400).json({ message: error.message });
+      }
       if (error.message === "Student not found") {
         return res.status(404).json({ message: error.message });
       }
@@ -208,13 +228,14 @@ const libraryController = {
 
   async getBorrowHistory(req, res, next) {
     try {
-      const { page = 1, limit = 10, student_id, user_id, status } = req.query;
+      const { page = 1, limit = 10, student_id, user_id, status, copy_status } = req.query;
       const result = await libraryService.getBorrowHistory({
         page,
         limit,
         student_id,
         user_id,
         status,
+        copy_status,
       });
 
       res.status(200).json({
@@ -238,6 +259,31 @@ const libraryController = {
     }
   },
 
+  async getAllSubjects(req, res, next) {
+    try {
+      const subjects = await libraryService.getAllSubjects();
+
+      res.status(200).json({
+        data: subjects,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async lookupBorrowers(req, res, next) {
+    try {
+      const { q } = req.query;
+      const borrowers = await libraryService.lookupBorrowers(q);
+
+      res.status(200).json({
+        data: borrowers,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async createCategory(req, res, next) {
     try {
       const { category_name } = req.body;
@@ -248,6 +294,27 @@ const libraryController = {
         data: category,
       });
     } catch (error) {
+      if (error.message === "Category already exists") {
+        return res.status(409).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
+
+  async updateCategory(req, res, next) {
+    try {
+      const { categoryId } = req.params;
+      const { category_name } = req.body;
+      const category = await libraryService.updateCategory(parseInt(categoryId), category_name);
+
+      res.status(200).json({
+        message: "Category updated successfully",
+        data: category,
+      });
+    } catch (error) {
+      if (error.message === "Category not found") {
+        return res.status(404).json({ message: error.message });
+      }
       if (error.message === "Category already exists") {
         return res.status(409).json({ message: error.message });
       }

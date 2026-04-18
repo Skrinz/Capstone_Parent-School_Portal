@@ -10,6 +10,8 @@ import type {
   MaterialCopy,
   BorrowRecord,
   LibraryCategory,
+  LibrarySubject,
+  BorrowerLookupResult,
   ItemType,
   MaterialStatus,
 } from "./types";
@@ -20,6 +22,7 @@ export interface GetMaterialsParams {
   item_type?: ItemType;
   category_id?: number | string;
   grade_level?: number | string;
+  subject_id?: number | string;
 }
 
 export interface GetBorrowHistoryParams {
@@ -28,6 +31,7 @@ export interface GetBorrowHistoryParams {
   student_id?: number;
   user_id?: number;
   status?: "borrowed" | "returned" | "overdue" | string;
+  copy_status?: MaterialStatus;
 }
 
 export const libraryApi = {
@@ -124,11 +128,27 @@ export const libraryApi = {
   getAllCategories: () =>
     apiFetch<ApiData<LibraryCategory[]>>("/library/categories"),
 
+  getAllSubjects: () =>
+    apiFetch<ApiData<LibrarySubject[]>>("/library/subjects"),
+
+  lookupBorrowers: (query: string) =>
+    apiFetch<ApiData<BorrowerLookupResult[]>>(
+      `/library/borrowers/lookup?q=${encodeURIComponent(query)}`
+    ),
+
   createCategory: (data: { category_name: string }) =>
     apiFetch<ApiData<LibraryCategory>>("/library/categories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
       successMessage: "Category created successfully",
+    }),
+
+  updateCategory: (categoryId: number, data: { category_name: string }) =>
+    apiFetch<ApiData<LibraryCategory>>(`/library/categories/${categoryId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+      successMessage: "Category updated successfully",
     }),
 };

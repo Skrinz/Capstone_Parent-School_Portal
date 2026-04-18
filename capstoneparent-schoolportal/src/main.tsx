@@ -39,6 +39,7 @@ import { ManageParentVerification } from "./Pages/admin-pages/ManageParentVerifi
 import { ManageSection } from "./Pages/admin-pages/ManageSection";
 import { ManageStaffAccounts } from "./Pages/admin-pages/ManageStaffAccounts";
 import { ManageStudents } from "./Pages/admin-pages/ManageStudents";
+import { ManageSubjects } from "./Pages/admin-pages/ManageSubjects";
 import { ManagePartnershipAndEvents } from "./Pages/admin-pages/ManagePartnershipAndEvents";
 import { EditContactUs } from "./Pages/admin-pages/edit-pages/EditContactUs";
 import { EditHistory } from "./Pages/admin-pages/edit-pages/EditHistory";
@@ -212,6 +213,14 @@ const App = () => {
           element={
             <ProtectedRoute allowedRoles={["admin"]}>
               <ManageStaffAccounts />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/managesubjects"
+          element={
+            <ProtectedRoute allowedRoles={["admin", "principal"]}>
+              <ManageSubjects />
             </ProtectedRoute>
           }
         />

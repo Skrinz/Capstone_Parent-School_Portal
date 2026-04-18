@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   setDeviceToken,
   getDeviceToken,
+  clearDeviceToken,
   getDefaultRouteForRole,
 } from "@/lib/auth";
 import { authApi, type AuthUser } from "@/lib/api";
@@ -30,14 +31,23 @@ export const SignInCard = () => {
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   // ── Finish: store session and navigate ──────────────────────────────────────
-  const finalise = (token: string, user: AuthUser, rawDeviceToken?: string) => {
-    // loginSuccess stores the JWT, resolves all roles, picks default role
-    useAuthStore.getState().loginSuccess(token, user, rawDeviceToken);
-    if (rawDeviceToken) setDeviceToken(rawDeviceToken);
+  // NOTE: device token is always written per-email BEFORE calling finalise,
+  // so no rawDeviceToken parameter is needed here.
+  const finalise = (token: string, user: AuthUser) => {
+    useAuthStore.getState().loginSuccess(token, user);
 
     const role = useAuthStore.getState().user?.role ?? "staff";
     navigate(getDefaultRouteForRole(role));
   };
+  //masking the email
+  const maskEmail = (email: string): string => {
+  const [local, domain] = email.split("@");
+  if (!domain) return email;
+  if (local.length <= 2) {
+    return local[0] + "*".repeat(local.length - 1) + "@" + domain;
+  }
+  return local.slice(0, 2) + "*".repeat(local.length - 2) + "@" + domain;
+};
 
   // ── Step 1: credentials ─────────────────────────────────────────────────────
   const handleCredentials = async (e: React.FormEvent) => {
@@ -61,7 +71,7 @@ export const SignInCard = () => {
     setLoading(true);
 
     try {
-      const storedDeviceToken = getDeviceToken();
+      const storedDeviceToken = getDeviceToken(normalizedEmail);
 
       if (storedDeviceToken) {
         const res = await authApi.login(normalizedEmail, password, storedDeviceToken);
@@ -75,7 +85,7 @@ export const SignInCard = () => {
       const msg = err instanceof Error ? err.message : "Something went wrong";
 
       if (msg.toLowerCase().includes("unrecognized device")) {
-        setDeviceToken("");
+        clearDeviceToken(normalizedEmail);
         try {
           await authApi.sendOtp(normalizedEmail);
           setEmail(normalizedEmail);
@@ -110,7 +120,11 @@ export const SignInCard = () => {
 
     try {
       const res = await authApi.verifyOtp(normalizedEmail, otpCode);
-      finalise(res.data.token, res.data.user, res.data.deviceToken);
+      // Save device token keyed to this specific email
+      if (res.data.deviceToken) {
+        setDeviceToken(res.data.deviceToken, normalizedEmail);
+      }
+      finalise(res.data.token, res.data.user);
     } catch (err) {
       showError(err instanceof Error ? err.message : "Invalid OTP");
     } finally {
@@ -176,16 +190,18 @@ export const SignInCard = () => {
       .verifyOtp(emailFromLink, normalizedOtpFromLink)
       .then((res) => {
         showSuccess("OTP verified successfully.");
-        finalise(res.data.token, res.data.user, res.data.deviceToken);
+        // Save device token keyed to this specific email
+        if (res.data.deviceToken) {
+          setDeviceToken(res.data.deviceToken, emailFromLink);
+        }
+        finalise(res.data.token, res.data.user);
       })
       .catch((err) => {
+        setLoading(false);
         sessionStorage.removeItem(autoVerifyKey);
         showError(
           err instanceof Error ? err.message : "Automatic OTP verification failed",
         );
-      })
-      .finally(() => {
-        setLoading(false);
         const next = new URLSearchParams(searchParams);
         next.delete("otp");
         next.delete("autoVerify");
@@ -258,7 +274,7 @@ export const SignInCard = () => {
           <form onSubmit={handleOtp} className="space-y-5">
             <p className="text-sm text-gray-600">
               A 6-digit code was sent to{" "}
-              <span className="font-semibold">{email}</span>. Enter it below to
+              <span className="font-semibold">{maskEmail(email)}</span>. Enter it below to
               verify this device.
             </p>
             <p className="text-sm text-gray-600">

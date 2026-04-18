@@ -21,7 +21,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useClassData } from '@/Pages/principal-pages/hooks/useClassData';
 import {
   addClass,
-  addSubjects,
   assignClassAdviser,
   assignTeacherToSubject,
   removeStudentFromClass,
@@ -256,7 +255,7 @@ export const ManageClassLists = () => {
         syear_end: parseInt(addFormData.schoolYearEnd, 10),
       });
       
-      await reloadClasses();
+      await Promise.all([reloadClasses(), reloadSubjects()]);
       setIsAddModalOpen(false);
     } catch (error) {
       console.error('Failed to add class:', error);
@@ -295,13 +294,6 @@ export const ManageClassLists = () => {
   // Handler functions for subjects and students
   const handleAssignTeacher = (subject: SubjectItem, teacherId: number) => {
     handleAssignSubjectTeacher(subject, teacherId);
-  };
-
-  const handleRemoveSubject = (subject: SubjectItem) => {
-    console.log('Remove subject:', subject);
-    if (confirm(`Remove ${subject.name} from this class?`)) {
-      // TODO: API call to remove subject
-    }
   };
 
   const handleRemoveStudent = async (student: Student) => {
@@ -344,18 +336,6 @@ export const ManageClassLists = () => {
 
   // Dynamically change color of dropdown fields in modals
   const getSelectColor = (value: string) => value ? "text-gray-900" : "border-gray-300 text-gray-500";
-
-  // Add & Remove subjects/teachers handlers
-  const handleAddSubjects = async (subjectNames: string[]) => {
-    if (!selectedClass) return;
-    
-    try {
-      await addSubjects(selectedClass.id, subjectNames);
-      await reloadSubjects();
-    } catch (error) {
-      console.error('Failed to add subjects:', error);
-    }
-  };
 
   const handleAssignAdviser = async (teacherId: number) => {
     if (!selectedClass) return;
@@ -596,8 +576,6 @@ export const ManageClassLists = () => {
                     isLoadingTeachers={isLoadingTeachers}
                     onBack={() => setSelectedClass(null)}
                     onAssignTeacher={handleAssignTeacher}
-                    onRemoveSubject={handleRemoveSubject}
-                    onAddSubjects={handleAddSubjects}
                     onAssignAdviser={handleAssignAdviser}
                   />
                 </TabsContent>

@@ -2,11 +2,11 @@ import React from 'react';
 import { Modal } from '../ui/modal';
 import { Button } from '../ui/button';
 import type { LibraryCategory } from '@/lib/api/types';
-import { GRADE_LEVELS } from '@/lib/store/libraryStore';
+import { GRADE_LEVELS } from '@/lib/libraryHelpers';
 
 interface EditLearningResourceModalProps {
 	onClose: () => void;
-	onSave?: (resource: { title: string; category_id: number; gl_id: number }) => void;
+	onSave?: (resource: { title: string; category_id: number; gl_id: number }) => Promise<void> | void;
 	categories: LibraryCategory[];
 	initialResource?: {
 		title?: string;
@@ -24,23 +24,29 @@ const EditLearningResourceModal: React.FC<EditLearningResourceModalProps> = ({
 	const [resourceTitle, setResourceTitle] = React.useState(initialResource?.title ?? '');
 	const [categoryId, setCategoryId] = React.useState<number | ''>(initialResource?.category_id ?? '');
 	const [glId, setGlId] = React.useState<number | ''>(initialResource?.gl_id ?? '');
+	const [isSubmitting, setIsSubmitting] = React.useState(false);
 
 	const hasChanges =
 		resourceTitle.trim() !== (initialResource?.title ?? '').trim() ||
 		categoryId !== (initialResource?.category_id ?? '') ||
 		glId !== (initialResource?.gl_id ?? '');
 
-	const handleSave = () => {
-		if (!resourceTitle.trim() || categoryId === '' || glId === '') {
+	const handleSave = async () => {
+		if (!resourceTitle.trim() || categoryId === '' || glId === '' || isSubmitting) {
 			return;
 		}
 
-		onSave?.({
-			title: resourceTitle.trim(),
-			category_id: categoryId as number,
-			gl_id: glId as number,
-		});
-		onClose();
+		setIsSubmitting(true);
+		try {
+			await onSave?.({
+				title: resourceTitle.trim(),
+				category_id: categoryId as number,
+				gl_id: glId as number,
+			});
+			onClose();
+		} finally {
+			setIsSubmitting(false);
+		}
 	};
 
 	return (
@@ -83,17 +89,18 @@ const EditLearningResourceModal: React.FC<EditLearningResourceModalProps> = ({
 					<Button
 						type="button"
 						onClick={onClose}
+						disabled={isSubmitting}
 						className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 text-lg rounded-full"
 					>
 						Cancel
 					</Button>
 					<Button
 						type="button"
-						onClick={handleSave}
-						disabled={!hasChanges}
+						onClick={() => void handleSave()}
+						disabled={!hasChanges || isSubmitting}
 						className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full disabled:bg-gray-400 disabled:text-white disabled:hover:bg-gray-400"
 					>
-						Save
+						{isSubmitting ? "Saving..." : "Save"}
 					</Button>
 				</div>
 			</div>

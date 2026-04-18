@@ -59,6 +59,10 @@ export interface VerifyRegistrationPayload {
   remarks?: string;
 }
 
+export interface VerifyRegistrationOptions {
+  skipSuccessFeedback?: boolean;
+}
+
 export const parentsApi = {
   getRegistrations(status?: ParentRegistrationStatus | "all") {
     const params = new URLSearchParams({
@@ -83,10 +87,14 @@ export const parentsApi = {
     });
   },
 
-  verifyRegistration(id: number, payload: VerifyRegistrationPayload) {
+  verifyRegistration(
+    id: number,
+    payload: VerifyRegistrationPayload,
+    options: VerifyRegistrationOptions = {},
+  ) {
     return apiFetch<ApiData<BackendParentRegistration>>(`/parents/registrations/${id}/verify`, {
       method: "PATCH",
-      successMessage: "Parent verification updated successfully.",
+      skipSuccessFeedback: options.skipSuccessFeedback,
       headers: {
         ...bearerHeaders(),
         "Content-Type": "application/json",

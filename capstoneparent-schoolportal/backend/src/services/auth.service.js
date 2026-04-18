@@ -133,7 +133,7 @@ const authService = {
       })),
     });
 
-    const emailSent = await sendOTPEmail(email, otpCode);
+    const emailSent = await sendOTPEmail(email, otpCode, { isRegistration: true });
     if (!emailSent) {
       cleanupTempFiles(getPendingRegistration(email));
       clearPendingRegistration(email);
@@ -329,7 +329,7 @@ const authService = {
       user: userWithoutPassword,
       deviceToken: rawToken,
       message:
-        "Email verified. Your account has been created and is pending activation by an administrator.",
+        "Email verified. Your account has been created and is now pending. Please wait for an administrator or teacher to check your registration.",
     };
   },
 
