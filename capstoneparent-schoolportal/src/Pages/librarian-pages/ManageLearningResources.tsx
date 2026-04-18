@@ -12,8 +12,11 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Search, Pencil } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { useLibraryStore, formatGradeLevel, GRADE_LEVELS } from "@/lib/store/libraryStore";
+import { useEffect, useState } from "react";
+import { libraryApi } from "@/lib/api/libraryApi";
+import type { LearningMaterial, LibraryCategory } from "@/lib/api/types";
+import { formatGradeLevel, GRADE_LEVELS, getBadgeColorsForString } from "@/lib/libraryHelpers";
+import { Loader } from "@/components/ui/Loader";
 
 export const ManageLearningResources = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -23,28 +26,45 @@ export const ManageLearningResources = () => {
   const [isEditLearningResourceModalOpen, setIsEditLearningResourceModalOpen] = useState(false);
   const [isLearningResourceCopyModalOpen, setIsLearningResourceCopyModalOpen] = useState(false);
   const [selectedResourceId, setSelectedResourceId] = useState<number | null>(null);
+  const [resources, setResources] = useState<LearningMaterial[]>([]);
+  const [categories, setCategories] = useState<LibraryCategory[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const materials = useLibraryStore((state) => state.materials);
-  const categories = useLibraryStore((state) => state.categories);
-  const fetchMaterials = useLibraryStore((state) => state.fetchMaterials);
-  const fetchCategories = useLibraryStore((state) => state.fetchCategories);
-  const createMaterial = useLibraryStore((state) => state.createMaterial);
-  const updateMaterial = useLibraryStore((state) => state.updateMaterial);
+  const loadResources = async () => {
+    const response = await libraryApi.getAllMaterials({
+      item_type: "Learning_Resource",
+      limit: 1000,
+    });
+    setResources(response.data);
+  };
+
+  const loadPageData = async () => {
+    setLoading(true);
+    try {
+      const [resourcesResponse, categoriesResponse] = await Promise.all([
+        libraryApi.getAllMaterials({
+          item_type: "Learning_Resource",
+          limit: 1000,
+        }),
+        libraryApi.getAllCategories(),
+      ]);
+      setResources(resourcesResponse.data);
+      setCategories(categoriesResponse.data);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchMaterials({ item_type: "Learning_Resource" });
-    fetchCategories();
-  }, [fetchMaterials, fetchCategories]);
+    void loadPageData();
+  }, []);
 
-  const resources = useMemo(() => materials.filter((m) => m.item_type === "Learning_Resource"), [materials]);
-
-  const filteredResources = resources.filter((r) => {
-    const matchesSearch =
-      r.item_name.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredResources = resources.filter((resource) => {
+    const matchesSearch = resource.item_name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory =
-      categoryFilter === "all" || r.category_id.toString() === categoryFilter;
+      categoryFilter === "all" || resource.category_id.toString() === categoryFilter;
     const matchesGrade =
-      gradeFilter === "all" || r.gl_id.toString() === gradeFilter;
+      gradeFilter === "all" || resource.gl_id.toString() === gradeFilter;
     return matchesSearch && matchesCategory && matchesGrade;
   });
 
@@ -53,15 +73,18 @@ export const ManageLearningResources = () => {
     category_id: number;
     gl_id: number;
   }) => {
-    await createMaterial({
+    await libraryApi.createMaterial({
       item_name: newResource.title,
       category_id: newResource.category_id,
       gl_id: newResource.gl_id,
       item_type: "Learning_Resource",
     });
+    await loadResources();
   };
 
-  const selectedResource = resources.find((resource) => resource.item_id === selectedResourceId);
+  const selectedResource = resources.find(
+    (resource) => resource.item_id === selectedResourceId,
+  );
 
   const handleOpenEditLearningResourceModal = (resourceId: number) => {
     setSelectedResourceId(resourceId);
@@ -79,70 +102,76 @@ export const ManageLearningResources = () => {
     gl_id: number;
   }) => {
     if (!selectedResourceId) return;
-    await updateMaterial(selectedResourceId, {
+    await libraryApi.updateMaterial(selectedResourceId, {
       item_name: updatedResource.title,
       category_id: updatedResource.category_id,
       gl_id: updatedResource.gl_id,
     });
+    await loadResources();
+  };
+
+  const handleMaterialUpdated = async (updatedMaterial: LearningMaterial) => {
+    setResources((current) =>
+      current.map((resource) =>
+        resource.item_id === updatedMaterial.item_id ? updatedMaterial : resource,
+      ),
+    );
   };
 
   return (
     <>
       <div className="min-h-screen">
         <NavbarLibrarian />
-        <main className="max-w-6xl mx-auto py-12 px-4">
-          <div className="bg-white rounded-lg shadow-md p-8">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+        <main className="mx-auto max-w-6xl px-4 py-12">
+          <div className="rounded-lg bg-white p-8 shadow-md">
+            <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <h1 className="text-3xl font-bold">Manage Learning Resources</h1>
               <Button
-                className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-6 py-2"
+                className="bg-(--button-green) px-6 py-2 text-white hover:bg-(--button-hover-green)"
                 onClick={() => setIsAddLearningResourceModalOpen(true)}
               >
                 Add Item
               </Button>
             </div>
 
-            <section className="flex flex-col gap-4 md:flex-row md:items-center mb-6">
+            <section className="mb-6 flex flex-col gap-4 md:flex-row md:items-center">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                 <Input
                   placeholder="Search item..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus-visible:ring-2 focus-visible:ring-blue-500"
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  className="rounded-md border border-gray-300 py-2 pl-10 pr-4 focus-visible:ring-2 focus-visible:ring-blue-500"
                 />
               </div>
 
               <div className="flex gap-2">
-                <Select
-                  value={categoryFilter}
-                  onValueChange={(v) => setCategoryFilter(v)}
-                >
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                   <SelectTrigger className="w-40 bg-white">
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All</SelectItem>
-                    {categories.map((c) => (
-                      <SelectItem key={c.category_id} value={c.category_id.toString()}>
-                        {c.category_name}
+                    {categories.map((category) => (
+                      <SelectItem
+                        key={category.category_id}
+                        value={category.category_id.toString()}
+                      >
+                        {category.category_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
 
-                <Select
-                  value={gradeFilter}
-                  onValueChange={(v) => setGradeFilter(v)}
-                >
+                <Select value={gradeFilter} onValueChange={setGradeFilter}>
                   <SelectTrigger className="w-40 bg-white">
                     <SelectValue placeholder="Grade Level" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All</SelectItem>
-                    {GRADE_LEVELS.map((g) => (
-                      <SelectItem key={g.id} value={g.id.toString()}>
-                        {g.label}
+                    {GRADE_LEVELS.map((grade) => (
+                      <SelectItem key={grade.id} value={grade.id.toString()}>
+                        {grade.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -150,37 +179,43 @@ export const ManageLearningResources = () => {
               </div>
             </section>
 
-            <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              {filteredResources.map((res) => (
-                <div
-                  key={res.item_id}
-                  className="flex items-center justify-between px-4 py-4 border-b border-gray-200 last:border-b-0 hover:bg-gray-50 cursor-pointer"
-                  onClick={() => {
-                    setSelectedResourceId(res.item_id);
-                    setIsLearningResourceCopyModalOpen(true);
-                  }}
-                >
-                  <span className="text-lg font-medium">{res.item_name}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">
-                      {res.category?.category_name}
-                    </span>
-                    <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">
-                      {formatGradeLevel(res.gl_id)}
-                    </span>
-                    <Pencil
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleOpenEditLearningResourceModal(res.item_id);
-                      }}
-                      className="cursor-pointer text-(--button-green) hover:text-(--button-hover-green)"
-                      size={18}
-                    />
+            <section className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+              {loading ? (
+                <Loader />
+              ) : (
+                filteredResources.map((resource) => (
+                  <div
+                    key={resource.item_id}
+                    className="cursor-pointer border-b border-gray-200 px-4 py-4 last:border-b-0 hover:bg-gray-50"
+                    onClick={() => {
+                      setSelectedResourceId(resource.item_id);
+                      setIsLearningResourceCopyModalOpen(true);
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg font-medium">{resource.item_name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${getBadgeColorsForString(resource.category?.category_name ?? "No Category")}`}>
+                          {resource.category?.category_name}
+                        </span>
+                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${getBadgeColorsForString(formatGradeLevel(resource.gl_id))}`}>
+                          {formatGradeLevel(resource.gl_id)}
+                        </span>
+                        <Pencil
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleOpenEditLearningResourceModal(resource.item_id);
+                          }}
+                          className="cursor-pointer text-(--button-green) hover:text-(--button-hover-green)"
+                          size={18}
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
-              {filteredResources.length === 0 && (
-                <p className="text-center text-gray-500 py-8">No items found.</p>
+                ))
+              )}
+              {!loading && filteredResources.length === 0 && (
+                <p className="py-8 text-center text-gray-500">No items found.</p>
               )}
             </section>
           </div>
@@ -211,6 +246,7 @@ export const ManageLearningResources = () => {
       {isLearningResourceCopyModalOpen && selectedResource && (
         <BookCopyModal
           material={selectedResource}
+          onMaterialUpdated={handleMaterialUpdated}
           onClose={() => {
             setIsLearningResourceCopyModalOpen(false);
             setSelectedResourceId(null);
@@ -220,4 +256,3 @@ export const ManageLearningResources = () => {
     </>
   );
 };
-

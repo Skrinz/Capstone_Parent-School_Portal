@@ -1,33 +1,39 @@
 import React from 'react';
 import { Modal } from '../ui/modal';
 import { Button } from '../ui/button';
-import type { LibraryCategory } from '@/lib/api/types';
-import { GRADE_LEVELS } from '@/lib/store/libraryStore';
+import type { LibrarySubject } from '@/lib/api/types';
+import { GRADE_LEVELS } from '@/lib/libraryHelpers';
 
 interface AddBookModalProps {
 	onClose: () => void;
-	onAdd?: (book: { title: string; author: string; category_id: number; gl_id: number }) => void;
-	categories: LibraryCategory[];
+	onAdd?: (book: { title: string; author: string; subject_id: number; gl_id: number }) => Promise<void> | void;
+	subjects: LibrarySubject[];
 }
 
-const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, categories }) => {
+const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, subjects }) => {
 	const [bookTitle, setBookTitle] = React.useState('');
 	const [authorName, setAuthorName] = React.useState('');
-	const [categoryId, setCategoryId] = React.useState<number | ''>('');
+	const [subjectId, setSubjectId] = React.useState<number | ''>('');
 	const [glId, setGlId] = React.useState<number | ''>('');
+	const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-	const handleAdd = () => {
-		if (!bookTitle.trim() || categoryId === '' || glId === '') {
+	const handleAdd = async () => {
+		if (!bookTitle.trim() || subjectId === '' || glId === '' || isSubmitting) {
 			return;
 		}
 
-		onAdd?.({
-			title: bookTitle.trim(),
-			author: authorName.trim(),
-			category_id: categoryId,
-			gl_id: glId,
-		});
-		onClose();
+		setIsSubmitting(true);
+		try {
+			await onAdd?.({
+				title: bookTitle.trim(),
+				author: authorName.trim(),
+				subject_id: subjectId,
+				gl_id: glId,
+			});
+			onClose();
+		} finally {
+			setIsSubmitting(false);
+		}
 	};
 
 	return (
@@ -49,14 +55,14 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, categories 
 				/>
 				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<select
-						value={categoryId}
-						onChange={(event) => setCategoryId(Number(event.target.value))}
+						value={subjectId}
+						onChange={(event) => setSubjectId(Number(event.target.value))}
 						className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
 					>
 						<option value="" disabled>SUBJECT</option>
-						{categories.map((cat) => (
-							<option key={cat.category_id} value={cat.category_id}>
-								{cat.category_name}
+						{subjects.map((subject) => (
+							<option key={subject.subject_id} value={subject.subject_id}>
+								{subject.name}
 							</option>
 						))}
 					</select>
@@ -75,16 +81,18 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, categories 
 					<Button
 						type="button"
 						onClick={onClose}
+						disabled={isSubmitting}
 						className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 text-lg rounded-full"
 					>
 						Cancel
 					</Button>
 					<Button
 						type="button"
-						onClick={handleAdd}
-						className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full"
+						onClick={() => void handleAdd()}
+						disabled={isSubmitting || !bookTitle.trim() || subjectId === '' || glId === ''}
+						className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full disabled:bg-gray-400 disabled:hover:bg-gray-400"
 					>
-						Add
+						{isSubmitting ? "Adding..." : "Add"}
 					</Button>
 				</div>
 			</div>

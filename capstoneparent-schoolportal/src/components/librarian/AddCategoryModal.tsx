@@ -4,20 +4,26 @@ import { Button } from "../ui/button";
 
 interface AddCategoryModalProps {
 	onClose: () => void;
-	onAdd?: (categoryName: string) => void;
+	onAdd?: (categoryName: string) => Promise<void> | void;
 }
 
 const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ onClose, onAdd }) => {
 	const [categoryName, setCategoryName] = React.useState("");
+	const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-	const handleAdd = () => {
+	const handleAdd = async () => {
 		const trimmedCategoryName = categoryName.trim();
-		if (!trimmedCategoryName) {
+		if (!trimmedCategoryName || isSubmitting) {
 			return;
 		}
 
-		onAdd?.(trimmedCategoryName);
-		onClose();
+		setIsSubmitting(true);
+		try {
+			await onAdd?.(trimmedCategoryName);
+			onClose();
+		} finally {
+			setIsSubmitting(false);
+		}
 	};
 
 	return (
@@ -34,16 +40,18 @@ const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ onClose, onAdd }) =
 					<Button
 						type="button"
 						onClick={onClose}
+						disabled={isSubmitting}
 						className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 text-lg rounded-full"
 					>
 						Cancel
 					</Button>
 					<Button
 						type="button"
-						onClick={handleAdd}
-						className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full"
+						onClick={() => void handleAdd()}
+						disabled={isSubmitting || !categoryName.trim()}
+						className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full disabled:bg-gray-400 disabled:hover:bg-gray-400"
 					>
-						Add
+						{isSubmitting ? "Adding..." : "Add"}
 					</Button>
 				</div>
 			</div>

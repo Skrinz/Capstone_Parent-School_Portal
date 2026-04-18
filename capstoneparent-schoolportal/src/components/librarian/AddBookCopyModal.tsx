@@ -8,6 +8,7 @@ import { useApiFeedbackStore } from "@/lib/store/apiFeedbackStore";
 interface AddBookCopyModalProps {
 	onClose: () => void;
 	bookTitle?: string;
+	itemLabel?: string;
 	onAddCopies: (copyNumbers: number[]) => Promise<void>;
 	existingCopyCodes: number[];
 }
@@ -26,11 +27,20 @@ const getNextAvailableCopyNumbers = (existingCopyNumbers: Set<number>, numberOfC
 	return nextCopyNumbers;
 };
 
-const AddBookCopyModal: React.FC<AddBookCopyModalProps> = ({ onClose, bookTitle = 'Book', onAddCopies, existingCopyCodes }) => {
+const AddBookCopyModal: React.FC<AddBookCopyModalProps> = ({
+	onClose,
+	bookTitle = 'Book',
+	itemLabel = 'Book',
+	onAddCopies,
+	existingCopyCodes,
+}) => {
 	const [newCopies, setNewCopies] = React.useState<number[]>([]);
 	const [isAddNumberModalOpen, setIsAddNumberModalOpen] = React.useState(false);
 	const [isSaving, setIsSaving] = React.useState(false);
+	const [savingCount, setSavingCount] = React.useState(0);
 	const { showError, clearFeedback } = useApiFeedbackStore();
+
+	const copyLabel = (count: number) => `${count} ${count === 1 ? 'copy' : 'copies'}`;
 
 	const handleAddCopies = (numberOfCopies: number) => {
 		const existingSet = new Set([...existingCopyCodes, ...newCopies]);
@@ -51,6 +61,7 @@ const AddBookCopyModal: React.FC<AddBookCopyModalProps> = ({ onClose, bookTitle 
 		clearFeedback();
 
 		setIsSaving(true);
+		setSavingCount(newCopies.length);
 		try {
 			await onAddCopies(newCopies);
 			onClose();
@@ -59,20 +70,22 @@ const AddBookCopyModal: React.FC<AddBookCopyModalProps> = ({ onClose, bookTitle 
 			showError(error instanceof Error ? error.message : "Failed to add book copies.");
 		} finally {
 			setIsSaving(false);
+			setSavingCount(0);
 		}
 	};
 
 	return (
 		<>
-			<Modal isOpen={true} onClose={onClose} title="Add Book Copies">
+			<Modal isOpen={true} onClose={onClose} title={`Add ${itemLabel} Copies`}>
 				<div className="space-y-4">
 					<div className="flex flex-wrap items-center justify-between gap-3">
 						<div className="rounded-md bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
-						Name: {bookTitle}
+						Copying: {bookTitle}
 						</div>
 						<Button
 							type="button"
 							onClick={() => setIsAddNumberModalOpen(true)}
+							disabled={isSaving}
 							className="bg-(--button-green) hover:bg-(--button-hover-green) text-white"
 						>
 							<Plus className="h-4 w-4" />
@@ -113,7 +126,7 @@ const AddBookCopyModal: React.FC<AddBookCopyModalProps> = ({ onClose, bookTitle 
 							disabled={isSaving || newCopies.length === 0}
 							className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full disabled:opacity-50"
 						>
-							{isSaving ? "Saving..." : "Save Copies"}
+							{isSaving ? `Saving ${copyLabel(savingCount)}...` : `Save ${itemLabel} Copies`}
 						</Button>
 					</div>
 				</div>
