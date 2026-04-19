@@ -3,38 +3,83 @@ const fs   = require('fs');
 const path = require('path');
 
 const TEMPLATES_DIR = path.join(__dirname, '../../templates');
-const PH = 612; // landscape Letter height in points
+const PH = 612; // landscape Letter page height in points (y=0 at bottom in pdf-lib)
 
-// ── Attendance: month column x-centers (from structure analysis) ────────────
+// ── Template map: grade level → template filename ─────────────────────────
+const TEMPLATE_FILE = {
+  'Kindergarten': 'Kindergarten_ReportCard(Size-Letter).pdf',
+  'Grade 1':      'Grade1-2_ReportCard(Size-Letter).pdf',
+  'Grade 2':      'Grade1-2_ReportCard(Size-Letter).pdf',
+  'Grade 3':      'Grade3_ReportCard(Size-Letter).pdf',
+  'Grade 4':      'Grade4-6_ReportCard(Size-Letter).pdf',
+  'Grade 5':      'Grade4-6_ReportCard(Size-Letter).pdf',
+  'Grade 6':      'Grade4-6_ReportCard(Size-Letter).pdf',
+};
+
+// ── Per-template page-2 grade table layout ────────────────────────────────
+// All y-values are in pdf-lib coordinates (y=0 at bottom of page).
+//
+// How to calibrate if grades drift out of alignment with template boxes:
+//   1. Open the blank template PDF in a viewer that shows cursor coordinates.
+//   2. Hover over the vertical CENTER of the first subject data row → note y from bottom.
+//      That is firstRowY.
+//   3. Measure the vertical distance between the center of row 1 and row 2 → rowH.
+//   4. Hover over the center of the General Average value cell → genAvgY.
+//   5. Measure the usable inner width of the subject-name column → subjectColW.
+//
+// Grade 1-2: confirmed by original implementation.
+// Grade 3:   confirmed by pdfplumber measurement of generated PDF output.
+// Grade 4-6: assumed identical to Grade 3 — measure and update if rows drift.
+
+const GRADE_TABLE_LAYOUT = {
+  'Grade1-2_ReportCard(Size-Letter).pdf': {
+    firstRowY:   PH - 111,  // y-center of first subject row → 503pt
+    rowH:        25,         // row height in points (spacing between row centers)
+    genAvgY:     PH - 420,  // y-center of General Average value row → 184pt
+    subjectColW: 151,        // usable width (pt) for subject name text
+  },
+  'Grade3_ReportCard(Size-Letter).pdf': {
+    firstRowY:   PH - 111,  // measured box center 502.5pt; −2pt baseline correction → 501pt
+    rowH:        25,
+    genAvgY:     PH - 420,
+    subjectColW: 151,
+  },
+  'Grade4-6_ReportCard(Size-Letter).pdf': {
+    firstRowY:   PH - 111,  // ⚠ assumed — calibrate against template if rows drift
+    rowH:        25,         // ⚠ assumed — calibrate against template if rows drift
+    genAvgY:     PH - 420,  // ⚠ assumed — calibrate against template if rows drift
+    subjectColW: 151,        // ⚠ assumed — calibrate against template if rows drift
+  },
+};
+
+// ── Attendance: month column x-centers (confirmed by measurement) ─────────
 const ATT_COL_CENTERS = {
   Jun: 68, Jul: 94, Aug: 116, Sept: 145, Oct: 171,
   Nov: 196, Dec: 220, Jan: 245, Feb: 270, Mar: 296,
 };
 const ATT_TOTAL_X = 322;
 
-// Attendance data row y-centers (pdf coords, y=0 at bottom)
-// Row boundaries from structure: 100-137, 137-169, 169-205
+// Attendance row y-centers (pdf-lib coords).
+// Row boundaries from template structure: school_days=100–137, days_present=137–169, days_absent=169–205.
 const ATT_ROW_Y = {
-  school_days:  PH - 118,  // row center top=(100+137)/2=118
-  days_present: PH - 153,  // row center top=(137+169)/2=153
-  days_absent:  PH - 187,  // row center top=(169+205)/2=187
+  school_days:  PH - 118,  // center of 100–137 band → 494pt
+  days_present: PH - 153,  // center of 137–169 band → 459pt
+  days_absent:  PH - 187,  // center of 169–205 band → 425pt
 };
 
-// ── Grade table column x-positions (page 2, from structure) ────────────────
+// ── Grade table column x-centers / left edges ────────────────────────────
 const GRADE_COL_X = {
-  subject: 38,   // left-aligned
-  q1:      191,
+  subject: 38,   // left-aligned column start
+  q1:      191,  // column center (confirmed exact by measurement)
   q2:      215,
   q3:      238,
   q4:      261,
-  final:   290,
-  remarks: 333,
+  final:   298,
+  remarks: 349,  // column center (updated for true centering)
 };
-// First subject data row: header ends at top≈97, first row center at top≈109
-const GRADE_FIRST_ROW_Y = PH - 109;  // 503pt
-const GRADE_ROW_H       = 25;
-// General Average row center: top=413, height≈30 → center=428
-const GRADE_GEN_AVG_Y   = PH - 428;  // 184pt
+
+// ── Subject name font sizing ──────────────────────────────────────────────
+const SUBJECT_FONT_PREFERRED = 7.5;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -60,10 +105,36 @@ function buildAttendanceMap(attendanceRecords = []) {
   return map;
 }
 
+/**
+ * Wraps text into multiple lines based on maximum column width.
+ * Returns an array of strings.
+ */
+function wrapText(text, font, size, maxWidth) {
+  if (!text) return [];
+  const words = String(text).split(' ');
+  const lines = [];
+  let currentLine = words[0];
+
+  for (let i = 1; i < words.length; i++) {
+    const word = words[i];
+    const width = font.widthOfTextAtSize(currentLine + ' ' + word, size);
+    if (width <= maxWidth) {
+      currentLine += ' ' + word;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+  return lines;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Grades 1–6
 // ─────────────────────────────────────────────────────────────────────────────
-async function generateGrade1To6ReportCard({ student, classInfo }) {
+async function generateElementaryReportCard({ student, classInfo }) {
   const gradeLevel    = classInfo?.grade_level  ?? student.grade_level?.grade_level ?? '';
   const sectionName   = classInfo?.section_name ?? student.section_name ?? '';
   const schoolYear    = classInfo?.syear_start && classInfo?.syear_end
@@ -71,11 +142,16 @@ async function generateGrade1To6ReportCard({ student, classInfo }) {
   const adviserName   = classInfo?.adviser_name   ?? '';
   const principalName = classInfo?.principal_name ?? '';
 
-  const sexDisplay = (student.sex === 'M' || student.sex === 'Male') ? 'MALE' : 'FEMALE';
+  const sexDisplay   = (student.sex === 'M' || student.sex === 'Male') ? 'MALE' : 'FEMALE';
   const gradeDisplay = String(gradeLevel).replace(/\D/g, '');
 
-  // Build sorted subjects — exclude rows where avg_grade is null OR 0
-  // (0 = DB default for ungraded, not a real grade in Philippine schools)
+  // Resolve template and its layout config
+  const templateFile = TEMPLATE_FILE[gradeLevel];
+  if (!templateFile) throw new Error(`No report card template found for grade level: "${gradeLevel}"`);
+
+  const layout = GRADE_TABLE_LAYOUT[templateFile];
+
+  // Build sorted subjects — skip rows where avg_grade is null or 0
   const subjects = (student.subject_records ?? [])
     .map(r => ({
       name:    (r.subject_record?.subject_name ?? r.subject_name ?? '').toUpperCase(),
@@ -107,10 +183,7 @@ async function generateGrade1To6ReportCard({ student, classInfo }) {
   // Attendance
   const attMap = buildAttendanceMap(student.attendance_records);
 
-  // Load template (Grades 3–6 reuse Grade 1–2 template per your spec)
-  const templateBytes = fs.readFileSync(
-    path.join(TEMPLATES_DIR, 'Grade1-2_ReportCard(Size-Letter).pdf')
-  );
+  const templateBytes = fs.readFileSync(path.join(TEMPLATES_DIR, templateFile));
   const pdfDoc = await PDFDocument.load(templateBytes);
   const helvetica     = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -131,21 +204,21 @@ async function generateGrade1To6ReportCard({ student, classInfo }) {
   d1(sexDisplay, 650, PH - 235, 9);
 
   // Grade / Section / LRN
-  d1(gradeDisplay,               490,  PH - 247, 8);
-  d1(sectionName.toUpperCase(),  567,  PH - 247, 8);
-  d1(String(student.lrn_number), 683,  PH - 247, 8);
+  d1(gradeDisplay,               490,  PH - 248, 8);
+  d1(sectionName.toUpperCase(),  567,  PH - 248, 8);
+  d1(String(student.lrn_number), 683,  PH - 248, 8);
 
-  // Principal name
+  // Principal
   if (principalName) {
     const pnW = helveticaBold.widthOfTextAtSize(principalName.toUpperCase(), 8);
     d1(principalName.toUpperCase(), 469 + (110 - pnW) / 2, PH - 380, 8, true);
   }
 
-  // Teacher name
+  // Adviser
   if (adviserName) {
     const tnW = helveticaBold.widthOfTextAtSize(adviserName.toUpperCase(), 8);
     d1(adviserName.toUpperCase(), 622 + (130 - tnW) / 2, PH - 370, 8, true);
-    // Certificate of Transfer Teacher name
+    // Certificate of Transfer section
     d1(adviserName.toUpperCase(), 628 + (130 - tnW) / 2, PH - 501, 8, true);
   }
 
@@ -162,8 +235,7 @@ async function generateGrade1To6ReportCard({ student, classInfo }) {
       const val = rec[key];
       if (val != null && val !== '') {
         const str = String(val);
-        const xc  = centeredX(str, cx, helvetica, 8);
-        d1(str, xc, y, 8);
+        d1(str, centeredX(str, cx, helvetica, 8), y, 8);
       }
     });
   });
@@ -182,18 +254,32 @@ async function generateGrade1To6ReportCard({ student, classInfo }) {
   // ── PAGE 2 ────────────────────────────────────────────────────────────────
 
   subjects.forEach((subj, i) => {
-    const y = GRADE_FIRST_ROW_Y - i * GRADE_ROW_H;
-    d2(subj.name, GRADE_COL_X.subject, y, 7.5);
-    if (subj.q1 !== '') d2(String(subj.q1), centeredX(String(subj.q1), GRADE_COL_X.q1, helvetica, 8), y, 8);
-    if (subj.q2 !== '') d2(String(subj.q2), centeredX(String(subj.q2), GRADE_COL_X.q2, helvetica, 8), y, 8);
-    if (subj.q3 !== '') d2(String(subj.q3), centeredX(String(subj.q3), GRADE_COL_X.q3, helvetica, 8), y, 8);
-    if (subj.q4 !== '') d2(String(subj.q4), centeredX(String(subj.q4), GRADE_COL_X.q4, helvetica, 8), y, 8);
-    if (subj.avg !== '') d2(String(subj.avg), centeredX(String(subj.avg), GRADE_COL_X.final, helvetica, 8), y, 8);
-    if (subj.remarks)   d2(subj.remarks, GRADE_COL_X.remarks, y, 8);
+    const rowY = layout.firstRowY - i * layout.rowH;
+
+    // Word Wrap subject name logic
+    const lines = wrapText(subj.name, helvetica, SUBJECT_FONT_PREFERRED, layout.subjectColW);
+    const lineHeight = 8; // Optimal spacing between wrapped lines
+    
+    // Calculates a starting Y position to vertically center the multi-line block around the initial rowY
+    const startY = rowY + ((lines.length - 1) * lineHeight) / 2;
+
+    lines.forEach((line, lineIdx) => {
+      const lineY = startY - (lineIdx * lineHeight);
+      d2(line, GRADE_COL_X.subject, lineY, SUBJECT_FONT_PREFERRED);
+    });
+
+    // Grade values — always 8pt, horizontally centered within each column
+    if (subj.q1  !== '') d2(String(subj.q1),  centeredX(String(subj.q1),  GRADE_COL_X.q1,   helvetica, 8), rowY, 8);
+    if (subj.q2  !== '') d2(String(subj.q2),  centeredX(String(subj.q2),  GRADE_COL_X.q2,   helvetica, 8), rowY, 8);
+    if (subj.q3  !== '') d2(String(subj.q3),  centeredX(String(subj.q3),  GRADE_COL_X.q3,   helvetica, 8), rowY, 8);
+    if (subj.q4  !== '') d2(String(subj.q4),  centeredX(String(subj.q4),  GRADE_COL_X.q4,   helvetica, 8), rowY, 8);
+    if (subj.avg !== '') d2(String(subj.avg), centeredX(String(subj.avg), GRADE_COL_X.final, helvetica, 8), rowY, 8);
+    if (subj.remarks)    d2(subj.remarks,     centeredX(subj.remarks,     GRADE_COL_X.remarks, helvetica, 8), rowY, 8);
   });
 
-  if (genAvg !== '') d2(String(genAvg), centeredX(String(genAvg), GRADE_COL_X.final, helvetica, 8), GRADE_GEN_AVG_Y, 8);
-  if (genRemarks)    d2(genRemarks, GRADE_COL_X.remarks, GRADE_GEN_AVG_Y, 8);
+  // General Average row
+  if (genAvg !== '') d2(String(genAvg), centeredX(String(genAvg), GRADE_COL_X.final, helvetica, 8), layout.genAvgY, 8);
+  if (genRemarks)    d2(genRemarks,     centeredX(genRemarks,     GRADE_COL_X.remarks, helvetica, 8), layout.genAvgY, 8);
 
   return await pdfDoc.save();
 }
@@ -209,7 +295,7 @@ async function generateKindergartenReportCard({ student, classInfo }) {
   const adviserName   = classInfo?.adviser_name   ?? '';
 
   const templateBytes = fs.readFileSync(
-    path.join(TEMPLATES_DIR, 'Kindergarten_ReportCard(Size-Letter).pdf')
+    path.join(TEMPLATES_DIR, TEMPLATE_FILE['Kindergarten'])
   );
   const pdfDoc = await PDFDocument.load(templateBytes);
   const helvetica     = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -218,23 +304,15 @@ async function generateKindergartenReportCard({ student, classInfo }) {
 
   const d1 = makeDraw(page1, helvetica, helveticaBold);
 
-  // SY (structure_top=157)
   d1(schoolYear, 556, PH - 161, 9, true);
-
-  // Name (structure_top=227)
   d1(`${student.lname.toUpperCase()}, ${student.fname.toUpperCase()}`, 449, PH - 231, 9, true);
-
-  // Section (structure_top=240)
   d1(sectionName.toUpperCase(), 455, PH - 244, 9, true);
-
-  // LRN (structure_top=254)
   d1(String(student.lrn_number), 440, PH - 258, 9, true);
 
-  // Principal and Teacher/Adviser (signature lines at top=509)
   if (principalName) d1(principalName.toUpperCase(), 418, PH - 509, 9, true);
   if (adviserName)   d1(adviserName.toUpperCase(),   638, PH - 509, 9, true);
 
   return await pdfDoc.save();
 }
 
-module.exports = { generateGrade1To6ReportCard, generateKindergartenReportCard };
+module.exports = { generateElementaryReportCard, generateKindergartenReportCard };
