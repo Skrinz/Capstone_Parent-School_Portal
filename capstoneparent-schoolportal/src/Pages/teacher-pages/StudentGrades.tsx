@@ -12,7 +12,7 @@ interface StudentGradesProps {
 
 export const StudentGrades = ({ student, onBack, isLoading = false }: StudentGradesProps) => {
   const handleExportStudentGrades = async () => {
-    const fallbackName = `${student.lname}_${student.fname}_${student.lrn_number}_grades.pdf`
+    const fallbackName = `${student.lname}_${student.fname}_${student.lrn_number}_ReportCard.pdf`
       .replace(/\s+/g, '_');
 
     await exportStudentQuarterlyGrades(student.student_id, fallbackName);
@@ -47,7 +47,7 @@ export const StudentGrades = ({ student, onBack, isLoading = false }: StudentGra
        };
     });
     return map;
-  }, [student.attendance_records]);
+  }, [student.attendance_records, months]);
 
   const totalSchoolDays = useMemo(() => 
     Object.values(attendanceMap).reduce((sum, record) => sum + record.school_days, 0)
@@ -106,6 +106,7 @@ export const StudentGrades = ({ student, onBack, isLoading = false }: StudentGra
           <Button
             className="bg-(--button-green) hover:bg-green-700 text-white"
             onClick={handleExportStudentGrades}
+            disabled={isLoading}
           >
             <Download className="mr-2 h-4 w-4" />
             Export Quarterly Grades (.pdf)
@@ -116,256 +117,152 @@ export const StudentGrades = ({ student, onBack, isLoading = false }: StudentGra
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
         {isLoading ? (
-          <div className="rounded-lg border border-gray-200 bg-white p-6 text-center text-gray-500">
-            Loading student records...
+          <div className="rounded-lg border border-gray-200 bg-white p-12 text-center text-gray-500 flex flex-col items-center justify-center">
+            <div className="animate-pulse mb-2">Loading student records...</div>
+            <span className="text-xs">Please wait while we retrieve the data.</span>
           </div>
-        ) : null}
-
-        {/* Student Info Card */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            {/* Header Accent */}
-            <div className="h-1.5 bg-(--button-green) w-full" />
-                <div className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-6 gap-x-8">
-                    
-                    {/* Name Group */}
-                    <div className="flex flex-col gap-1">
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                        Student Name
-                        </span>
-                        <span className="text-base font-semibold text-slate-900">
-                        {student.name || `${student.fname} ${student.lname}`}
-                        </span>
-                    </div>
-
-                    {/* LRN Group */}
-                    <div className="flex flex-col gap-1">
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                        LRN
-                        </span>
-                        <span className="text-base font-mono font-medium text-slate-700">
-                        {student.lrn_number}
-                        </span>
-                    </div>
-
-                    {/* Sex Group */}
-                    <div className="flex flex-col gap-1">
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                        Sex
-                        </span>
-                        <span className="text-base font-medium text-slate-700">
-                        {student.sex}
-                        </span>
-                    </div>
-
-                    {/* Grade & Section Group */}
-                    <div className="flex flex-col gap-1">
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                        Grade & Section
-                        </span>
-                        <span className="text-base font-medium text-slate-700">
-                        {student.gradeSection}
-                        </span>
-                    </div>
-
-                    {/* School Year Group */}
-                    <div className="flex flex-col gap-1">
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                        School Year
-                        </span>
-                        <span className="text-base font-medium text-slate-700">
-                        {student.schoolYear}
-                        </span>
-                    </div>
+        ) : (
+          <>
+            {/* Student Info Card */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="h-1.5 bg-(--button-green) w-full" />
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-6 gap-x-8">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Student Name</span>
+                    <span className="text-base font-semibold text-slate-900">
+                      {student.name || `${student.fname} ${student.lname}`}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">LRN</span>
+                    <span className="text-base font-mono font-medium text-slate-700">{student.lrn_number}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Sex</span>
+                    <span className="text-base font-medium text-slate-700">{student.sex}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Grade & Section</span>
+                    <span className="text-base font-medium text-slate-700">{student.gradeSection}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">School Year</span>
+                    <span className="text-base font-medium text-slate-700">{student.schoolYear}</span>
+                  </div>
                 </div>
+              </div>
             </div>
-        </div>
 
-        {/* Grades Table */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-200">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="px-6 py-3 text-center text-sm font-bold text-gray-900 border border-gray-300">
-                    Learning Areas
-                  </th>
-                  <th className="px-6 py-3 text-center text-sm font-bold text-gray-900 border border-gray-300">Q1</th>
-                  <th className="px-6 py-3 text-center text-sm font-bold text-gray-900 border border-gray-300">Q2</th>
-                  <th className="px-6 py-3 text-center text-sm font-bold text-gray-900 border border-gray-300">Q3</th>
-                  <th className="px-6 py-3 text-center text-sm font-bold text-gray-900 border border-gray-300">Q4</th>
-                  <th className="px-6 py-3 text-center text-sm font-bold text-gray-900 border border-gray-300">Final Grade</th>
-                  <th className="px-6 py-3 text-center text-sm font-bold text-gray-900 border border-gray-300">Remarks</th>
-                </tr>
-              </thead>
-              <tbody>
-                {subjectRows.length > 0 ? (
-                  subjectRows.map((subjectData) => (
-                    <tr key={subjectData.srs_id} className="hover:bg-gray-50">
-                      <td className="px-6 py-3 text-left border border-gray-300 font-medium">
-                        {subjectData.subject_name}
-                      </td>
+            {/* Grades Table */}
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-200">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="px-6 py-3 text-center text-sm font-bold text-gray-900 border border-gray-300">Learning Areas</th>
+                      <th className="px-6 py-3 text-center text-sm font-bold text-gray-900 border border-gray-300">Q1</th>
+                      <th className="px-6 py-3 text-center text-sm font-bold text-gray-900 border border-gray-300">Q2</th>
+                      <th className="px-6 py-3 text-center text-sm font-bold text-gray-900 border border-gray-300">Q3</th>
+                      <th className="px-6 py-3 text-center text-sm font-bold text-gray-900 border border-gray-300">Q4</th>
+                      <th className="px-6 py-3 text-center text-sm font-bold text-gray-900 border border-gray-300">Final Grade</th>
+                      <th className="px-6 py-3 text-center text-sm font-bold text-gray-900 border border-gray-300">Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {subjectRows.length > 0 ? (
+                      subjectRows.map((subjectData) => (
+                        <tr key={subjectData.srs_id} className="hover:bg-gray-50">
+                          <td className="px-6 py-3 text-left border border-gray-300 font-medium">{subjectData.subject_name}</td>
+                          <td className="px-6 py-3 text-center border border-gray-300">{subjectData?.q1_grade ?? ''}</td>
+                          <td className="px-6 py-3 text-center border border-gray-300">{subjectData?.q2_grade ?? ''}</td>
+                          <td className="px-6 py-3 text-center border border-gray-300">{subjectData?.q3_grade ?? ''}</td>
+                          <td className="px-6 py-3 text-center border border-gray-300">{subjectData?.q4_grade ?? ''}</td>
+                          <td className="px-6 py-3 text-center border border-gray-300 font-semibold">{subjectData?.avg_grade ?? ''}</td>
+                          <td className="px-6 py-3 text-center border border-gray-300">
+                            <span className={`font-semibold ${
+                              subjectData?.remarks === 'PASSED' ? 'text-(--button-green)' : 
+                              subjectData?.remarks === 'FAILED' ? 'text-(--status-denied)' : 'text-gray-500'
+                            }`}>
+                              {subjectData?.remarks ?? ''}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-6 text-center text-gray-500 border border-gray-300">No records found.</td>
+                      </tr>
+                    )}
+                    <tr className="bg-gray-50 font-bold">
+                      <td className="px-6 py-3 text-left border border-gray-300">General Average</td>
+                      <td colSpan={4} className="border border-gray-300"></td>
+                      <td className="px-6 py-3 text-center border border-gray-300 text-lg">{generalAverage}</td>
                       <td className="px-6 py-3 text-center border border-gray-300">
-                        {subjectData?.q1_grade ?? ''}
-                      </td>
-                      <td className="px-6 py-3 text-center border border-gray-300">
-                        {subjectData?.q2_grade ?? ''}
-                      </td>
-                      <td className="px-6 py-3 text-center border border-gray-300">
-                        {subjectData?.q3_grade ?? ''}
-                      </td>
-                      <td className="px-6 py-3 text-center border border-gray-300">
-                        {subjectData?.q4_grade ?? ''}
-                      </td>
-                      <td className="px-6 py-3 text-center border border-gray-300 font-semibold">
-                        {subjectData?.avg_grade ?? ''}
-                      </td>
-                      <td className="px-6 py-3 text-center border border-gray-300">
-                        <span className={`font-semibold ${
-                          subjectData?.remarks === 'PASSED' 
-                            ? 'text-(--button-green)' 
-                            : subjectData?.remarks === 'FAILED'
-                            ? 'text-(--status-denied)'
-                            : 'text-gray-500'
-                        }`}>
-                          {subjectData?.remarks ?? ''}
+                        <span className={generalRemarks === 'PASSED' ? 'text-(--button-green)' : 'text-(--status-denied)'}>
+                          {generalRemarks}
                         </span>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-6 text-center text-gray-500 border border-gray-300">
-                      No subject records found for this student.
-                    </td>
-                  </tr>
-                )}
-                
-                {/* General Average Row */}
-                <tr className="bg-gray-50 font-bold">
-                  <td className="px-6 py-3 text-left border border-gray-300">General Average</td>
-                  <td className="px-6 py-3 text-center border border-gray-300"></td>
-                  <td className="px-6 py-3 text-center border border-gray-300"></td>
-                  <td className="px-6 py-3 text-center border border-gray-300"></td>
-                  <td className="px-6 py-3 text-center border border-gray-300"></td>
-                  <td className="px-6 py-3 text-center border border-gray-300 text-lg">
-                    {generalAverage}
-                  </td>
-                  <td className="px-6 py-3 text-center border border-gray-300">
-                    <span className={`font-semibold ${
-                      generalRemarks === 'PASSED' 
-                        ? 'text-(--button-green)' 
-                        : generalRemarks === 'FAILED'
-                        ? 'text-(--status-denied)'
-                        : 'text-gray-500'
-                    }`}>
-                      {generalRemarks}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-        {/* Attendance Records */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="bg-gray-100 px-6 py-3 border-b border-gray-300">
-            <h3 className="text-lg font-bold text-center">Attendance Records</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-225">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-center border border-gray-300"></th>
-                  {months.map((month) => (
-                    <th key={month} className="px-4 py-3 text-center border border-gray-300 font-bold">
-                      {month}
-                    </th>
-                  ))}
-                  <th className="px-4 py-3 text-center border border-gray-300 font-bold">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="px-4 py-3 text-center border border-gray-300 font-semibold bg-gray-50">
-                    No. of School Days
-                  </td>
-                  {months.map((month) => (
-                    <td key={month} className="px-4 py-3 text-center border border-gray-300">
-                      {attendanceMap[month]?.school_days || ''}
-                    </td>
-                  ))}
-                  <td className="px-4 py-3 text-center border border-gray-300 font-bold">
-                    {totalSchoolDays}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-3 text-center border border-gray-300 font-semibold bg-gray-50">
-                    No. of Days Present
-                  </td>
-                  {months.map((month) => (
-                    <td key={month} className="px-4 py-3 text-center border border-gray-300">
-                      {attendanceMap[month]?.days_present || ''}
-                    </td>
-                  ))}
-                  <td className="px-4 py-3 text-center border border-gray-300 font-bold">
-                    {totalPresent}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-3 text-center border border-gray-300 font-semibold bg-gray-50">
-                    No. of Times Absent
-                  </td>
-                  {months.map((month) => (
-                    <td key={month} className="px-4 py-3 text-center border border-gray-300">
-                      {attendanceMap[month]?.days_absent || ''}
-                    </td>
-                  ))}
-                  <td className="px-4 py-3 text-center border border-gray-300 font-bold">
-                    {totalAbsent}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+            {/* Attendance Records */}
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <div className="bg-gray-100 px-6 py-3 border-b border-gray-300 text-center font-bold">Attendance Records</div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-225">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 border border-gray-300"></th>
+                      {months.map(m => <th key={m} className="px-4 py-3 border border-gray-300 font-bold">{m}</th>)}
+                      <th className="px-4 py-3 border border-gray-300 font-bold">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="px-4 py-3 border border-gray-300 font-semibold bg-gray-50">School Days</td>
+                      {months.map(m => <td key={m} className="px-4 py-3 text-center border border-gray-300">{attendanceMap[m]?.school_days || 0}</td>)}
+                      <td className="px-4 py-3 text-center border border-gray-300 font-bold">{totalSchoolDays}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3 border border-gray-300 font-semibold bg-gray-50">Present</td>
+                      {months.map(m => <td key={m} className="px-4 py-3 text-center border border-gray-300">{attendanceMap[m]?.days_present || 0}</td>)}
+                      <td className="px-4 py-3 text-center border border-gray-300 font-bold">{totalPresent}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3 border border-gray-300 font-semibold bg-gray-50">Absent</td>
+                      {months.map(m => <td key={m} className="px-4 py-3 text-center border border-gray-300">{attendanceMap[m]?.days_absent || 0}</td>)}
+                      <td className="px-4 py-3 text-center border border-gray-300 font-bold">{totalAbsent}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-        {/* Grading Scale Legend */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <h4 className="font-bold mb-2">Description</h4>
-              <ul className="space-y-1 text-sm">
-                <li>Outstanding</li>
-                <li>Very Satisfactory</li>
-                <li>Satisfactory</li>
-                <li>Fairly Satisfactory</li>
-                <li>Did Not Meet Expectations</li>
-              </ul>
+            {/* Grading Scale Legend */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+                <div>
+                  <h4 className="font-bold mb-2">Description</h4>
+                  <ul className="space-y-1"><li>Outstanding</li><li>Very Satisfactory</li><li>Satisfactory</li><li>Fairly Satisfactory</li><li>Did Not Meet Expectations</li></ul>
+                </div>
+                <div className="text-center">
+                  <h4 className="font-bold mb-2">Grading Scale</h4>
+                  <ul className="space-y-1"><li>90 - 100</li><li>85 - 89</li><li>80 - 84</li><li>75 - 79</li><li>Below 75</li></ul>
+                </div>
+                <div className="text-center">
+                  <h4 className="font-bold mb-2">Remarks</h4>
+                  <ul className="space-y-1 font-semibold">
+                    <li className="text-(--button-green)">Passed</li><li className="text-(--button-green)">Passed</li><li className="text-(--button-green)">Passed</li><li className="text-(--button-green)">Passed</li><li className="text-(--status-denied)">Failed</li>
+                  </ul>
+                </div>
+              </div>
             </div>
-            <div>
-              <h4 className="font-bold mb-2 text-center">Grading Scale</h4>
-              <ul className="space-y-1 text-sm text-center">
-                <li>90 - 100</li>
-                <li>85 - 89</li>
-                <li>80 - 84</li>
-                <li>75 - 79</li>
-                <li>Below 75</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold mb-2 text-center">Remarks</h4>
-              <ul className="space-y-1 text-sm text-center">
-                <li className="text-(--button-green) font-semibold">Passed</li>
-                <li className="text-(--button-green) font-semibold">Passed</li>
-                <li className="text-(--button-green) font-semibold">Passed</li>
-                <li className="text-(--button-green) font-semibold">Passed</li>
-                <li className="text-(--status-denied) font-semibold">Failed</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );
