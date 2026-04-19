@@ -1627,8 +1627,10 @@ const classesService = {
       }),
     );
 
+    const zipFileName = `${sanitizeFileName(classInfo.grade_level)}-${sanitizeFileName(classInfo.section_name)}_Quarterly_Grades.zip`;
+
     return {
-      fileName: `class-${classId}-quarterly-grades.zip`,
+      fileName: zipFileName,
       contentType: "application/zip",
       buffer: createZipBuffer(zipEntries),
     };

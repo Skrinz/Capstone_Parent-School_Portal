@@ -61,11 +61,17 @@ export const exportAllQuartersGradeSheet = async (clist_id: number) => {
 
     if (!response.ok) throw new Error('Failed to export grade sheet');
 
+    const disposition = response.headers.get('Content-Disposition') ?? '';
+    const match = disposition.match(/filename[^;=\n]*=([^;\n"]+|"[^"\n]*")/);
+    const fileName = match
+      ? match[1].replace(/"/g, '').trim()
+      : `class-${clist_id}-quarterly-grades.zip`;
+
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `class-${clist_id}-quarterly-grades.zip`;
+    a.download = fileName;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
