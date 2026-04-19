@@ -4,14 +4,7 @@ import EditLearningResourceModal from "@/components/librarian/EditLearningResour
 import BookCopyModal from "@/components/librarian/BookCopyModal";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import { Search, Pencil } from "lucide-react";
+import { Search, Pencil, ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { libraryApi } from "@/lib/api/libraryApi";
 import type { LearningMaterial, LibraryCategory } from "@/lib/api/types";
@@ -146,36 +139,40 @@ export const ManageLearningResources = () => {
               </div>
 
               <div className="flex gap-2">
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-40 rounded-md border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-none focus:outline-none focus:ring-2 focus:ring-(--button-green)">
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-md border border-gray-300 bg-white shadow-lg">
-                    <SelectItem value="all">All</SelectItem>
+                <div className="relative">
+                  <select
+                    value={categoryFilter}
+                    onChange={(event) => setCategoryFilter(event.target.value)}
+                    className="w-40 appearance-none rounded-md border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+                  >
+                    <option value="all">All</option>
                     {categories.map((category) => (
-                      <SelectItem
+                      <option
                         key={category.category_id}
                         value={category.category_id.toString()}
                       >
                         {category.category_name}
-                      </SelectItem>
+                      </option>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                </div>
 
-                <Select value={gradeFilter} onValueChange={setGradeFilter}>
-                  <SelectTrigger className="w-40 rounded-md border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-none focus:outline-none focus:ring-2 focus:ring-(--button-green)">
-                    <SelectValue placeholder="Grade Level" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-md border border-gray-300 bg-white shadow-lg">
-                    <SelectItem value="all">All</SelectItem>
+                <div className="relative">
+                  <select
+                    value={gradeFilter}
+                    onChange={(event) => setGradeFilter(event.target.value)}
+                    className="w-40 appearance-none rounded-md border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+                  >
+                    <option value="all">All</option>
                     {GRADE_LEVELS.map((grade) => (
-                      <SelectItem key={grade.id} value={grade.id.toString()}>
+                      <option key={grade.id} value={grade.id.toString()}>
                         {grade.label}
-                      </SelectItem>
+                      </option>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                </div>
               </div>
             </section>
 
