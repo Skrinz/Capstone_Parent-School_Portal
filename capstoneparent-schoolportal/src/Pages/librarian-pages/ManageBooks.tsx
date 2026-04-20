@@ -153,13 +153,12 @@ export const ManageBooks = () => {
               </div>
 
               <div className="flex gap-2">
-                <div className="relative">
-                  <select
-                    value={subjectFilter}
-                    onChange={(event) => setSubjectFilter(event.target.value)}
-                    className="w-40 appearance-none rounded-md border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-(--button-green)"
-                  >
-                    <option value="all">All</option>
+                <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+                  <SelectTrigger className="w-40 bg-white">
+                    <SelectValue placeholder="Subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
                     {subjects.map((subject) => (
                       <option
                         key={subject.subject_id}
@@ -168,17 +167,15 @@ export const ManageBooks = () => {
                         {subject.name}
                       </option>
                     ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-                </div>
+                  </SelectContent>
+                </Select>
 
-                <div className="relative">
-                  <select
-                    value={gradeFilter}
-                    onChange={(event) => setGradeFilter(event.target.value)}
-                    className="w-40 appearance-none rounded-md border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-(--button-green)"
-                  >
-                    <option value="all">All</option>
+                <Select value={gradeFilter} onValueChange={setGradeFilter}>
+                  <SelectTrigger className="w-40 bg-white">
+                    <SelectValue placeholder="Grade Level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
                     {GRADE_LEVELS.map((grade) => (
                       <option key={grade.id} value={grade.id.toString()}>
                         {grade.label}

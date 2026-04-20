@@ -46,10 +46,7 @@ export function resolveMediaUrl(path: string): string {
  */
 export function bearerHeaders(): Record<string, string> {
   try {
-    const raw = localStorage.getItem("auth-session");
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as { state?: { token?: string } };
-    const token = parsed?.state?.token;
+    const token = useAuthStore.getState().token;
     return token ? { Authorization: `Bearer ${token}` } : {};
   } catch {
     return {};

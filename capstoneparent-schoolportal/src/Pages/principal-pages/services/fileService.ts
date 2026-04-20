@@ -1,4 +1,4 @@
-import { apiFetch } from '@/lib/api/base';
+import { apiFetch, bearerHeaders } from '@/lib/api/base';
 
 const API_BASE_URL = '/api';
 
@@ -7,6 +7,7 @@ export const downloadStudentListTemplate = async (fileType: 'csv' = 'csv') => {
   try {
     const response = await fetch(`${API_BASE_URL}/templates/student-list?format=${fileType}`, {
       method: 'GET',
+      headers: bearerHeaders(),
     });
 
     if (!response.ok) throw new Error('Failed to download template');
@@ -34,6 +35,7 @@ export const uploadStudentList = async (classId: number, file: File) => {
 
     return await apiFetch(`/classes/${classId}/import-students`, {
       method: 'POST',
+      headers: bearerHeaders(),
       successMessage: 'Student list uploaded successfully.',
       body: formData,
     });

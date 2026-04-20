@@ -2,7 +2,7 @@
  * src/lib/api/libraryApi.ts
  */
 
-import { apiFetch } from "./base";
+import { apiFetch, bearerHeaders } from "./base";
 import type {
   ApiData,
   ApiPaginatedData,
@@ -45,16 +45,20 @@ export const libraryApi = {
         }
       });
     }
-    return apiFetch<ApiPaginatedData<LearningMaterial>>(`/library/materials?${query.toString()}`);
+    return apiFetch<ApiPaginatedData<LearningMaterial>>(`/library/materials?${query.toString()}`, {
+      headers: bearerHeaders(),
+    });
   },
 
   getMaterialById: (id: number) =>
-    apiFetch<ApiData<LearningMaterial>>(`/library/materials/${id}`),
+    apiFetch<ApiData<LearningMaterial>>(`/library/materials/${id}`, {
+      headers: bearerHeaders(),
+    }),
 
   createMaterial: (data: Partial<LearningMaterial>) =>
     apiFetch<ApiData<LearningMaterial>>("/library/materials", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...bearerHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify(data),
       successMessage: "Material created successfully",
     }),
@@ -62,7 +66,7 @@ export const libraryApi = {
   updateMaterial: (id: number, data: Partial<LearningMaterial>) =>
     apiFetch<ApiData<LearningMaterial>>(`/library/materials/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...bearerHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify(data),
       successMessage: "Material updated successfully",
     }),
@@ -70,6 +74,7 @@ export const libraryApi = {
   deleteMaterial: (id: number) =>
     apiFetch<{ message: string }>(`/library/materials/${id}`, {
       method: "DELETE",
+      headers: bearerHeaders(),
       successMessage: "Material deleted successfully",
     }),
 
@@ -77,7 +82,7 @@ export const libraryApi = {
   addCopy: (id: number, data: { copy_code: number; condition?: string }) =>
     apiFetch<ApiData<MaterialCopy>>(`/library/materials/${id}/copies`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...bearerHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify(data),
       successMessage: "Copy added successfully",
     }),
@@ -88,7 +93,7 @@ export const libraryApi = {
   ) =>
     apiFetch<ApiData<MaterialCopy>>(`/library/copies/${copyId}/status`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...bearerHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify(data),
       successMessage: "Copy status updated successfully",
     }),
@@ -97,7 +102,7 @@ export const libraryApi = {
   borrowMaterial: (data: { copy_id: number; student_id?: number; user_id?: number; due_at?: string }) =>
     apiFetch<ApiData<BorrowRecord>>("/library/borrow", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...bearerHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify(data),
       successMessage: "Material borrowed successfully",
     }),
@@ -105,7 +110,7 @@ export const libraryApi = {
   returnMaterial: (borrowId: number, data: { penalty_cost?: number; remarks?: string }) =>
     apiFetch<ApiData<BorrowRecord>>(`/library/borrow/${borrowId}/return`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...bearerHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify(data),
       successMessage: "Material returned successfully",
     }),
@@ -120,26 +125,32 @@ export const libraryApi = {
       });
     }
     return apiFetch<ApiPaginatedData<BorrowRecord>>(
-      `/library/borrow/history?${query.toString()}`
+      `/library/borrow/history?${query.toString()}`,
+      { headers: bearerHeaders() }
     );
   },
 
   // Categories
   getAllCategories: () =>
-    apiFetch<ApiData<LibraryCategory[]>>("/library/categories"),
+    apiFetch<ApiData<LibraryCategory[]>>("/library/categories", {
+      headers: bearerHeaders(),
+    }),
 
   getAllSubjects: () =>
-    apiFetch<ApiData<LibrarySubject[]>>("/library/subjects"),
+    apiFetch<ApiData<LibrarySubject[]>>("/library/subjects", {
+      headers: bearerHeaders(),
+    }),
 
   lookupBorrowers: (query: string) =>
     apiFetch<ApiData<BorrowerLookupResult[]>>(
-      `/library/borrowers/lookup?q=${encodeURIComponent(query)}`
+      `/library/borrowers/lookup?q=${encodeURIComponent(query)}`,
+      { headers: bearerHeaders() }
     ),
 
   createCategory: (data: { category_name: string }) =>
     apiFetch<ApiData<LibraryCategory>>("/library/categories", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...bearerHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify(data),
       successMessage: "Category created successfully",
     }),
@@ -147,7 +158,7 @@ export const libraryApi = {
   updateCategory: (categoryId: number, data: { category_name: string }) =>
     apiFetch<ApiData<LibraryCategory>>(`/library/categories/${categoryId}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...bearerHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify(data),
       successMessage: "Category updated successfully",
     }),

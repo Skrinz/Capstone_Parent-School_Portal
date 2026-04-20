@@ -12,101 +12,108 @@ interface PendingDetailsModalProps {
   onClose: () => void;
 }
 
+// Determine icon color based on file extension
+const getFileType = (name: string) => {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) return "IMG";
+  return "PDF";
+};
+
+const FileIcon = ({ name }: { name: string }) => {
+  const type = getFileType(name);
+  return (
+    <div className="relative flex items-center justify-center w-16 h-20">
+      {/* File body */}
+      <div className="absolute inset-0 bg-red-500 rounded-sm" style={{ clipPath: "polygon(0 0, 75% 0, 100% 15%, 100% 100%, 0 100%)" }} />
+      {/* Folded corner */}
+      <div className="absolute top-0 right-0 w-5 h-5 bg-red-300 rounded-bl" style={{ clipPath: "polygon(0 0, 100% 100%, 0 100%)" }} />
+      {/* Label */}
+      <span className="relative z-10 mt-4 text-white text-xs font-extrabold tracking-widest">
+        {type}
+      </span>
+    </div>
+  );
+};
+
 export const PendingDetailsModal = ({
   isOpen,
   child,
   files,
-  selectedPreviewName,
-  selectedPreviewUrl,
-  onPreview,
-  onOpenPdf,
   onClose,
 }: PendingDetailsModalProps) => {
   if (!isOpen || !child) return null;
 
+  const handleFileClick = (doc: UploadedDoc) => {
+    const url = doc.url || (doc.file ? URL.createObjectURL(doc.file) : "");
+    if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-3 sm:px-4">
-      <div className="w-full max-w-5xl max-h-[90vh] sm:max-h-none rounded-t-2xl sm:rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 shadow-2xl overflow-y-auto">
-        <div className="mb-4 sm:mb-6 flex items-start justify-between border-b border-gray-200 pb-3 sm:pb-4 gap-4">
-          <div className="min-w-0">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Details</h2>
-            <p className="mt-1 text-xs sm:text-sm text-gray-600">Review submission status and preview uploaded PDFs.</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-red-600 transition-colors hover:text-red-700 shrink-0"
-            aria-label="Close details modal"
-          >
-            <X className="h-6 w-6 sm:h-8 sm:w-8" strokeWidth={3} />
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div
+        className="w-full max-w-lg rounded-xl shadow-2xl p-6 relative"
+        style={{ backgroundColor: "#FCF5CA" }}
+      >
+        {/* Close button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 text-red-600 hover:text-red-700 transition-colors"
+          aria-label="Close details modal"
+        >
+          <X className="h-8 w-8" strokeWidth={3} />
+        </button>
+
+        {/* Title */}
+        <h2 className="text-3xl font-bold text-black mb-5">Details</h2>
+
+        {/* Info */}
+        <div className="space-y-1.5 text-base text-black mb-7">
+          <p>
+            Student name:{" "}
+            <span className="font-bold">{child.name}</span>
+          </p>
+          <p>
+            Status:{" "}
+            <span className="font-bold text-amber-500">{child.status}</span>
+          </p>
+          <p>
+            Date Submitted:{" "}
+            <span className="font-semibold">{child.dateSubmitted || "—"}</span>
+          </p>
+          <p>
+            Remarks:{" "}
+            <span className="font-semibold">{child.remarks || ""}</span>
+          </p>
         </div>
 
-        <div className="mb-4 sm:mb-5 grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3 sm:p-4 md:grid-cols-2">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Student Name</p>
-            <p className="mt-1 text-base sm:text-lg font-semibold text-gray-900 truncate">{child.name}</p>
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Status</p>
-            <p className="mt-1 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs sm:text-sm font-semibold text-amber-700">{child.status}</p>
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Date Submitted</p>
-            <p className="mt-1 text-sm sm:text-base font-medium text-gray-900">{child.dateSubmitted || "-"}</p>
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Remarks</p>
-            <p className="mt-1 text-sm sm:text-base font-medium text-gray-900">{child.remarks || "No remarks"}</p>
-          </div>
-        </div>
+        {/* Uploaded Files */}
+        <div>
+          <p className="text-xl font-bold text-black mb-4">Uploaded Files:</p>
 
-        <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-[1fr_1.4fr]">
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 sm:p-4">
-            <h3 className="mb-3 text-base sm:text-lg font-semibold text-gray-900">Uploaded Files</h3>
-            <div className="space-y-3">
-              {files.length > 0 ? (
-                files.map((doc) => (
-                  <div key={doc.name} className="rounded-lg border border-gray-200 bg-white p-3">
-                    <p className="truncate text-xs sm:text-sm font-medium text-gray-800">{doc.name}</p>
-                    <div className="mt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => onPreview(doc)}
-                        className="rounded-md bg-gray-100 px-2 sm:px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-200"
-                      >
-                        Preview
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onOpenPdf(doc)}
-                        className="rounded-md px-2 sm:px-3 py-1.5 text-xs font-semibold text-white"
-                        style={{ backgroundColor: "var(--button-green)" }}
-                      >
-                        Open PDF
-                      </button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-xs sm:text-sm text-gray-500">No uploaded files yet.</p>
-              )}
+          {files.length > 0 ? (
+            <div className="flex flex-wrap gap-4">
+              {files.map((doc) => (
+                <button
+                  key={doc.name}
+                  type="button"
+                  onClick={() => handleFileClick(doc)}
+                  disabled={!doc.url && !doc.file}
+                  title={doc.url || doc.file ? "Click to open in new tab" : "No file available"}
+                  className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gray-400/30 hover:bg-gray-400/50 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed w-28"
+                >
+                  <FileIcon name={doc.name} />
+                  <span className="text-xs text-black font-medium text-center w-full truncate leading-tight">
+                    {doc.name}
+                  </span>
+                </button>
+              ))}
             </div>
-          </div>
-
-          <div className="rounded-xl border border-gray-200 p-3 sm:p-4">
-            <h3 className="mb-3 text-base sm:text-lg font-semibold text-gray-900">PDF Preview</h3>
-            {selectedPreviewUrl ? (
-              <>
-                <p className="mb-2 truncate text-xs sm:text-sm text-gray-600">{selectedPreviewName}</p>
-                <iframe src={selectedPreviewUrl} title="PDF Preview" className="w-full h-60 sm:h-105 rounded-lg border border-gray-200" />
-              </>
-            ) : (
-              <div className="flex h-60 sm:h-105 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-xs sm:text-sm text-gray-500 px-4 text-center">
-                Select a file and click Preview to view the PDF.
-              </div>
-            )}
-          </div>
+          ) : (
+            <p className="text-sm text-gray-500 italic">No uploaded files yet.</p>
+          )}
         </div>
       </div>
     </div>

@@ -53,13 +53,36 @@ router.post(
   "/register",
   upload.array("attachments", 10),
   [
-    body("student_ids").isArray({ min: 1 }),
+    body("student_ids")
+      .customSanitizer((val) => {
+        if (typeof val === "string") {
+          try {
+            return JSON.parse(val);
+          } catch (e) {
+            return val;
+          }
+        }
+        return val;
+      })
+      .isArray({ min: 1 }),
     body("student_ids.*").isInt(),
     // files are handled via multipart form-data (req.files)
   ],
   validate,
   parentsController.submitRegistration,
 );
+
+// Resubmit a denied registration (updates existing record)
+router.patch(
+  "/registrations/:id/resubmit",
+  upload.array("attachments", 10),
+  [param("id").isInt()],
+  validate,
+  parentsController.resubmitRegistration,
+);
+
+// Get the logged-in parent's own registrations (accessible to the authenticated parent)
+router.get("/my-registrations", parentsController.getMyRegistrations);
 
 // Get all parent registrations (Admin, Teacher only)
 router.get(
@@ -114,6 +137,28 @@ router.get(
   param("studentId").isInt(),
   validate,
   parentsController.getChildAttendance,
+);
+
+// Get child schedule
+router.get(
+  "/children/:studentId/schedule",
+  requireVerifiedParentRegistration,
+  param("studentId").isInt(),
+  validate,
+  parentsController.getChildSchedule,
+);
+
+// Get child library records
+router.get(
+  "/children/:studentId/library",
+  requireVerifiedParentRegistration,
+  [
+    param("studentId").isInt(),
+    query("page").optional().isInt({ min: 1 }),
+    query("limit").optional().isInt({ min: 1, max: 100 }),
+  ],
+  validate,
+  parentsController.getChildLibraryRecords,
 );
 
 module.exports = router;

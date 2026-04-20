@@ -1,7 +1,7 @@
 /**
  * src/lib/api/usersApi.ts
  */
-import { apiFetch } from "./base";
+import { apiFetch, bearerHeaders } from "./base";
 import type { ApiData, ApiList, ApiMessage, AuthUser } from "./types";
 
 export const usersApi = {
@@ -11,14 +11,19 @@ export const usersApi = {
     if (typeof params?.limit === "number") query.set("limit", String(params.limit));
     if (typeof params?.page === "number") query.set("page", String(params.page));
     const suffix = query.toString();
-    return apiFetch<ApiList<AuthUser>>(`/users${suffix ? `?${suffix}` : ""}`);
+    return apiFetch<ApiList<AuthUser>>(`/users${suffix ? `?${suffix}` : ""}`, {
+      headers: bearerHeaders(),
+    });
   },
 
   updateProfile(userId: number, data: any) {
     return apiFetch<ApiData<AuthUser>>(`/users/${userId}`, {
       method: "PUT",
       successMessage: "Profile updated successfully.",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        ...bearerHeaders(),
+        "Content-Type": "application/json" 
+      },
       body: JSON.stringify(data),
     });
   },
@@ -30,7 +35,10 @@ export const usersApi = {
     return apiFetch<ApiData<AuthUser>>(`/users/${userId}/account`, {
       method: "PATCH",
       successMessage: "Account settings updated successfully.",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        ...bearerHeaders(),
+        "Content-Type": "application/json" 
+      },
       body: JSON.stringify(data),
     });
   },
@@ -39,6 +47,7 @@ export const usersApi = {
     return apiFetch<ApiMessage>(`/users/${userId}`, {
       method: "DELETE",
       successMessage: "Staff account deleted successfully.",
+      headers: bearerHeaders(),
     });
   },
 
@@ -49,6 +58,7 @@ export const usersApi = {
     return apiFetch<ApiData<AuthUser>>(`/users/${userId}/photo`, {
       method: "POST",
       successMessage: "Profile picture updated successfully.",
+      headers: bearerHeaders(),
       body: formData,
     });
   },
@@ -61,7 +71,10 @@ export const usersApi = {
     return apiFetch<ApiMessage>(`/users/${userId}/password`, {
       method: "PATCH",
       successMessage: "Password changed successfully.",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        ...bearerHeaders(),
+        "Content-Type": "application/json" 
+      },
       body: JSON.stringify({ currentPassword, newPassword }),
     });
   },

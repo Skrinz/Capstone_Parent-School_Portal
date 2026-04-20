@@ -1,8 +1,10 @@
 const prisma = require("../config/database");
 const { findOrThrow } = require("../utils/findOrThrow");
 const { deleteFileByUrl, refreshSignedUrl } = require("../utils/supabaseStorage");
-const { sendParentVerifiedEmail } = require("../utils/emailUtil");
-const PENDING_REGISTRATION_TTL_MS = 10 * 60 * 1000;
+const { sendParentVerifiedEmail, sendParentDeniedEmail } = require("../utils/emailUtil");
+// Pending registrations are kept for 7 days so admins and parents
+// can review the submitted files before the record is auto-purged.
+const PENDING_REGISTRATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * File → User relationship (from schema):
@@ -132,11 +134,20 @@ const parentsService = {
       "Parent not found",
     );
 
-    const existingRegistration = await prisma.parentRegistration.findFirst({
-      where: { parent_id, status: { in: ["PENDING", "VERIFIED"] } },
+    const duplicateStudentRegistration = await prisma.parentRegistration.findFirst({
+      where: { 
+        parent_id, 
+        status: { in: ["PENDING", "VERIFIED"] },
+        students: {
+          some: {
+            student_id: { in: parsedStudentIds }
+          }
+        }
+      },
     });
-    if (existingRegistration) {
-      throw new Error("Parent already has an active or pending registration");
+
+    if (duplicateStudentRegistration) {
+      throw new Error("One or more students already have an active or pending registration under your account");
     }
 
     const students = await prisma.student.findMany({
@@ -264,6 +275,45 @@ const parentsService = {
     return parentsService.refreshRegistrationFileUrls(registration);
   },
 
+  async resubmitRegistration({ pr_id, parent_id, file_ids }) {
+    await parentsService.purgeExpiredPendingRegistrations();
+
+    const registration = await prisma.parentRegistration.findUnique({
+      where: { pr_id },
+      include: {
+        files: true,
+      },
+    });
+
+    if (!registration) throw new Error("Registration not found");
+    if (registration.parent_id !== parent_id) {
+      throw new Error("Access denied: You do not own this registration");
+    }
+    if (registration.status !== "DENIED") {
+      throw new Error("Only denied registrations can be resubmitted");
+    }
+
+    // Update registration status and remove links to old files (records were already deleted upon denial)
+    return prisma.parentRegistration.update({
+      where: { pr_id },
+      data: {
+        status: "PENDING",
+        remarks: null,
+        submitted_at: new Date(),
+        files: {
+          deleteMany: {}, // Remove any remaining links
+          create: (file_ids || []).map((fileId) => ({
+            file_id: fileId,
+          })),
+        },
+      },
+      include: {
+        students: { include: { student: true } },
+        files: { include: { file: true } },
+      },
+    });
+  },
+
   async verifyRegistration({ pr_id, status, remarks, verified_by }) {
     await parentsService.purgeExpiredPendingRegistrations();
 
@@ -324,10 +374,27 @@ const parentsService = {
       await parentsService.deleteRegistrationFiles(existingRegistration.files || []);
     }
 
+    console.log(`[verifyRegistration] Processing PR_ID: ${pr_id}, Status: ${status}, Parent Email: ${registration.parent?.email}`);
+
     if (status === "VERIFIED" && registration.parent?.email) {
       const parentName =
         `${registration.parent.fname || ""} ${registration.parent.lname || ""}`.trim();
-      await sendParentVerifiedEmail(registration.parent.email, parentName);
+      const studentNames = registration.students.map(
+        (s) => `${s.student.fname} ${s.student.lname}`,
+      );
+      await sendParentVerifiedEmail(
+        registration.parent.email,
+        parentName,
+        studentNames,
+      );
+    }
+
+    if (status === "DENIED" && registration.parent?.email) {
+      const parentName =
+        `${registration.parent.fname || ""} ${registration.parent.lname || ""}`.trim();
+      console.log(`[verifyRegistration] Sending DENIED email to: ${registration.parent.email} with remarks: ${remarks}`);
+      const result = await sendParentDeniedEmail(registration.parent.email, parentName, remarks);
+      console.log(`[verifyRegistration] sendParentDeniedEmail result: ${result}`);
     }
 
     return registration;
@@ -345,13 +412,47 @@ const parentsService = {
       where: { parent_id: parentId, status: "VERIFIED" },
       include: {
         students: {
-          include: { student: { include: { grade_level: true } } },
+          include: {
+            student: {
+              include: {
+                grade_level: true,
+                // Section & adviser come from ClassList, not directly on Student
+                class_lists: {
+                  take: 1,
+                  orderBy: { class_list: { syear_start: "desc" } },
+                  include: {
+                    class_list: {
+                      include: {
+                        section: true,
+                        adviser: {
+                          select: { user_id: true, fname: true, lname: true },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     });
 
     return verifiedRegistrations.flatMap((reg) =>
-      reg.students.map((s) => s.student),
+      reg.students.map((s) => {
+        const student = s.student;
+        // Lift section & adviser from the most recent ClassList entry
+        const latestClassList = student.class_lists?.[0]?.class_list ?? null;
+        return {
+          ...student,
+          section: latestClassList
+            ? {
+                section_name: latestClassList.section?.section_name ?? null,
+                adviser: latestClassList.adviser ?? null,
+              }
+            : null,
+        };
+      }),
     );
   },
 
@@ -400,6 +501,115 @@ const parentsService = {
       where: { student_id },
       orderBy: { month: "asc" },
     });
+  },
+
+  async getChildSchedule({ parent_id, student_id }) {
+    await parentsService.purgeExpiredPendingRegistrations();
+
+    const hasAccess = await prisma.parentRegistration.findFirst({
+      where: {
+        parent_id,
+        status: "VERIFIED",
+        students: { some: { student_id } },
+      },
+    });
+    if (!hasAccess) throw new Error("Access denied to this student record");
+
+    // Find the class list the student is currently in
+    const studentEnrollment = await prisma.classListStudent.findFirst({
+      where: { student_id },
+      include: {
+        class_list: {
+          include: {
+            subject_records: {
+              include: {
+                subject_record: {
+                  include: {
+                    teacher: { select: { user_id: true, fname: true, lname: true } },
+                    subject: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Refresh the signed URL for the class schedule if it exists
+    if (studentEnrollment?.class_list?.class_sched) {
+      studentEnrollment.class_list.class_sched = await refreshSignedUrl(
+        studentEnrollment.class_list.class_sched,
+      );
+    }
+
+    return studentEnrollment?.class_list || null;
+  },
+
+  async getMyRegistrations(parentId) {
+    const registrations = await prisma.parentRegistration.findMany({
+      where: { parent_id: parentId },
+      include: {
+        students: {
+          include: { student: { include: { grade_level: true } } },
+        },
+        files: { include: { file: true } },
+        verifier: { select: { user_id: true, fname: true, lname: true } },
+      },
+      orderBy: { submitted_at: "desc" },
+    });
+
+    // Refresh signed file URLs only for PENDING registrations (files are deleted after verification/denial)
+    return Promise.all(
+      registrations.map((reg) =>
+        reg.status === "PENDING"
+          ? parentsService.refreshRegistrationFileUrls(reg)
+          : reg,
+      ),
+    );
+  },
+
+  async getChildLibraryRecords({ parent_id, student_id, page = 1, limit = 10 }) {
+    await parentsService.purgeExpiredPendingRegistrations();
+
+    const hasAccess = await prisma.parentRegistration.findFirst({
+      where: {
+        parent_id,
+        status: "VERIFIED",
+        students: { some: { student_id } },
+      },
+    });
+    if (!hasAccess) throw new Error("Access denied to this student record");
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const take = parseInt(limit);
+
+    const [records, total] = await Promise.all([
+      prisma.materialBorrowRecord.findMany({
+        where: { student_id },
+        skip,
+        take,
+        include: {
+          copy: {
+            include: {
+              item: true,
+            },
+          },
+        },
+        orderBy: { borrowed_at: "desc" },
+      }),
+      prisma.materialBorrowRecord.count({ where: { student_id } }),
+    ]);
+
+    return {
+      records,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / parseInt(limit)),
+      },
+    };
   },
 };
 

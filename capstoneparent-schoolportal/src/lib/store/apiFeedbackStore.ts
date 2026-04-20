@@ -30,3 +30,5 @@ export const useApiFeedbackStore = create<ApiFeedbackStore>((set) => ({
     }),
   clearFeedback: () => set({ feedback: null }),
 }));
+
+export const useApiFeedback = useApiFeedbackStore;

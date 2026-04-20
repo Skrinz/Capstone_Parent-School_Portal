@@ -138,7 +138,6 @@ router.get('/categories',
 
 // Get active subjects for book management
 router.get('/subjects',
-  authorize('Librarian', 'Admin'),
   libraryController.getAllSubjects
 );
 
