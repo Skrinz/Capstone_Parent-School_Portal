@@ -1,213 +1,137 @@
-import { X } from "lucide-react";
-import type { Child, DeniedUploads, PendingUploads } from "./parentModalTypes";
+import { X, Trash2, Loader2 } from "lucide-react";
+import type { Child } from "./parentModalTypes";
 
 interface DeniedDetailsModalProps {
   isOpen: boolean;
   child: Child | null;
-  deniedUploadTarget: keyof PendingUploads;
-  deniedUploads: DeniedUploads;
+  deniedUploads: File[];
   isFormValid: boolean;
-  onSetUploadTarget: (target: keyof PendingUploads) => void;
   onDeniedFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onRemoveDeniedFile: (key: keyof DeniedUploads) => void;
+  onRemoveDeniedFile: (index: number) => void;
   onResubmit: () => void;
   onClose: () => void;
+  isSubmitting?: boolean;
 }
 
 export const DeniedDetailsModal = ({
   isOpen,
   child,
-  deniedUploadTarget,
   deniedUploads,
   isFormValid,
-  onSetUploadTarget,
   onDeniedFileChange,
   onRemoveDeniedFile,
   onResubmit,
   onClose,
+  isSubmitting = false,
 }: DeniedDetailsModalProps) => {
   if (!isOpen || !child) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-3 sm:px-4">
-      <div className="w-full max-w-4xl max-h-[90vh] sm:max-h-none rounded-t-2xl sm:rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 shadow-2xl overflow-y-auto">
-        <div className="mb-4 sm:mb-6 flex items-start justify-between border-b border-gray-200 pb-3 sm:pb-4 gap-4">
-          <div className="min-w-0">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Details</h2>
-            <p className="mt-1 text-xs sm:text-sm text-gray-600">Review denied submission and upload corrected files.</p>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-3 sm:px-4">
+      <div className="w-full max-w-3xl rounded-xl p-8 sm:p-10 shadow-2xl overflow-y-auto" style={{ backgroundColor: "#FCF5CA" }}>
+        {/* Header */}
+        <div className="flex items-start justify-between mb-6">
+          <h2 className="text-4xl font-bold text-black font-sans">Details</h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-red-600 transition-colors hover:text-red-700 shrink-0"
+            className="text-red-500 transition-colors hover:text-red-600 shrink-0"
             aria-label="Close denied details modal"
           >
-            <X className="h-6 w-6 sm:h-8 sm:w-8" strokeWidth={3} />
+            <X className="h-10 w-10 font-bold" strokeWidth={3} />
           </button>
         </div>
 
-        <div className="mb-4 sm:mb-5 grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3 sm:p-4 md:grid-cols-2">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Student Name</p>
-            <p className="mt-1 text-base sm:text-lg font-semibold text-gray-900 truncate">{child.name}</p>
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Status</p>
-            <p className="mt-1 inline-flex rounded-full bg-red-100 px-3 py-1 text-xs sm:text-sm font-semibold text-red-700">{child.status}</p>
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Date Submitted</p>
-            <p className="mt-1 text-sm sm:text-base font-medium text-gray-900">{child.dateSubmitted || "-"}</p>
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Remarks</p>
-            <p className="mt-1 text-sm sm:text-base font-medium text-gray-900">{child.remarks || "Please review and upload valid documents."}</p>
-          </div>
+        {/* Info Section */}
+        <div className="space-y-2 mb-10 text-black text-2xl font-normal">
+          <p>
+            Student name: <span className="font-bold">{child.name}</span>
+          </p>
+          <p>
+            Status: <span className="text-red-600 font-bold">DENIED</span>
+          </p>
+          <p>
+            Date Submitted: {child.dateSubmitted || "-"}
+          </p>
+          <p className="leading-tight">
+            Remarks: {child.remarks || "No remarks provided."}
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-[1fr_1.35fr]">
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 sm:p-4">
-            <h3 className="mb-3 text-base sm:text-lg font-semibold text-gray-900">Registration Requirements</h3>
-            <ul className="space-y-2 text-xs sm:text-sm text-gray-700">
-              <li>
-                • Parent Birth Certificate <span className="text-gray-500 text-xs">(required unless Government ID is uploaded)</span>
+        <div className="text-2xl font-normal mb-6 text-black">
+          Uploaded Files:
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-8 mb-8">
+          {/* Left Column: Requirements */}
+          <div>
+            <div className="text-[#C0392B] italic text-lg mb-2">Registration Requirements:</div>
+            <ul className="space-y-4 text-xl text-[#C0392B]">
+              <li className="flex gap-2">
+                <span className="font-bold tracking-tighter">•</span>
+                <span className="italic font-bold">Parent's Birth Certificate</span>
               </li>
-              <li>
-                • Government-issued ID <span className="text-gray-500 text-xs">(optional substitute)</span>
+              <li className="flex gap-2">
+                <span className="font-bold tracking-tighter">•</span>
+                <span className="italic">
+                  <span className="font-bold">Government-issued ID</span> if Parent's Birth Certificate is not available.
+                </span>
               </li>
-              <li>
-                • Child Birth Certificate <span className="text-red-600">(required)</span>
+              <li className="flex gap-2">
+                <span className="font-bold tracking-tighter">•</span>
+                <span className="italic font-bold">Child's Birth Certificate</span>
               </li>
             </ul>
           </div>
 
-          <div className="rounded-xl border border-gray-200 p-3 sm:p-4">
-            <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Uploaded Files</h3>
-              <label
-                htmlFor="denied-files-upload"
-                className="cursor-pointer rounded-lg px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white whitespace-nowrap"
-                style={{ backgroundColor: "var(--button-green)" }}
-              >
-                File Upload
-              </label>
-            </div>
+          {/* Right Column: File Upload */}
+          <div className="flex flex-col gap-3">
+            <label
+              htmlFor="denied-files-upload"
+              className="flex items-center justify-between cursor-pointer px-4 py-3 font-bold text-black shadow-sm transition-all select-none hover:opacity-90"
+              style={{ backgroundColor: "#C0D53B" }}
+            >
+              <span className="text-xl">File Upload</span>
+              <span className="text-3xl font-bold leading-none">+</span>
+            </label>
             <input
               id="denied-files-upload"
               type="file"
+              multiple
               accept=".pdf,.jpg,.jpeg,.png"
               className="hidden"
               onChange={onDeniedFileChange}
             />
-            <p className="mb-1 text-xs text-gray-500">Choose a target document first, then click File Upload.</p>
-            <p className="mb-3 text-xs text-gray-400">Accepted: PDF, JPG, JPEG, PNG · Max 10 MB per file</p>
 
-            <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <button
-                type="button"
-                onClick={() => onSetUploadTarget("parentBirthCertificate")}
-                className={`rounded-md border px-2 sm:px-3 py-2 text-xs font-semibold transition-colors ${
-                  deniedUploadTarget === "parentBirthCertificate"
-                    ? "border-green-600 bg-green-50 text-green-700"
-                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                Parent Birth Certificate
-              </button>
-              <button
-                type="button"
-                onClick={() => onSetUploadTarget("governmentId")}
-                className={`rounded-md border px-2 sm:px-3 py-2 text-xs font-semibold transition-colors ${
-                  deniedUploadTarget === "governmentId"
-                    ? "border-green-600 bg-green-50 text-green-700"
-                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                Government ID
-              </button>
-              <button
-                type="button"
-                onClick={() => onSetUploadTarget("childBirthCertificate")}
-                className={`rounded-md border px-2 sm:px-3 py-2 text-xs font-semibold transition-colors ${
-                  deniedUploadTarget === "childBirthCertificate"
-                    ? "border-green-600 bg-green-50 text-green-700"
-                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                Child Birth Certificate
-              </button>
-            </div>
-
-            <div className="space-y-3 text-sm text-gray-800">
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="mb-2">
-                  <p className="font-medium text-sm">Parent Birth Certificate <span className="text-red-600">*</span></p>
+            <div className="space-y-2">
+              {deniedUploads.map((file, index) => (
+                <div key={`${file.name}-${index}`} className="flex justify-between items-center bg-white px-3 py-1 shadow-sm border border-gray-100">
+                  <span className="text-sm font-medium text-gray-800 truncate pr-2">{file.name}</span>
+                  <button type="button" onClick={() => onRemoveDeniedFile(index)} className="text-red-400 hover:text-red-600 transition-colors">
+                    <Trash2 className="w-5 h-5" />
+                  </button>
                 </div>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-3 py-2">
-                  <span className="truncate text-xs flex-1">{deniedUploads.parentBirthCertificate || "No file selected"}</span>
-                  {deniedUploads.parentBirthCertificate && (
-                    <button
-                      type="button"
-                      onClick={() => onRemoveDeniedFile("parentBirthCertificate")}
-                      className="text-xs font-medium text-red-600 hover:text-red-700 shrink-0"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="mb-2">
-                  <p className="font-medium text-sm">Government-issued ID</p>
-                </div>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-3 py-2">
-                  <span className="truncate text-xs flex-1">{deniedUploads.governmentId || "No file selected"}</span>
-                  {deniedUploads.governmentId && (
-                    <button
-                      type="button"
-                      onClick={() => onRemoveDeniedFile("governmentId")}
-                      className="text-xs font-medium text-red-600 hover:text-red-700 shrink-0"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="mb-2">
-                  <p className="font-medium text-sm">Child Birth Certificate <span className="text-red-600">*</span></p>
-                </div>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-3 py-2">
-                  <span className="truncate text-xs flex-1">{deniedUploads.childBirthCertificate || "No file selected"}</span>
-                  {deniedUploads.childBirthCertificate && (
-                    <button
-                      type="button"
-                      onClick={() => onRemoveDeniedFile("childBirthCertificate")}
-                      className="text-xs font-medium text-red-600 hover:text-red-700 shrink-0"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
 
-        <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 rounded-xl border border-gray-200 bg-gray-50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-600">
-            Resubmit with corrected files: Child Birth Certificate and either Parent Birth Certificate or Government-issued ID.
-          </p>
+        <div className="flex justify-center mt-12 mb-4">
           <button
             type="button"
             onClick={onResubmit}
-            disabled={!isFormValid}
-            className="rounded-xl px-6 sm:px-8 py-2 sm:py-3 text-sm sm:text-base font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 shrink-0 whitespace-nowrap"
-            style={{ backgroundColor: "var(--button-green)" }}
+            disabled={!isFormValid || isSubmitting}
+            className="px-12 py-3 text-2xl font-bold text-white rounded-3xl transition-all flex items-center justify-center gap-3 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: "#4eb872" }}
           >
-            Resubmit
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span>Resubmitting...</span>
+              </>
+            ) : (
+              "Resubmit"
+            )}
           </button>
         </div>
       </div>

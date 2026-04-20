@@ -345,9 +345,12 @@ const authService = {
     }
 
     if (user.account_status === "Inactive") {
-      throw new Error(
-        "Account is inactive. Please wait for an administrator to activate your account.",
-      );
+      const isParent = user.roles.some((r) => r.role === "Parent");
+      if (!isParent) {
+        throw new Error(
+          "Account is inactive. Please wait for an administrator to activate your account.",
+        );
+      }
     }
 
     const isPasswordValid = await comparePassword(password, user.password);

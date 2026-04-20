@@ -1,35 +1,24 @@
 import { create } from "zustand";
-import { parentsApi } from "../api/parentsApi";
-
-export interface ParentChild {
-  student_id: number;
-  fname: string;
-  lname: string;
-  lrn_number: string;
-  grade_level?: {
-    grade_level: string;
-  };
-  section?: {
-    section_name: string;
-  };
-  syear_start?: number;
-  syear_end?: number;
-}
+import { parentsApi, type ParentChild, type ParentRegistrationEntry } from "../api/parentsApi";
 
 interface ParentState {
   children: ParentChild[];
+  registrations: ParentRegistrationEntry[];
   activeChild: ParentChild | null;
   loading: boolean;
   error: string | null;
 
   // Actions
   fetchChildren: () => Promise<void>;
+  fetchMyRegistrations: () => Promise<void>;
   setActiveChild: (child: ParentChild | null) => void;
   submitRegistration: (data: FormData) => Promise<void>;
+  resubmitRegistration: (prId: number, data: FormData) => Promise<void>;
 }
 
 export const useParentStore = create<ParentState>((set, get) => ({
   children: [],
+  registrations: [],
   activeChild: null,
   loading: false,
   error: null,
@@ -37,17 +26,38 @@ export const useParentStore = create<ParentState>((set, get) => ({
   fetchChildren: async () => {
     set({ loading: true, error: null });
     try {
-      const res = await parentsApi.getMyChildren();
-      set({ children: res.data });
-      
-      // If there's only one child, set it as active by default
-      if (res.data.length === 1 && !get().activeChild) {
-        set({ activeChild: res.data[0] });
+      // Fetch verified children and all registration history in parallel
+      const [childrenRes, registrationsRes] = await Promise.allSettled([
+        parentsApi.getMyChildren(),
+        parentsApi.getMyRegistrations(),
+      ]);
+
+      const children =
+        childrenRes.status === "fulfilled" ? childrenRes.value.data : [];
+      const registrations =
+        registrationsRes.status === "fulfilled"
+          ? registrationsRes.value.data
+          : [];
+
+      set({ children, registrations });
+
+      // If there's only one verified child, set it as active by default
+      if (children.length === 1 && !get().activeChild) {
+        set({ activeChild: children[0] });
       }
     } catch (err: any) {
-      set({ error: err.message || "Failed to fetch children" });
+      set({ error: err.message || "Failed to fetch data" });
     } finally {
       set({ loading: false });
+    }
+  },
+
+  fetchMyRegistrations: async () => {
+    try {
+      const res = await parentsApi.getMyRegistrations();
+      set({ registrations: res.data });
+    } catch (err: any) {
+      set({ error: err.message || "Failed to fetch registrations" });
     }
   },
 
@@ -62,6 +72,19 @@ export const useParentStore = create<ParentState>((set, get) => ({
       await get().fetchChildren();
     } catch (err: any) {
       set({ error: err.message || "Failed to submit registration" });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  resubmitRegistration: async (prId: number, data: FormData) => {
+    set({ loading: true, error: null });
+    try {
+      await parentsApi.resubmitRegistration(prId, data);
+      await get().fetchChildren();
+    } catch (err: any) {
+      set({ error: err.message || "Failed to resubmit registration" });
       throw err;
     } finally {
       set({ loading: false });

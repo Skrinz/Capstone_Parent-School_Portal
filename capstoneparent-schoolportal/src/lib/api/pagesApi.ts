@@ -7,7 +7,9 @@ import type { OrganizationalChartItem } from "../organizationalChartContent";
 
 export const pagesApi = {
   getContactUs: async (): Promise<ContactUsContent> => {
-    return apiFetch<ContactUsContent>("/pages/contact-us");
+    return apiFetch<ContactUsContent>("/pages/contact-us", {
+      headers: bearerHeaders(),
+    });
   },
   updateContactUs: async (data: ContactUsContent): Promise<ContactUsContent> => {
     return apiFetch<ContactUsContent>("/pages/contact-us", {
@@ -22,7 +24,9 @@ export const pagesApi = {
   },
   
   getHistory: async (): Promise<HistoryContent> => {
-    return apiFetch<HistoryContent>("/pages/history");
+    return apiFetch<HistoryContent>("/pages/history", {
+      headers: bearerHeaders(),
+    });
   },
   updateHistory: async (data: Partial<HistoryContent>, asset?: File): Promise<HistoryContent> => {
     const formData = new FormData();
@@ -39,7 +43,9 @@ export const pagesApi = {
   },
 
   getTransparency: async (): Promise<TransparencyContent> => {
-    return apiFetch<TransparencyContent>("/pages/transparency");
+    return apiFetch<TransparencyContent>("/pages/transparency", {
+      headers: bearerHeaders(),
+    });
   },
   updateTransparency: async (asset?: File): Promise<TransparencyContent> => {
     const formData = new FormData();
@@ -54,7 +60,9 @@ export const pagesApi = {
   },
 
   getSchoolCalendars: async (): Promise<SchoolCalendarItem[]> => {
-    return apiFetch<SchoolCalendarItem[]>("/pages/school-calendar");
+    return apiFetch<SchoolCalendarItem[]>("/pages/school-calendar", {
+      headers: bearerHeaders(),
+    });
   },
   updateSchoolCalendar: async (data: Partial<SchoolCalendarItem>, asset?: File): Promise<SchoolCalendarItem> => {
     const formData = new FormData();
@@ -73,7 +81,9 @@ export const pagesApi = {
   },
 
   getOrgCharts: async (): Promise<OrganizationalChartItem[]> => {
-    return apiFetch<OrganizationalChartItem[]>("/pages/org-chart");
+    return apiFetch<OrganizationalChartItem[]>("/pages/org-chart", {
+      headers: bearerHeaders(),
+    });
   },
 
   /**

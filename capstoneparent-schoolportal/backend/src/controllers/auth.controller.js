@@ -80,7 +80,7 @@ const authController = {
         return res.status(404).json({ message: error.message });
       }
       if (
-        error.message === "Parent already has an active or pending registration"
+        error.message === "One or more students already have an active or pending registration under your account"
       ) {
         return res.status(409).json({ message: error.message });
       }
