@@ -330,7 +330,7 @@ export const ClassList = () => {
                       }}
                       title="Clear Filters"
                     >
-                      Clear
+                      Clear Filters
                     </Button>
                   </div>
                 </div>
@@ -390,7 +390,7 @@ export const ClassList = () => {
                   
                   <div className="flex gap-2">
                     <Select value={subjectGradeLevel} onValueChange={setSubjectGradeLevel}>
-                      <SelectTrigger className="bg-(--navbar-bg) border-none font-semibold">
+                      <SelectTrigger className="flex-1 min-w-0 bg-(--navbar-bg) border-none font-semibold">
                         <SelectValue placeholder="Grade Level" />
                       </SelectTrigger>
                       <SelectContent className="bg-(--navbar-bg) border-none font-semibold">
@@ -406,7 +406,7 @@ export const ClassList = () => {
                     </Select>
 
                     <Select value={subjectSection} onValueChange={setSubjectSection}>
-                      <SelectTrigger className="bg-(--navbar-bg) border-none font-semibold">
+                      <SelectTrigger className=" flex-1 min-w-0 bg-(--navbar-bg) border-none font-semibold">
                         <SelectValue placeholder="Section" />
                       </SelectTrigger>
                       <SelectContent className="bg-(--navbar-bg) border-none font-semibold">
@@ -420,7 +420,7 @@ export const ClassList = () => {
                     </Select>
 
                     <Select value={subjectYear} onValueChange={setSubjectYear}>
-                      <SelectTrigger className="bg-(--navbar-bg) border-none font-semibold">
+                      <SelectTrigger className="flex-1 min-w-0 bg-(--navbar-bg) border-none font-semibold">
                         <SelectValue placeholder="Year" />
                       </SelectTrigger>
                       <SelectContent className="bg-(--navbar-bg) border-none font-semibold">
@@ -443,7 +443,7 @@ export const ClassList = () => {
                       }}
                       title="Clear Filters"
                     >
-                      Clear
+                      Clear Filters
                     </Button>
                   </div>
                 </div>
@@ -584,7 +584,7 @@ export const ClassList = () => {
                           }}
                           title="Clear Filters"
                         >
-                          Clear
+                          Clear Filters
                         </Button>
                       </div>
 
@@ -773,7 +773,7 @@ export const ClassList = () => {
                           }}
                           title="Clear Filters"
                         >
-                          Clear
+                          Clear Filters
                         </Button>
                     </div>
 
