@@ -24,6 +24,8 @@ import type {
 import { useAuthStore } from "@/lib/store/authStore";
 import { useApiFeedbackStore } from "@/lib/store/apiFeedbackStore";
 
+type FormErrors = Partial<Record<keyof StudentFormData, string>>;
+
 const ITEMS_PER_PAGE = 10;
 
 const emptyForm = (): StudentFormData => ({
@@ -97,6 +99,7 @@ export const ManageStudents = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [formData, setFormData] = useState<StudentFormData>(emptyForm);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [editingStudent, setEditingStudent] = useState<StudentRecord | null>(null);
 
   const loadStudents = async (page = currentPage) => {
@@ -168,7 +171,10 @@ export const ManageStudents = () => {
     });
   }, [students, searchQuery]);
 
-  const resetForm = () => setFormData(emptyForm());
+  const resetForm = () => {
+    setFormData(emptyForm());
+    setFormErrors({});
+  };
 
   const openAddModal = () => {
     setEditingStudent(null);
@@ -176,36 +182,46 @@ export const ManageStudents = () => {
     setIsAddModalOpen(true);
   };
 
-  const validateForm = () => {
-    if (
-      !formData.firstName.trim() ||
-      !formData.lastName.trim() ||
-      !formData.sex ||
-      !formData.lrn.trim() ||
-      !formData.gradeLevelId ||
-      !formData.status ||
-      !formData.schoolYearStart ||
-      !formData.schoolYearEnd
-    ) {
-      return "Please complete all required fields.";
+  const validateForm = (): FormErrors | null => {
+    const errors: FormErrors = {};
+
+    if (!formData.firstName.trim()) errors.firstName = "First name is required";
+    if (!formData.lastName.trim()) errors.lastName = "Last name is required";
+    if (!formData.sex) errors.sex = "Sex is required";
+    
+    if (!formData.lrn.trim()) {
+      errors.lrn = "LRN is required";
+    } else if (!/^\d{12}$/.test(formData.lrn)) {
+      errors.lrn = "LRN must be exactly 12 digits";
+    }
+    
+    if (!formData.gradeLevelId) errors.gradeLevelId = "Grade level is required";
+    if (!formData.status) errors.status = "Status is required";
+    
+    if (!formData.schoolYearStart) {
+      errors.schoolYearStart = "Required";
+    }
+    if (!formData.schoolYearEnd) {
+      errors.schoolYearEnd = "Required";
     }
 
-    if (!/^\d{12}$/.test(formData.lrn)) {
-      return "LRN must be exactly 12 digits.";
+    if (formData.schoolYearStart && formData.schoolYearEnd) {
+      const yearStart = Number(formData.schoolYearStart);
+      const yearEnd = Number(formData.schoolYearEnd);
+
+      if (Number.isNaN(yearStart)) {
+        errors.schoolYearStart = "Invalid year";
+      }
+      if (Number.isNaN(yearEnd)) {
+        errors.schoolYearEnd = "Invalid year";
+      }
+      
+      if (!Number.isNaN(yearStart) && !Number.isNaN(yearEnd) && yearEnd < yearStart) {
+        errors.schoolYearEnd = "End year must be >= start year";
+      }
     }
 
-    const schoolYearStart = Number(formData.schoolYearStart);
-    const schoolYearEnd = Number(formData.schoolYearEnd);
-
-    if (Number.isNaN(schoolYearStart) || Number.isNaN(schoolYearEnd)) {
-      return "School year must be a valid number.";
-    }
-
-    if (schoolYearEnd < schoolYearStart) {
-      return "School year end must be greater than or equal to the start year.";
-    }
-
-    return null;
+    return Object.keys(errors).length > 0 ? errors : null;
   };
 
   const toPayload = (): StudentPayload => ({
@@ -220,11 +236,13 @@ export const ManageStudents = () => {
   });
 
   const handleAddStudent = async () => {
-    const validationError = validateForm();
-    if (validationError) {
-      showError(validationError);
+    const errors = validateForm();
+    if (errors) {
+      setFormErrors(errors);
+      showError("Please correct the errors in the form.");
       return;
     }
+    setFormErrors({});
 
     setIsSubmitting(true);
     try {
@@ -255,11 +273,13 @@ export const ManageStudents = () => {
   const handleUpdateStudent = async () => {
     if (!editingStudent) return;
 
-    const validationError = validateForm();
-    if (validationError) {
-      showError(validationError);
+    const errors = validateForm();
+    if (errors) {
+      setFormErrors(errors);
+      showError("Please correct the errors in the form.");
       return;
     }
+    setFormErrors({});
 
     setIsSubmitting(true);
     try {
@@ -559,6 +579,7 @@ export const ManageStudents = () => {
         gradeLevels={gradeLevels}
         isSubmitting={isSubmitting}
         disableSubmit={!addFormIsValid}
+        errors={formErrors}
       />
 
       <StudentFormModal
@@ -576,6 +597,7 @@ export const ManageStudents = () => {
         gradeLevels={gradeLevels}
         isSubmitting={isSubmitting}
         disableSubmit={!editFormHasChanges}
+        errors={formErrors}
       />
 
       <StudentBatchUploadModal

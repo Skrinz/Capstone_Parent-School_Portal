@@ -16,6 +16,7 @@ interface SectionFormModalProps {
   setFormData: React.Dispatch<React.SetStateAction<SectionFormData>>;
   disableSubmit?: boolean;
   isLoading?: boolean;
+  errors?: Partial<Record<keyof SectionFormData, string>>;
 }
 
 export const SectionFormModal = ({
@@ -28,17 +29,39 @@ export const SectionFormModal = ({
   setFormData,
   disableSubmit = false,
   isLoading = false,
+  errors = {},
 }: SectionFormModalProps) => {
+  const getFieldClassName = (fieldName: keyof SectionFormData) => {
+    const borderClass = errors[fieldName]
+      ? "border-red-500 focus:ring-red-500"
+      : "border-black focus:ring-(--button-green)";
+    return `w-full px-4 py-3 text-lg border-2 rounded-md focus:outline-none focus:ring-2 placeholder-gray-400 ${borderClass}`;
+  };
+
+  const renderError = (fieldName: keyof SectionFormData) => {
+    if (errors[fieldName]) {
+      return (
+        <p className="mt-1 text-sm font-medium text-red-600">
+          {errors[fieldName]}
+        </p>
+      );
+    }
+    return null;
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <div className="space-y-4">
-        <input
-          type="text"
-          placeholder="Section name"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green) placeholder-gray-400"
-        />
+        <div>
+          <input
+            type="text"
+            placeholder="Section name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className={getFieldClassName("name")}
+          />
+          {renderError("name")}
+        </div>
         <div className="flex justify-end">
           <Button
             type="button"

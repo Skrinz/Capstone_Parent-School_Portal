@@ -18,6 +18,7 @@ export const authApi = {
   registerEmployee(formData: FormData) {
     return apiFetch<ApiMessage>("/auth/register/employee", {
       method: "POST",
+      headers: bearerHeaders(),
       body: formData,
     });
   },

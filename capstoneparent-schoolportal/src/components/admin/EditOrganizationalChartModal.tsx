@@ -19,6 +19,7 @@ interface EditOrganizationalChartModalProps {
   /** Actual chart ID if editing a specific record */
   editChartId?: number;
   onSave: (updatedChart: OrganizationalChartItem, file?: File) => void | Promise<void>;
+  errors?: Record<string, string>;
 }
 
 function getReadableFileName(chart: OrganizationalChartItem): string {
@@ -48,6 +49,7 @@ export const EditOrganizationalChartModal = ({
   editYear,
   editChartId,
   onSave,
+  errors = {},
 }: EditOrganizationalChartModalProps) => {
   const [yearInput, setYearInput] = useState(currentYearString());
   const [previewImageUrl, setPreviewImageUrl] = useState("");
@@ -203,10 +205,17 @@ export const EditOrganizationalChartModal = ({
             value={yearInput}
             onChange={(event) => setYearInput(event.target.value)}
             disabled={isSaving}
-            className="w-full rounded-md border-2 border-black bg-white px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-(--button-green) disabled:opacity-50"
+            className={`w-full rounded-md border-2 bg-white px-4 py-3 text-lg focus:outline-none focus:ring-2 disabled:opacity-50 ${
+              errors.yearInput
+                ? "border-red-500 focus:ring-red-500"
+                : "border-black focus:ring-(--button-green)"
+            }`}
             min={1900}
             max={2100}
           />
+          {errors.yearInput && (
+            <p className="mt-1 text-sm font-medium text-red-600">{errors.yearInput}</p>
+          )}
         </div>
 
         <div

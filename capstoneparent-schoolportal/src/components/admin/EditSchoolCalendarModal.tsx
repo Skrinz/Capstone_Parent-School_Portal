@@ -17,6 +17,7 @@ interface EditSchoolCalendarModalProps {
   /** School year of the calendar being edited (edit mode only) */
   editYear?: string;
   onSave: (updatedCalendar: SchoolCalendarItem, file?: File) => void | Promise<void>;
+  errors?: Record<string, string>;
 }
 
 function getReadableFileName(calendar: SchoolCalendarItem): string {
@@ -45,6 +46,7 @@ export const EditSchoolCalendarModal = ({
   calendars,
   editYear,
   onSave,
+  errors = {},
 }: EditSchoolCalendarModalProps) => {
   const [yearInput, setYearInput] = useState(currentYearString());
   const [previewImageUrl, setPreviewImageUrl] = useState("");
@@ -182,10 +184,17 @@ export const EditSchoolCalendarModal = ({
             type="number"
             value={yearInput}
             onChange={(event) => setYearInput(event.target.value)}
-            className="w-full rounded-md border-2 border-black bg-white px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+            className={`w-full rounded-md border-2 bg-white px-4 py-3 text-lg focus:outline-none focus:ring-2 ${
+              errors.yearInput
+                ? "border-red-500 focus:ring-red-500"
+                : "border-black focus:ring-(--button-green)"
+            }`}
             min={1900}
             max={2100}
           />
+          {errors.yearInput && (
+            <p className="mt-1 text-sm font-medium text-red-600">{errors.yearInput}</p>
+          )}
         </div>
 
         <div

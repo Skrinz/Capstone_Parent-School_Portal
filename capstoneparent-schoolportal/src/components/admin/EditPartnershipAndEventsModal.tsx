@@ -30,6 +30,7 @@ interface EditPartnershipAndEventsModalProps {
   initialData?: PartnershipEventFormData;
   onSave: (data: PartnershipEventFormData) => void | Promise<void>;
   isLoading?: boolean;
+  errors?: Record<string, string>;
 }
 
 interface ModalFormData {
@@ -72,6 +73,7 @@ export const EditPartnershipAndEventsModal = ({
   initialData,
   onSave,
   isLoading = false,
+  errors = {},
 }: EditPartnershipAndEventsModalProps) => {
   const isEditMode = Boolean(initialData?.id);
   const [formData, setFormData] = useState<ModalFormData>(
@@ -210,22 +212,36 @@ export const EditPartnershipAndEventsModal = ({
         </div>
 
         <div className="space-y-6">
-          <input
-            type="text"
-            value={formData.title}
-            onChange={(e) => handleChange("title", e.target.value)}
-            autoComplete="off"
-            className="w-full border border-gray-500 bg-[#f3f3f3] px-5 py-4 text-xl text-gray-900 focus:outline-none"
-            placeholder="Add your title here"
-          />
+          <div>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => handleChange("title", e.target.value)}
+              autoComplete="off"
+              className={`w-full border bg-[#f3f3f3] px-5 py-4 text-xl text-gray-900 focus:outline-none ${
+                errors.title ? "border-red-500 focus:ring-1 focus:ring-red-500" : "border-gray-500"
+              }`}
+              placeholder="Add your title here"
+            />
+            {errors.title && (
+              <p className="mt-1 text-sm font-medium text-red-600">{errors.title}</p>
+            )}
+          </div>
 
-          <textarea
-            value={formData.description}
-            onChange={(e) => handleChange("description", e.target.value)}
-            className="min-h-55 max-h-[34vh] w-full resize-y border border-gray-500 bg-[#f3f3f3] px-5 py-4 text-lg leading-relaxed text-gray-900 focus:outline-none"
-            placeholder="Write your partnership/event post details"
-            rows={8}
-          />
+          <div>
+            <textarea
+              value={formData.description}
+              onChange={(e) => handleChange("description", e.target.value)}
+              className={`min-h-55 max-h-[34vh] w-full resize-y border bg-[#f3f3f3] px-5 py-4 text-lg leading-relaxed text-gray-900 focus:outline-none ${
+                errors.description ? "border-red-500 focus:ring-1 focus:ring-red-500" : "border-gray-500"
+              }`}
+              placeholder="Write your partnership/event post details"
+              rows={8}
+            />
+            {errors.description && (
+              <p className="mt-1 text-sm font-medium text-red-600">{errors.description}</p>
+            )}
+          </div>
 
           <div className="relative min-h-45">
             <div className="max-w-60 space-y-2">
