@@ -68,6 +68,11 @@ router.post(
         return true;
       }),
     body("roles")
+      .customSanitizer((value) => {
+        if (Array.isArray(value)) return value;
+        if (value) return [value];
+        return [];
+      })
       .isArray({ min: 1 })
       .withMessage("Employee must have at least one role"),
     body("roles.*")
