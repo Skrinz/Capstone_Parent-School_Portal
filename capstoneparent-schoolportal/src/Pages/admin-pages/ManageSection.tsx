@@ -91,23 +91,10 @@ export const ManageSection = () => {
     return filtered;
   }, [sections, searchQuery, sortField, sortDirection]);
 
-  const validateFormat = (name: string) => {
-    const regex = /^Section .+$/i;
-    if (!regex.test(name)) {
-      return "Format must be 'Section [Name]' (e.g., Section A)";
-    }
-    return null;
-  };
 
   const handleAddSection = async () => {
     if (!formData.name.trim()) {
       showError("Section name is required");
-      return;
-    }
-
-    const formatError = validateFormat(formData.name);
-    if (formatError) {
-      showError(formatError);
       return;
     }
 
@@ -137,12 +124,6 @@ export const ManageSection = () => {
 
     if (!formData.name.trim()) {
       showError("Section name is required");
-      return;
-    }
-
-    const formatError = validateFormat(formData.name);
-    if (formatError) {
-      showError(formatError);
       return;
     }
 
