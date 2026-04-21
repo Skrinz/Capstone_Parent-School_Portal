@@ -144,6 +144,10 @@ export const ManageParentVerification = () => {
 
   const updateVerification = async (nextStatus: "VERIFIED" | "DENIED") => {
     if (!selectedVerification) return;
+    if (nextStatus === "DENIED" && !modalRemarks.trim()) {
+      showError("Remarks are required when denying registration");
+      return;
+    }
 
     setSubmittingState(nextStatus === "VERIFIED" ? "approving" : "denying");
     try {
