@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
+import type { StateStorage } from "zustand/middleware";
 import type { AuthUser } from "../api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -47,6 +48,8 @@ interface AuthState {
   setDeviceToken: (token: string) => void;
   clearDeviceToken: () => void;
   setUser: (user: SessionUser) => void;
+  hasAcceptedPrivacy: boolean;
+  acceptPrivacy: () => void;
 }
 
 // ─── Role helpers ─────────────────────────────────────────────────────────────
@@ -90,6 +93,61 @@ function resolveDefaultRole(roles: { role: string }[]): UserRole {
   return allRoles[0] ?? "staff";
 }
 
+// ─── Custom Storage ───────────────────────────────────────────────────────────
+// We use sessionStorage for the user session (so tabs can have independent logins),
+// but we keep deviceToken in localStorage (so device trust is shared across tabs).
+
+const customStorage: StateStorage = {
+  getItem: (name: string) => {
+    const sessionStr = window.sessionStorage.getItem(name);
+    const localDeviceToken = window.localStorage.getItem(`${name}-deviceToken`);
+
+    let stateObj: any = null;
+
+    if (sessionStr) {
+      stateObj = JSON.parse(sessionStr);
+    } else {
+      // Migrate from old local storage if it exists (for seamless update)
+      const oldLocalStr = window.localStorage.getItem(name);
+      if (oldLocalStr) {
+        stateObj = JSON.parse(oldLocalStr);
+        window.sessionStorage.setItem(name, oldLocalStr);
+        window.localStorage.removeItem(name);
+      }
+    }
+
+    if (!stateObj) {
+      if (localDeviceToken) {
+        return JSON.stringify({ state: { deviceToken: JSON.parse(localDeviceToken) }, version: 0 });
+      }
+      return null;
+    }
+
+    if (localDeviceToken && stateObj.state) {
+      stateObj.state.deviceToken = JSON.parse(localDeviceToken);
+    }
+
+    return JSON.stringify(stateObj);
+  },
+  setItem: (name: string, value: string) => {
+    const parsed = JSON.parse(value);
+    const deviceToken = parsed.state?.deviceToken;
+
+    if (deviceToken !== undefined && deviceToken !== null) {
+      window.localStorage.setItem(`${name}-deviceToken`, JSON.stringify(deviceToken));
+    } else if (deviceToken === null) {
+      window.localStorage.removeItem(`${name}-deviceToken`);
+    }
+
+    window.sessionStorage.setItem(name, value);
+  },
+  removeItem: (name: string) => {
+    window.sessionStorage.removeItem(name);
+    // Note: We don't remove deviceToken from localStorage on logout 
+    // because deviceToken indicates the device itself is trusted.
+  },
+};
+
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 export const useAuthStore = create<AuthState>()(
@@ -99,6 +157,7 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       deviceToken: null,
       isAuthenticated: false,
+      hasAcceptedPrivacy: false,
 
       loginSuccess(token, apiUser, newDeviceToken) {
         const allRoles = resolveAllRoles(apiUser.roles ?? []);
@@ -121,6 +180,7 @@ export const useAuthStore = create<AuthState>()(
           token,
           deviceToken: newDeviceToken ?? prev.deviceToken,
           isAuthenticated: true,
+          hasAcceptedPrivacy: false,
         }));
       },
 
@@ -130,6 +190,7 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           isAuthenticated: false,
           deviceToken: prev.deviceToken,
+          hasAcceptedPrivacy: false,
         }));
       },
 
@@ -152,14 +213,20 @@ export const useAuthStore = create<AuthState>()(
       setUser(user) {
         set({ user });
       },
+
+      acceptPrivacy() {
+        set({ hasAcceptedPrivacy: true });
+      },
     }),
     {
       name: "auth-session",
+      storage: createJSONStorage(() => customStorage),
       partialize: (state) => ({
         user: state.user,
         token: state.token,
         deviceToken: state.deviceToken,
         isAuthenticated: state.isAuthenticated,
+        hasAcceptedPrivacy: state.hasAcceptedPrivacy,
       }),
     },
   ),

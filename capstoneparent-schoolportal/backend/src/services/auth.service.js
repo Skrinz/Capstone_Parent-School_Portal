@@ -133,7 +133,7 @@ const authService = {
       })),
     });
 
-    const emailSent = await sendOTPEmail(email, otpCode);
+    const emailSent = await sendOTPEmail(email, otpCode, { isRegistration: true });
     if (!emailSent) {
       cleanupTempFiles(getPendingRegistration(email));
       clearPendingRegistration(email);
@@ -329,7 +329,7 @@ const authService = {
       user: userWithoutPassword,
       deviceToken: rawToken,
       message:
-        "Email verified. Your account has been created and is pending activation by an administrator.",
+        "Email verified. Your account has been created and is now pending. Please wait for an administrator or teacher to check your registration.",
     };
   },
 
@@ -345,9 +345,12 @@ const authService = {
     }
 
     if (user.account_status === "Inactive") {
-      throw new Error(
-        "Account is inactive. Please wait for an administrator to activate your account.",
-      );
+      const isParent = user.roles.some((r) => r.role === "Parent");
+      if (!isParent) {
+        throw new Error(
+          "Account is inactive. Please wait for an administrator to activate your account.",
+        );
+      }
     }
 
     const isPasswordValid = await comparePassword(password, user.password);

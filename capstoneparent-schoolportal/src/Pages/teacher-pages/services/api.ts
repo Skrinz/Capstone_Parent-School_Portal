@@ -1,6 +1,6 @@
 import type { ClassItem, SubjectItem, Student } from '@/Pages/teacher-pages/types';
 import type { SectionItem } from '@/Pages/principal-pages/types';
-import { apiFetch } from '@/lib/api/base';
+import { apiFetch, bearerHeaders } from '@/lib/api/base';
 
 const mapStudent = (item: any): Student => {
   const getNumericGrade = (value: unknown) => {
@@ -60,7 +60,9 @@ const mapStudent = (item: any): Student => {
 
 export const fetchClasses = async (): Promise<ClassItem[]> => {
   try {
-    const response = await apiFetch<{ data: any[] }>('/classes/teacher/list');
+    const response = await apiFetch<{ data: any[] }>('/classes/teacher/list', {
+      headers: bearerHeaders(),
+    });
     return response.data.map(item => ({
       ...item,
       grade: item.grade_level?.grade_level,
@@ -74,7 +76,9 @@ export const fetchClasses = async (): Promise<ClassItem[]> => {
 
 export const fetchSubjects = async (): Promise<SubjectItem[]> => {
   try {
-    const response = await apiFetch<{ data: any[] }>('/classes/subjects/teacher');
+    const response = await apiFetch<{ data: any[] }>('/classes/subjects/teacher', {
+      headers: bearerHeaders(),
+    });
     return response.data.map((item) => {
       const firstClass = item.class_lists && item.class_lists.length > 0
         ? item.class_lists[0].class_list
@@ -103,7 +107,9 @@ export const fetchStudents = async (clist_id?: number): Promise<Student[]> => {
     }
 
     const endpoint = `/students?${searchParams.toString()}`;
-    const response = await apiFetch<{ data: any[] }>(endpoint);
+    const response = await apiFetch<{ data: any[] }>(endpoint, {
+      headers: bearerHeaders(),
+    });
     return response.data.map(mapStudent);
   } catch (error) {
     console.error('Error fetching students:', error);
@@ -112,13 +118,17 @@ export const fetchStudents = async (clist_id?: number): Promise<Student[]> => {
 };
 
 export const fetchStudentById = async (studentId: number): Promise<Student> => {
-  const response = await apiFetch<{ data: any }>(`/students/${studentId}`);
+  const response = await apiFetch<{ data: any }>(`/students/${studentId}`, {
+    headers: bearerHeaders(),
+  });
   return mapStudent(response.data);
 };
 
 export const fetchSections = async (): Promise<SectionItem[]> => {
   try {
-    const response = await apiFetch<{ data: any[] }>('/classes/sections/all');
+    const response = await apiFetch<{ data: any[] }>('/classes/sections/all', {
+      headers: bearerHeaders(),
+    });
     return response.data.map((item) => ({
       id: item.section_id,
       name: item.section_name,
@@ -131,7 +141,9 @@ export const fetchSections = async (): Promise<SectionItem[]> => {
 
 export const fetchGradeLevels = async (): Promise<any[]> => {
   try {
-    const response = await apiFetch<{ data: any[] }>('/classes/grade-levels/all');
+    const response = await apiFetch<{ data: any[] }>('/classes/grade-levels/all', {
+      headers: bearerHeaders(),
+    });
     return response.data.map((item) => ({
       id: item.gl_id,
       name: item.grade_level,

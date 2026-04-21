@@ -1,4 +1,4 @@
-import { apiFetch } from '@/lib/api/base';
+import { apiFetch, bearerHeaders } from '@/lib/api/base';
 
 // Download functions
 export const downloadGradeSheetTemplate = async () => {
@@ -6,6 +6,7 @@ export const downloadGradeSheetTemplate = async () => {
     const response = await fetch('/api/classes/grade-sheet-template', {
       method: 'GET',
       headers: {
+        ...bearerHeaders(),
         'Accept': 'text/csv',
       },
     });
@@ -32,6 +33,7 @@ export const downloadAttendanceTemplate = async () => {
     const response = await fetch('/api/classes/attendance-template', {
       method: 'GET',
       headers: {
+        ...bearerHeaders(),
         'Accept': 'text/csv',
       },
     });
@@ -57,6 +59,7 @@ export const exportAllQuartersGradeSheet = async (clist_id: number) => {
   try {
     const response = await fetch(`/api/classes/${clist_id}/export-grades-all-quarters`, {
       method: 'GET',
+      headers: bearerHeaders(),
     });
 
     if (!response.ok) throw new Error('Failed to export grade sheet');
@@ -86,6 +89,7 @@ export const exportStudentQuarterlyGrades = async (studentId: number, fallbackNa
   try {
     const response = await fetch(`/api/students/${studentId}/export-grades`, {
       method: 'GET',
+      headers: bearerHeaders(),
     });
 
     if (!response.ok) throw new Error('Failed to export student grades');
@@ -113,6 +117,7 @@ export const uploadGradeSheet = async (clist_id: number, file: File) => {
   return apiFetch(`/classes/${clist_id}/import-grades`, {
     method: 'POST',
     successMessage: 'Grade sheet uploaded successfully.',
+    headers: bearerHeaders(),
     body: formData,
   });
 };
@@ -124,6 +129,7 @@ export const uploadAttendanceSheet = async (clist_id: number, file: File) => {
   return apiFetch(`/classes/${clist_id}/import-attendance`, {
     method: 'POST',
     successMessage: 'Attendance sheet uploaded successfully.',
+    headers: bearerHeaders(),
     body: formData,
   });
 };
@@ -135,6 +141,7 @@ export const uploadClassSchedulePicture = async (clist_id: number, file: File) =
   return apiFetch(`/classes/${clist_id}/upload-schedule`, {
     method: 'POST',
     successMessage: 'Class schedule uploaded successfully.',
+    headers: bearerHeaders(),
     body: formData,
   });
 };
@@ -147,6 +154,7 @@ export const uploadSubjectGradeSheet = async (srecord_id: number, file: File) =>
   return apiFetch(`/classes/subjects/${srecord_id}/import-grades`, {
     method: 'POST',
     successMessage: 'Grade sheet uploaded successfully.',
+    headers: bearerHeaders(),
     body: formData,
   });
 };

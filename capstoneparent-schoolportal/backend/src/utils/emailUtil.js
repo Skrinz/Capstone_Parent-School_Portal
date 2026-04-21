@@ -7,9 +7,10 @@ const FROM_ADDRESS =
   "Pagsabungan Elementary School Email Verification <noreply@yourdomain.com>";
 
 const LOGIN_URL = `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`;
+const REGISTER_URL = `${process.env.FRONTEND_URL || "http://localhost:5173"}/register`;
 
-const buildAutoVerifyLoginUrl = (email, otpCode) =>
-  `${LOGIN_URL}?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otpCode)}&autoVerify=1`;
+const buildAutoVerifyUrl = (baseUrl, email, otpCode) =>
+  `${baseUrl}?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otpCode)}&autoVerify=1`;
 
 /**
  * Send OTP email
@@ -24,7 +25,11 @@ const sendOTPEmail = async (email, otpCode, options = {}) => {
         ? options.temporaryPassword
         : "";
     const includeAutoVerifyLink = options?.includeAutoVerifyLink !== false;
-    const autoVerifyUrl = buildAutoVerifyLoginUrl(email, otpCode);
+    const isRegistration = options?.isRegistration === true;
+    
+    // Choose base URL based on whether this is for registration or login
+    const baseUrl = isRegistration ? REGISTER_URL : LOGIN_URL;
+    const autoVerifyUrl = buildAutoVerifyUrl(baseUrl, email, otpCode);
 
     const accountInfoSection =
       roleText || temporaryPassword
@@ -187,9 +192,11 @@ const sendStaffAccountCreatedEmail = async (
 /**
  * Send parent verification approval email
  */
-const sendParentVerifiedEmail = async (email, parentName) => {
+const sendParentVerifiedEmail = async (email, parentName, studentNames = []) => {
   try {
     const safeName = parentName?.trim() || "Parent";
+    const studentsList =
+      studentNames.length > 0 ? studentNames.join(", ") : "your child";
 
     const { error } = await resend.emails.send({
       from: FROM_ADDRESS,
@@ -199,7 +206,8 @@ const sendParentVerifiedEmail = async (email, parentName) => {
         <div style="font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; color: #374151;">
           <h2 style="color: #111827; margin-top: 0;">Account Verified</h2>
           <p>Hello ${safeName},</p>
-          <p>Your parent account has been verified and is now active. You can now access your account.</p>
+          <p>Your parent account has been verified and is now active.</p>
+          <p>You now have access to the <strong>class schedule, grades, and library records</strong> of ${studentsList}, the student(s) you applied registration for.</p>
           <div style="margin: 24px 0;">
             <a href="${LOGIN_URL}" style="display: inline-block; padding: 12px 24px; background-color: #10b981; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Login to Portal</a>
           </div>
@@ -221,9 +229,52 @@ const sendParentVerifiedEmail = async (email, parentName) => {
   }
 };
 
+/**
+ * Send parent registration denial email
+ */
+const sendParentDeniedEmail = async (email, parentName, remarks) => {
+  try {
+    const safeName = parentName?.trim() || "Parent";
+    const reasonText = remarks?.trim() || "No specific reason provided.";
+
+    console.log(`[emailUtil] Attempting to send denial email to: ${email}`);
+    const { data, error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: email,
+      subject: "Update Regarding Your Parent Registration",
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; color: #374151;">
+          <h2 style="color: #dc2626; margin-top: 0;">Registration Update</h2>
+          <p>Hello ${safeName},</p>
+          <p>Thank you for your interest in registering for the Parent-School Portal.</p>
+          <p>After reviewing your application, we regret to inform you that your registration has been <strong>denied</strong> at this time.</p>
+          <div style="margin-top: 16px; padding: 16px; background: #fef2f2; border: 1px solid #fee2e2; border-radius: 8px;">
+            <h3 style="margin: 0 0 8px 0; font-size: 16px; color: #991b1b;">Remarks from Administrator:</h3>
+            <p style="margin: 0; color: #b91c1c;">${reasonText}</p>
+          </div>
+          <p style="margin-top: 20px;">If you believe this was an error or you would like to try again with corrected information/documents, you may log in to the portal to submit a resubmission.</p>
+          <p>Thank you for your understanding.</p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("[emailUtil] Resend email error:", error);
+      return false;
+    }
+
+    console.log(`[emailUtil] Email sent successfully. Data:`, data);
+    return true;
+  } catch (error) {
+    console.error("[emailUtil] Email sending error:", error);
+    return false;
+  }
+};
+
 module.exports = {
   sendOTPEmail,
   sendPasswordResetEmail,
   sendStaffAccountCreatedEmail,
   sendParentVerifiedEmail,
+  sendParentDeniedEmail,
 };

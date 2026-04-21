@@ -20,6 +20,8 @@ interface Staff {
   email: string;
 }
 
+const ROLE_DISPLAY_ORDER = ["Admin", "Principal", "Teacher", "Librarian"] as const;
+
 export const ManageStaffAccounts = () => {
   const currentUserId = useAuthStore((s) => s.user?.userId);
   const [staffList, setStaffList] = useState<Staff[]>([]);
@@ -49,10 +51,10 @@ export const ManageStaffAccounts = () => {
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
 
   const availableRoles = [
-    "Librarian",
-    "Teacher",
     "Admin",
     "Principal",
+    "Teacher",
+    "Librarian",
   ];
 
   const emptyFormState = {
@@ -78,6 +80,23 @@ export const ManageStaffAccounts = () => {
 
     return toTitleCase(clean.replace(/\s+/g, "_"));
   };
+
+  const sortRoleLabels = (roles: string[]) =>
+    [...roles].sort((left, right) => {
+      const leftIndex = ROLE_DISPLAY_ORDER.indexOf(
+        left as (typeof ROLE_DISPLAY_ORDER)[number],
+      );
+      const rightIndex = ROLE_DISPLAY_ORDER.indexOf(
+        right as (typeof ROLE_DISPLAY_ORDER)[number],
+      );
+
+      if (leftIndex === -1 && rightIndex === -1) {
+        return left.localeCompare(right);
+      }
+      if (leftIndex === -1) return 1;
+      if (rightIndex === -1) return -1;
+      return leftIndex - rightIndex;
+    });
 
   const toApiRole = (role: string): string => {
     const clean = role.trim().toLowerCase();
@@ -116,7 +135,7 @@ export const ManageStaffAccounts = () => {
       firstName: user.fname || "",
       lastName: user.lname || "",
       contactNo: user.contact_num || "",
-      roles: normalizedRoles.join(", "),
+      roles: sortRoleLabels(normalizedRoles).join(", "),
       status: normalizeStatus(user.account_status),
       dateOfBirth: normalizeDateForInput(user.date_of_birth),
       address: user.address || "",
@@ -156,7 +175,10 @@ export const ManageStaffAccounts = () => {
             Boolean,
           ),
         );
-        merged.set(mapped.id, { ...existing, roles: Array.from(roleSet).join(", ") });
+        merged.set(mapped.id, {
+          ...existing,
+          roles: sortRoleLabels(Array.from(roleSet)).join(", "),
+        });
       });
 
       setStaffList(Array.from(merged.values()));
@@ -206,7 +228,7 @@ export const ManageStaffAccounts = () => {
   };
 
   // Get unique roles for filter
-  const roles = ["all", "Admin", "Teacher", "Librarian"];
+  const roles = ["all", ...ROLE_DISPLAY_ORDER];
 
   const generateTemporaryPassword = () => {
     const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";

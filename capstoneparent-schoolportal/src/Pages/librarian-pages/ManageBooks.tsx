@@ -4,16 +4,19 @@ import EditBookModal from "@/components/librarian/EditBookModal";
 import BookCopyModal from "@/components/librarian/BookCopyModal";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Search, Pencil } from "lucide-react";
 import {
   Select,
-  SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import { Search, Pencil } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { useLibraryStore, formatGradeLevel, GRADE_LEVELS } from "@/lib/store/libraryStore";
+import { useEffect, useState } from "react";
+import { libraryApi } from "@/lib/api/libraryApi";
+import type { LearningMaterial, LibraryCategory, LibrarySubject } from "@/lib/api/types";
+import { formatGradeLevel, GRADE_LEVELS, getBadgeColorsForString } from "@/lib/libraryHelpers";
+import { Loader } from "@/components/ui/Loader";
 
 export const ManageBooks = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -23,44 +26,74 @@ export const ManageBooks = () => {
   const [isEditBookModalOpen, setIsEditBookModalOpen] = useState(false);
   const [isBookCopyModalOpen, setIsBookCopyModalOpen] = useState(false);
   const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
+  const [books, setBooks] = useState<LearningMaterial[]>([]);
+  const [subjects, setSubjects] = useState<LibrarySubject[]>([]);
+  const [categories, setCategories] = useState<LibraryCategory[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const materials = useLibraryStore((state) => state.materials);
-  const categories = useLibraryStore((state) => state.categories);
-  const fetchMaterials = useLibraryStore((state) => state.fetchMaterials);
-  const fetchCategories = useLibraryStore((state) => state.fetchCategories);
-  const createMaterial = useLibraryStore((state) => state.createMaterial);
-  const updateMaterial = useLibraryStore((state) => state.updateMaterial);
+  const loadBooks = async () => {
+    const response = await libraryApi.getAllMaterials({
+      item_type: "Book",
+      limit: 1000,
+    });
+    setBooks(response.data);
+  };
+
+  const loadPageData = async () => {
+    setLoading(true);
+    try {
+      const [booksResponse, subjectsResponse, categoriesResponse] = await Promise.all([
+        libraryApi.getAllMaterials({ item_type: "Book", limit: 1000 }),
+        libraryApi.getAllSubjects(),
+        libraryApi.getAllCategories(),
+      ]);
+      setBooks(booksResponse.data);
+      setSubjects(subjectsResponse.data);
+      setCategories(categoriesResponse.data);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchMaterials({ item_type: "Book" });
-    fetchCategories();
-  }, [fetchMaterials, fetchCategories]);
+    void loadPageData();
+  }, []);
 
-  const books = useMemo(() => materials.filter((m) => m.item_type === "Book"), [materials]);
-
-  const filteredBooks = books.filter((b) => {
-    const matchesSearch =
-      b.item_name.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredBooks = books.filter((book) => {
+    const matchesSearch = book.item_name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSubject =
-      subjectFilter === "all" || b.category_id.toString() === subjectFilter;
+      subjectFilter === "all" || book.subject_id?.toString() === subjectFilter;
     const matchesGrade =
-      gradeFilter === "all" || b.gl_id.toString() === gradeFilter;
+      gradeFilter === "all" || book.gl_id.toString() === gradeFilter;
     return matchesSearch && matchesSubject && matchesGrade;
   });
 
   const handleAddBooks = async (newBook: {
     title: string;
     author: string;
-    category_id: number;
+    subject_id: number;
     gl_id: number;
   }) => {
-    await createMaterial({
+    const defaultBookCategoryId =
+      categories.find((category) =>
+        ["books", "book", "textbooks", "textbook"].includes(
+          category.category_name.trim().toLowerCase(),
+        ),
+      )?.category_id ?? categories[0]?.category_id;
+
+    if (!defaultBookCategoryId) {
+      throw new Error("Create at least one category before adding books.");
+    }
+
+    await libraryApi.createMaterial({
       item_name: newBook.title,
       author: newBook.author,
-      category_id: newBook.category_id,
-      gl_id: newBook.gl_id,
       item_type: "Book",
+      category_id: defaultBookCategoryId,
+      subject_id: newBook.subject_id,
+      gl_id: newBook.gl_id,
     });
+    await loadBooks();
   };
 
   const selectedBook = books.find((book) => book.item_id === selectedBookId);
@@ -78,75 +111,81 @@ export const ManageBooks = () => {
   const handleSaveEditedBook = async (updatedBook: {
     title: string;
     author: string;
-    category_id: number;
+    subject_id: number;
     gl_id: number;
   }) => {
     if (!selectedBookId) return;
-    await updateMaterial(selectedBookId, {
+    await libraryApi.updateMaterial(selectedBookId, {
       item_name: updatedBook.title,
       author: updatedBook.author,
-      category_id: updatedBook.category_id,
+      subject_id: updatedBook.subject_id,
       gl_id: updatedBook.gl_id,
     });
+    await loadBooks();
+  };
+
+  const handleMaterialUpdated = async (updatedMaterial: LearningMaterial) => {
+    setBooks((current) =>
+      current.map((book) =>
+        book.item_id === updatedMaterial.item_id ? updatedMaterial : book,
+      ),
+    );
   };
 
   return (
     <>
       <div className="min-h-screen">
         <NavbarLibrarian />
-        <main className="max-w-6xl mx-auto py-12 px-4">
-          <div className="bg-white rounded-lg shadow-md p-8">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+        <main className="mx-auto max-w-6xl px-4 py-12">
+          <div className="rounded-lg bg-white p-8 shadow-md">
+            <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <h1 className="text-3xl font-bold">Manage Books</h1>
               <Button
-                className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-6 py-2"
+                className="bg-(--button-green) px-6 py-2 text-white hover:bg-(--button-hover-green)"
                 onClick={() => setIsAddBookModalOpen(true)}
               >
                 Add Book
               </Button>
             </div>
 
-            <section className="flex flex-col gap-4 md:flex-row md:items-center mb-6">
+            <section className="mb-6 flex flex-col gap-4 md:flex-row md:items-center">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                 <Input
                   placeholder="Search book..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus-visible:ring-2 focus-visible:ring-blue-500"
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  className="rounded-md border border-gray-300 py-2 pl-10 pr-4 focus-visible:ring-2 focus-visible:ring-blue-500"
                 />
               </div>
 
               <div className="flex gap-2">
-                <Select
-                  value={subjectFilter}
-                  onValueChange={(v) => setSubjectFilter(v)}
-                >
+                <Select value={subjectFilter} onValueChange={setSubjectFilter}>
                   <SelectTrigger className="w-40 bg-white">
                     <SelectValue placeholder="Subject" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All</SelectItem>
-                    {categories.map((c) => (
-                      <SelectItem key={c.category_id} value={c.category_id.toString()}>
-                        {c.category_name}
+                    {subjects.map((subject) => (
+                      <SelectItem
+                        key={subject.subject_id}
+                        value={subject.subject_id.toString()}
+                      >
+                        {subject.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
 
-                <Select
-                  value={gradeFilter}
-                  onValueChange={(v) => setGradeFilter(v)}
-                >
+                <Select value={gradeFilter} onValueChange={setGradeFilter}>
                   <SelectTrigger className="w-40 bg-white">
                     <SelectValue placeholder="Grade Level" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All</SelectItem>
-                    {GRADE_LEVELS.map((g) => (
-                      <SelectItem key={g.id} value={g.id.toString()}>
-                        {g.label}
+                    {GRADE_LEVELS.map((grade) => (
+                      <SelectItem key={grade.id.toString()} value={grade.id.toString()}>
+                        {grade.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -154,31 +193,43 @@ export const ManageBooks = () => {
               </div>
             </section>
 
-            <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              {filteredBooks.map((book) => (
-                <div
-                  key={book.item_id}
-                  className="flex items-center justify-between px-4 py-4 border-b border-gray-200 last:border-b-0 hover:bg-gray-50 cursor-pointer"
-                  onClick={() => { setSelectedBookId(book.item_id); setIsBookCopyModalOpen(true); }}
-                >
-                  <span className="text-lg font-medium">{book.item_name}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">
-                      {book.category?.category_name}
-                    </span>
-                    <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">
-                      {formatGradeLevel(book.gl_id)}
-                    </span>
-                    <Pencil
-                      onClick={(e) => { e.stopPropagation(); handleOpenEditBookModal(book.item_id); }}
-                      className="cursor-pointer text-(--button-green) hover:text-(--button-hover-green)"
-                      size={18}
-                    />
+            <section className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+              {loading ? (
+                <Loader />
+              ) : (
+                filteredBooks.map((book) => (
+                  <div
+                    key={book.item_id}
+                    className="cursor-pointer border-b border-gray-200 px-4 py-4 last:border-b-0 hover:bg-gray-50"
+                    onClick={() => {
+                      setSelectedBookId(book.item_id);
+                      setIsBookCopyModalOpen(true);
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg font-medium">{book.item_name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${getBadgeColorsForString(book.subject?.name ?? "No Subject")}`}>
+                          {book.subject?.name ?? "No Subject"}
+                        </span>
+                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${getBadgeColorsForString(formatGradeLevel(book.gl_id))}`}>
+                          {formatGradeLevel(book.gl_id)}
+                        </span>
+                        <Pencil
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleOpenEditBookModal(book.item_id);
+                          }}
+                          className="cursor-pointer text-(--button-green) hover:text-(--button-hover-green)"
+                          size={18}
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
-              {filteredBooks.length === 0 && (
-                <p className="text-center text-gray-500 py-8">No books found.</p>
+                ))
+              )}
+              {!loading && filteredBooks.length === 0 && (
+                <p className="py-8 text-center text-gray-500">No books found.</p>
               )}
             </section>
           </div>
@@ -189,7 +240,7 @@ export const ManageBooks = () => {
         <AddBookModal
           onClose={() => setIsAddBookModalOpen(false)}
           onAdd={handleAddBooks}
-          categories={categories}
+          subjects={subjects}
         />
       )}
 
@@ -197,11 +248,11 @@ export const ManageBooks = () => {
         <EditBookModal
           onClose={handleCloseEditBookModal}
           onSave={handleSaveEditedBook}
-          categories={categories}
+          subjects={subjects}
           initialBook={{
             title: selectedBook.item_name,
             author: selectedBook.author || "",
-            category_id: selectedBook.category_id,
+            subject_id: selectedBook.subject_id ?? undefined,
             gl_id: selectedBook.gl_id,
           }}
         />
@@ -210,10 +261,13 @@ export const ManageBooks = () => {
       {isBookCopyModalOpen && selectedBook && (
         <BookCopyModal
           material={selectedBook}
-          onClose={() => { setIsBookCopyModalOpen(false); setSelectedBookId(null); }}
+          onMaterialUpdated={handleMaterialUpdated}
+          onClose={() => {
+            setIsBookCopyModalOpen(false);
+            setSelectedBookId(null);
+          }}
         />
       )}
     </>
   );
 };
-

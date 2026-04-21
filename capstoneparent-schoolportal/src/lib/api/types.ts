@@ -85,6 +85,11 @@ export interface LibraryCategory {
   category_name: string;
 }
 
+export interface LibrarySubject {
+  subject_id: number;
+  name: string;
+}
+
 export type ItemType = "Learning_Resource" | "Book";
 export type MaterialStatus = "AVAILABLE" | "BORROWED" | "LOST" | "GIVEN";
 
@@ -104,11 +109,25 @@ export interface LearningMaterial {
   item_type: ItemType;
   category_id: number;
   gl_id: number;
+  subject_id?: number | null;
   uploaded_at: string;
   uploaded_by: number;
   category?: LibraryCategory;
+  subject?: LibrarySubject | null;
   grade_level?: GradeLevel;
   copies?: MaterialCopy[];
+}
+
+export interface BorrowerLookupResult {
+  type: "student" | "user";
+  id: number;
+  display_name: string;
+  student_id?: number;
+  user_id?: number;
+  grade_level?: string | null;
+  roles?: string[];
+  role_label?: string | null;
+  meta?: string | null;
 }
 
 export interface BorrowRecord {

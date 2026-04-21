@@ -1,45 +1,51 @@
 import React from 'react';
 import { Modal } from '../ui/modal';
 import { Button } from '../ui/button';
-import type { LibraryCategory } from '@/lib/api/types';
-import { GRADE_LEVELS } from '@/lib/store/libraryStore';
+import type { LibrarySubject } from '@/lib/api/types';
+import { GRADE_LEVELS } from '@/lib/libraryHelpers';
 
 interface EditBookModalProps {
 	onClose: () => void;
-	onSave?: (book: { title: string; author: string; category_id: number; gl_id: number }) => void;
-	categories: LibraryCategory[];
+	onSave?: (book: { title: string; author: string; subject_id: number; gl_id: number }) => Promise<void> | void;
+	subjects: LibrarySubject[];
 	initialBook?: {
 		title?: string;
 		author?: string;
-		category_id?: number;
+		subject_id?: number;
 		gl_id?: number;
 	};
 }
 
-const EditBookModal: React.FC<EditBookModalProps> = ({ onClose, onSave, initialBook, categories }) => {
+const EditBookModal: React.FC<EditBookModalProps> = ({ onClose, onSave, initialBook, subjects }) => {
 	const [bookTitle, setBookTitle] = React.useState(initialBook?.title ?? '');
 	const [authorName, setAuthorName] = React.useState(initialBook?.author ?? '');
-	const [categoryId, setCategoryId] = React.useState<number | ''>(initialBook?.category_id ?? '');
+	const [subjectId, setSubjectId] = React.useState<number | ''>(initialBook?.subject_id ?? '');
 	const [glId, setGlId] = React.useState<number | ''>(initialBook?.gl_id ?? '');
+	const [isSubmitting, setIsSubmitting] = React.useState(false);
 
 	const hasChanges =
 		bookTitle.trim() !== (initialBook?.title ?? '').trim() ||
 		authorName.trim() !== (initialBook?.author ?? '').trim() ||
-		categoryId !== (initialBook?.category_id ?? '') ||
+		subjectId !== (initialBook?.subject_id ?? '') ||
 		glId !== (initialBook?.gl_id ?? '');
 
-	const handleSave = () => {
-		if (!bookTitle.trim() || categoryId === '' || glId === '') {
+	const handleSave = async () => {
+		if (!bookTitle.trim() || subjectId === '' || glId === '' || isSubmitting) {
 			return;
 		}
 
-		onSave?.({
-			title: bookTitle.trim(),
-			author: authorName.trim(),
-			category_id: categoryId as number,
-			gl_id: glId as number,
-		});
-		onClose();
+		setIsSubmitting(true);
+		try {
+			await onSave?.({
+				title: bookTitle.trim(),
+				author: authorName.trim(),
+				subject_id: subjectId as number,
+				gl_id: glId as number,
+			});
+			onClose();
+		} finally {
+			setIsSubmitting(false);
+		}
 	};
 
 	return (
@@ -61,21 +67,21 @@ const EditBookModal: React.FC<EditBookModalProps> = ({ onClose, onSave, initialB
 				/>
 				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<select
-						value={categoryId}
-						onChange={(event) => setCategoryId(Number(event.target.value))}
-						className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+						value={subjectId}
+						onChange={(event) => setSubjectId(Number(event.target.value))}
+						className="w-full bg-white px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
 					>
 						<option value="" disabled>SUBJECT</option>
-						{categories.map((cat) => (
-							<option key={cat.category_id} value={cat.category_id}>
-								{cat.category_name}
+						{subjects.map((subject) => (
+							<option key={subject.subject_id} value={subject.subject_id}>
+								{subject.name}
 							</option>
 						))}
 					</select>
 					<select
 						value={glId}
 						onChange={(event) => setGlId(Number(event.target.value))}
-						className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+						className="w-full bg-white px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
 					>
 						<option value="" disabled>GRADE LEVEL</option>
 						{GRADE_LEVELS.map((g) => (
@@ -87,17 +93,18 @@ const EditBookModal: React.FC<EditBookModalProps> = ({ onClose, onSave, initialB
 					<Button
 						type="button"
 						onClick={onClose}
+						disabled={isSubmitting}
 						className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 text-lg rounded-full"
 					>
 						Cancel
 					</Button>
 					<Button
 						type="button"
-						onClick={handleSave}
-						disabled={!hasChanges}
+						onClick={() => void handleSave()}
+						disabled={!hasChanges || isSubmitting}
 						className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full disabled:bg-gray-400 disabled:text-white disabled:hover:bg-gray-400"
 					>
-						Save
+						{isSubmitting ? "Saving..." : "Save"}
 					</Button>
 				</div>
 			</div>

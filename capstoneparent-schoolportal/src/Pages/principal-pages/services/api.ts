@@ -8,7 +8,7 @@ import type {
   GradeLevelItem,
   PaginatedResponse,
 } from '@/Pages/principal-pages/types';
-import { apiFetch } from '@/lib/api/base';
+import { apiFetch, bearerHeaders } from '@/lib/api/base';
 
 const API_BASE_URL = '/api';
 
@@ -16,9 +16,10 @@ const API_BASE_URL = '/api';
 
 export const fetchClasses = async (page = 1, limit = 10): Promise<PaginatedResponse<ClassItem>> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/classes?page=${page}&limit=${limit}`);
-    if (!response.ok) throw new Error('Failed to fetch classes');
-    const result = await response.json();
+    const result = await apiFetch<{ data: any[]; pagination: any }>(
+      `/classes?page=${page}&limit=${limit}`,
+      { headers: bearerHeaders() }
+    );
     
     // Map backend to frontend types
     const mappedData = result.data.map((item: any) => ({
@@ -43,9 +44,10 @@ export const fetchClasses = async (page = 1, limit = 10): Promise<PaginatedRespo
 
 export const fetchSubjects = async (page = 1, limit = 100): Promise<PaginatedResponse<SubjectItem>> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/classes/subjects/all?page=${page}&limit=${limit}`);
-    if (!response.ok) throw new Error('Failed to fetch subjects');
-    const result = await response.json();
+    const result = await apiFetch<{ data: any[]; pagination: any }>(
+      `/classes/subjects/all?page=${page}&limit=${limit}`,
+      { headers: bearerHeaders() }
+    );
 
     const mappedData = result.data.map((item: any) => {
       // Find class info if joined
@@ -77,9 +79,9 @@ export const fetchStudents = async (page = 1, limit = 100, classId?: number): Pr
     let url = `${API_BASE_URL}/students?page=${page}&limit=${limit}`;
     if (classId) url += `&clist_id=${classId}`;
     
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Failed to fetch students');
-    const result = await response.json();
+    const result = await apiFetch<{ data: any[]; pagination: any }>(url, {
+      headers: bearerHeaders()
+    });
 
     const mappedData = result.data.map((item: any) => ({
       id: item.student_id,
@@ -100,11 +102,10 @@ export const fetchStudents = async (page = 1, limit = 100, classId?: number): Pr
 
 export const lookupStudents = async (query: string): Promise<StudentLookupResult[]> => {
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/students/lookup?q=${encodeURIComponent(query)}`
+    const result = await apiFetch<{ data: any[] }>(
+      `/students/lookup?q=${encodeURIComponent(query)}`,
+      { headers: bearerHeaders() }
     );
-    if (!response.ok) throw new Error('Failed to search students');
-    const result = await response.json();
 
     return result.data.map((item: any) => ({
       id: item.student_id,
@@ -121,9 +122,10 @@ export const lookupStudents = async (query: string): Promise<StudentLookupResult
 
 export const fetchSections = async (): Promise<SectionItem[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/classes/sections/all`);
-    if (!response.ok) throw new Error('Failed to fetch sections');
-    const result = await response.json();
+    const result = await apiFetch<{ data: any[] }>(
+      '/classes/sections/all',
+      { headers: bearerHeaders() }
+    );
     return result.data.map((item: any) => ({
       id: item.section_id,
       name: item.section_name
@@ -136,9 +138,10 @@ export const fetchSections = async (): Promise<SectionItem[]> => {
 
 export const fetchGradeLevels = async (): Promise<GradeLevelItem[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/classes/grade-levels/all`);
-    if (!response.ok) throw new Error('Failed to fetch grade levels');
-    const result = await response.json();
+    const result = await apiFetch<{ data: any[] }>(
+      '/classes/grade-levels/all',
+      { headers: bearerHeaders() }
+    );
     return result.data.map((item: any) => ({
       id: item.gl_id,
       name: item.grade_level
@@ -151,9 +154,10 @@ export const fetchGradeLevels = async (): Promise<GradeLevelItem[]> => {
 
 export const fetchTeachers = async (): Promise<TeacherItem[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/users?role=Teacher&limit=1000`);
-    if (!response.ok) throw new Error('Failed to fetch teachers');
-    const result = await response.json();
+    const result = await apiFetch<{ data: any[] }>(
+      '/users?role=Teacher&limit=1000',
+      { headers: bearerHeaders() }
+    );
     return result.data.map((item: any) => ({
       id: item.user_id,
       fname: item.fname,
@@ -175,7 +179,10 @@ export const addSubjects = async (
       subjectNames.map(async (subjectName) => {
         const result = await apiFetch<{ data: any }>(`/classes/${classId}/subjects`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            ...bearerHeaders(),
+            'Content-Type': 'application/json' 
+          },
           successMessage: `Subject ${subjectName} added successfully.`,
           body: JSON.stringify({ subject_name: subjectName }),
         });
@@ -202,7 +209,10 @@ export const addClass = async (classData: {
   try {
     const result = await apiFetch<{ data: ClassItem }>(`/classes`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        ...bearerHeaders(),
+        'Content-Type': 'application/json' 
+      },
       successMessage: 'Class added successfully.',
       body: JSON.stringify(classData), 
     });
@@ -226,7 +236,10 @@ export const updateClass = async (
   try {
     const result = await apiFetch<{ data: ClassItem }>(`/classes/${classId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        ...bearerHeaders(),
+        'Content-Type': 'application/json' 
+      },
       successMessage: 'Class updated successfully.',
       body: JSON.stringify(classData),
     });
@@ -244,7 +257,10 @@ export const assignTeacherToSubject = async (
   try {
     const result = await apiFetch<{ data: any }>(`/classes/subjects/${subjectId}/assign-teacher`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        ...bearerHeaders(),
+        'Content-Type': 'application/json' 
+      },
       successMessage: 'Teacher assigned successfully.',
       body: JSON.stringify({ teacher_id: teacherId }),
     });
@@ -271,6 +287,7 @@ export const removeSubject = async (subjectId: number): Promise<void> => {
   try {
     await apiFetch<void>(`/subjects/${subjectId}`, {
       method: 'DELETE',
+      headers: bearerHeaders(),
       successMessage: 'Subject removed successfully.',
     });
   } catch (error) {
@@ -292,7 +309,10 @@ export const addStudentToClass = async (
   try {
     const result = await apiFetch<{ data: any }>(`/classes/${classId}/students`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        ...bearerHeaders(),
+        'Content-Type': 'application/json' 
+      },
       successMessage: 'Student added successfully.',
       body: JSON.stringify(studentData),
     });
@@ -315,6 +335,7 @@ export const removeStudentFromClass = async (
   try {
     await apiFetch<void>(`/classes/${classId}/students/${studentId}`, {
       method: 'DELETE',
+      headers: bearerHeaders(),
       successMessage: 'Student removed successfully.',
     });
   } catch (error) {
@@ -330,7 +351,10 @@ export const assignClassAdviser = async (
   try {
     const result = await apiFetch<{ data: ClassItem }>(`/classes/${classId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        ...bearerHeaders(),
+        'Content-Type': 'application/json' 
+      },
       successMessage: 'Class adviser assigned successfully.',
       body: JSON.stringify({ class_adviser: teacherId }),
     });

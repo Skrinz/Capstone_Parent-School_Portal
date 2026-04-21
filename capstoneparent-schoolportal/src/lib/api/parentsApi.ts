@@ -1,5 +1,5 @@
 import { apiFetch, bearerHeaders, resolveMediaUrl } from "./base";
-import type { ApiData, PaginationMeta } from "./types";
+import type { ApiData, PaginationMeta, ApiPaginatedData } from "./types";
 
 export type ParentRegistrationStatus = "PENDING" | "VERIFIED" | "DENIED";
 
@@ -59,7 +59,87 @@ export interface VerifyRegistrationPayload {
   remarks?: string;
 }
 
+export interface VerifyRegistrationOptions {
+  skipSuccessFeedback?: boolean;
+}
+
+export interface ParentChild {
+  student_id: number;
+  fname: string;
+  lname: string;
+  lrn_number: string;
+  status: string;
+  grade_level?: {
+    grade_level: string;
+  };
+  section?: {
+    section_name: string;
+  };
+  syear_start?: number;
+  syear_end?: number;
+}
+
+/** A single entry from the parent's own registration history */
+export interface ParentRegistrationEntry {
+  pr_id: number;
+  status: ParentRegistrationStatus;
+  remarks?: string | null;
+  submitted_at: string;
+  verified_at?: string | null;
+  students: {
+    student: {
+      student_id: number;
+      fname: string;
+      lname: string;
+      lrn_number: string;
+      grade_level?: { grade_level: string } | null;
+    };
+  }[];
+  files: {
+    file: {
+      file_id: number;
+      file_name: string;
+      file_path: string | null;
+    };
+  }[];
+}
+
 export const parentsApi = {
+  getMyChildren() {
+    return apiFetch<ApiData<ParentChild[]>>("/parents/my-children", {
+      method: "GET",
+      headers: bearerHeaders(),
+    });
+  },
+
+  getMyRegistrations() {
+    return apiFetch<ApiData<ParentRegistrationEntry[]>>("/parents/my-registrations", {
+      method: "GET",
+      headers: bearerHeaders(),
+    });
+  },
+
+  submitRegistration(formData: FormData) {
+    return apiFetch<ApiData<any>>("/parents/register", {
+      method: "POST",
+      headers: {
+        ...bearerHeaders(),
+        // Note: Do not set Content-Type for FormData, the browser will set it with the boundary
+      },
+      body: formData,
+    });
+  },
+
+  resubmitRegistration(prId: number, formData: FormData) {
+    return apiFetch<ApiData<any>>(`/parents/registrations/${prId}/resubmit`, {
+      method: "PATCH",
+      headers: {
+        ...bearerHeaders(),
+      },
+      body: formData,
+    });
+  },
+
   getRegistrations(status?: ParentRegistrationStatus | "all") {
     const params = new URLSearchParams({
       page: "1",
@@ -83,15 +163,51 @@ export const parentsApi = {
     });
   },
 
-  verifyRegistration(id: number, payload: VerifyRegistrationPayload) {
+  verifyRegistration(
+    id: number,
+    payload: VerifyRegistrationPayload,
+    options: VerifyRegistrationOptions = {},
+  ) {
     return apiFetch<ApiData<BackendParentRegistration>>(`/parents/registrations/${id}/verify`, {
       method: "PATCH",
-      successMessage: "Parent verification updated successfully.",
+      skipSuccessFeedback: options.skipSuccessFeedback,
       headers: {
         ...bearerHeaders(),
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
+    });
+  },
+
+  getChildGrades(studentId: number) {
+    return apiFetch<ApiData<any[]>>(`/parents/children/${studentId}/grades`, {
+      method: "GET",
+      headers: bearerHeaders(),
+    });
+  },
+
+  getChildAttendance(studentId: number) {
+    return apiFetch<ApiData<any[]>>(`/parents/children/${studentId}/attendance`, {
+      method: "GET",
+      headers: bearerHeaders(),
+    });
+  },
+
+  getChildSchedule(studentId: number) {
+    return apiFetch<ApiData<any>>(`/parents/children/${studentId}/schedule`, {
+      method: "GET",
+      headers: bearerHeaders(),
+    });
+  },
+
+  getChildLibraryRecords(studentId: number, params?: { page?: number; limit?: number }) {
+    const query = new URLSearchParams();
+    if (params?.page) query.append("page", String(params.page));
+    if (params?.limit) query.append("limit", String(params.limit));
+
+    return apiFetch<ApiPaginatedData<any>>(`/parents/children/${studentId}/library?${query.toString()}`, {
+      method: "GET",
+      headers: bearerHeaders(),
     });
   },
 };

@@ -4,7 +4,7 @@ import { Button } from "../ui/button";
 
 interface EditCategoryModalProps {
 	onClose: () => void;
-	onEdit?: (categoryName: string) => void;
+	onEdit?: (categoryName: string) => Promise<void> | void;
 	initialCategoryName?: string;
 }
 
@@ -14,16 +14,22 @@ const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
 	initialCategoryName = "",
 }) => {
 	const [categoryName, setCategoryName] = React.useState(initialCategoryName);
+	const [isSubmitting, setIsSubmitting] = React.useState(false);
 	const hasChanges = categoryName.trim() !== initialCategoryName.trim();
 
-	const handleEdit = () => {
+	const handleEdit = async () => {
 		const trimmedCategoryName = categoryName.trim();
-		if (!trimmedCategoryName) {
+		if (!trimmedCategoryName || isSubmitting) {
 			return;
 		}
 
-		onEdit?.(trimmedCategoryName);
-		onClose();
+		setIsSubmitting(true);
+		try {
+			await onEdit?.(trimmedCategoryName);
+			onClose();
+		} finally {
+			setIsSubmitting(false);
+		}
 	};
 
 	return (
@@ -40,17 +46,18 @@ const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
 					<Button
 						type="button"
 						onClick={onClose}
+						disabled={isSubmitting}
 						className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 text-lg rounded-full"
 					>
 						Cancel
 					</Button>
 					<Button
 						type="button"
-						onClick={handleEdit}
-						disabled={!hasChanges}
+						onClick={() => void handleEdit()}
+						disabled={!hasChanges || isSubmitting}
 						className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full disabled:bg-gray-400 disabled:text-white disabled:hover:bg-gray-400"
 					>
-						Save
+						{isSubmitting ? "Saving..." : "Save"}
 					</Button>
 				</div>
 			</div>

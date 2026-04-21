@@ -15,8 +15,9 @@ router.get('/materials',
     query('item_type').optional().isIn(['Learning_Resource', 'Book']),
     query('category_id').optional().isInt(),
     query('grade_level').optional().isInt(),
+    query('subject_id').optional().isInt(),
     query('page').optional().isInt({ min: 1 }),
-    query('limit').optional().isInt({ min: 1, max: 100 })
+    query('limit').optional().isInt({ min: 1, max: 1000 })
   ],
   validate,
   libraryController.getAllMaterials
@@ -37,7 +38,8 @@ router.post('/materials',
     body('author').optional(),
     body('item_type').isIn(['Learning_Resource', 'Book']),
     body('category_id').isInt(),
-    body('gl_id').isInt()
+    body('gl_id').isInt(),
+    body('subject_id').optional({ nullable: true }).isInt()
   ],
   validate,
   libraryController.createMaterial
@@ -52,7 +54,8 @@ router.put('/materials/:id',
     body('author').optional(),
     body('item_type').optional().isIn(['Learning_Resource', 'Book']),
     body('category_id').optional().isInt(),
-    body('gl_id').optional().isInt()
+    body('gl_id').optional().isInt(),
+    body('subject_id').optional({ nullable: true }).isInt()
   ],
   validate,
   libraryController.updateMaterial
@@ -120,8 +123,9 @@ router.get('/borrow/history',
     query('student_id').optional().isInt(),
     query('user_id').optional().isInt(),
     query('status').optional().isIn(['borrowed', 'returned', 'overdue']),
+    query('copy_status').optional().isIn(['AVAILABLE', 'BORROWED', 'LOST', 'GIVEN']),
     query('page').optional().isInt({ min: 1 }),
-    query('limit').optional().isInt({ min: 1, max: 100 })
+    query('limit').optional().isInt({ min: 1, max: 1000 })
   ],
   validate,
   libraryController.getBorrowHistory
@@ -132,6 +136,24 @@ router.get('/categories',
   libraryController.getAllCategories
 );
 
+// Get active subjects for book management
+router.get('/subjects',
+  libraryController.getAllSubjects
+);
+
+router.get('/borrowers/lookup',
+  authorize('Librarian', 'Admin'),
+  [
+    query('q')
+      .notEmpty()
+      .withMessage('Search query is required')
+      .isLength({ min: 1, max: 100 })
+      .withMessage('Search query must be between 1 and 100 characters'),
+  ],
+  validate,
+  libraryController.lookupBorrowers
+);
+
 // Create category (Librarian, Admin only)
 router.post('/categories',
   authorize('Librarian', 'Admin'),
@@ -140,6 +162,16 @@ router.post('/categories',
   ],
   validate,
   libraryController.createCategory
+);
+
+router.put('/categories/:categoryId',
+  authorize('Librarian', 'Admin'),
+  [
+    param('categoryId').isInt(),
+    body('category_name').notEmpty().trim(),
+  ],
+  validate,
+  libraryController.updateCategory
 );
 
 module.exports = router;

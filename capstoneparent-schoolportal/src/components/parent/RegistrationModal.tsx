@@ -1,23 +1,37 @@
-import { X } from "lucide-react";
-import type { Child, PendingUploads } from "./parentModalTypes";
+import { X, Search, Loader2, Trash2 } from "lucide-react";
+import type { PendingUploads } from "./parentModalTypes";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { studentsApi } from "@/lib/api/studentsApi";
+import type { StudentSearchResult } from "@/lib/api";
+
+function useDebouncedCallback<T extends unknown[]>(
+  fn: (...args: T) => void,
+  delay: number,
+) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  return useCallback(
+    (...args: T) => {
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => fn(...args), delay);
+    },
+    [fn, delay],
+  );
+}
 
 interface ApplyRegistrationModalProps {
   isOpen: boolean;
-  child: Child | null;
-  pendingUploadTarget: keyof PendingUploads;
   pendingUploads: PendingUploads;
   isFormValid: boolean;
   onSetUploadTarget: (target: keyof PendingUploads) => void;
   onPendingFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onRemovePendingFile: (key: keyof PendingUploads) => void;
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit: (student: any) => void;
+  isSubmitting?: boolean;
 }
 
 export const ApplyRegistrationModal = ({
   isOpen,
-  child,
-  pendingUploadTarget,
   pendingUploads,
   isFormValid,
   onSetUploadTarget,
@@ -25,185 +39,293 @@ export const ApplyRegistrationModal = ({
   onRemovePendingFile,
   onClose,
   onSubmit,
+  isSubmitting = false,
 }: ApplyRegistrationModalProps) => {
-  if (!isOpen || !child) return null;
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<StudentSearchResult[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [foundStudent, setFoundStudent] = useState<any>(null);
+
+  const doSearch = useCallback(async (lrn: string) => {
+    if (!lrn) {
+      setResults([]);
+      setIsSearching(false);
+      setShowDropdown(false);
+      return;
+    }
+    setIsSearching(true);
+    setShowDropdown(false);
+    try {
+      const json = await studentsApi.searchByLrn(lrn);
+      setResults(json.data);
+      setShowDropdown(true);
+    } catch {
+      setResults([]);
+      setShowDropdown(true);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  const debouncedSearch = useDebouncedCallback(doSearch, 300);
+
+  const handleLrnInput = (raw: string) => {
+    const value = raw.replace(/\D/g, "");
+    setQuery(value);
+    setShowDropdown(false);
+    if (value) debouncedSearch(value);
+    else {
+      setResults([]);
+      setShowDropdown(false);
+    }
+  };
+
+  const handleLrnKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (query) doSearch(query);
+    }
+  };
+
+  useEffect(() => {
+    const close = () => setShowDropdown(false);
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  const resetSearch = () => {
+    setFoundStudent(null);
+    setQuery("");
+    setResults([]);
+    setShowDropdown(false);
+  };
+
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-3 sm:px-4">
-      <div className="w-full max-w-4xl max-h-[90vh] sm:max-h-none rounded-t-2xl sm:rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 shadow-2xl overflow-y-auto">
-        <div className="mb-4 sm:mb-6 flex items-start justify-between border-b border-gray-200 pb-3 sm:pb-4 gap-4">
-          <div className="min-w-0">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Apply for Registration</h2>
-            <p className="mt-1 text-xs sm:text-sm text-gray-600">Upload all required files before submitting.</p>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-3 sm:px-4">
+      <div className="w-full max-w-3xl max-h-[90vh] sm:max-h-none rounded-xl p-6 sm:p-10 shadow-2xl overflow-y-auto" style={{ backgroundColor: "#FCF5CA" }}>
+        <div className="flex items-start justify-between mb-8">
+          <h2 className="text-3xl sm:text-4xl font-bold text-black font-sans leading-tight">Apply for Registration</h2>
           <button
             type="button"
-            onClick={onClose}
-            className="text-red-600 transition-colors hover:text-red-700 shrink-0"
+            onClick={() => {
+              resetSearch();
+              onClose();
+            }}
+            className="text-red-600 transition-colors hover:text-red-700 shrink-0 pt-1"
             aria-label="Close registration modal"
           >
-            <X className="h-6 w-6 sm:h-8 sm:w-8" strokeWidth={3} />
+            <X className="h-8 w-8 sm:h-10 sm:w-10" />
           </button>
         </div>
 
-        <div className="mb-4 sm:mb-5 grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3 sm:p-4 sm:grid-cols-2">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Student Name</p>
-            <p className="mt-1 text-base sm:text-lg font-semibold text-gray-900 truncate">{child.name}</p>
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Status</p>
-            <p className="mt-1 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs sm:text-sm font-semibold text-amber-700">
-              Pending Verification
-            </p>
-          </div>
-        </div>
+        {!foundStudent ? (
+          <div className="space-y-6 py-4 flex flex-col items-center min-h-[400px] justify-center">
+            <h3 className="mb-4 text-2xl font-bold text-black">Enter Student LRN</h3>
+            <div className="w-full max-w-lg relative text-left">
+              <div
+                className="relative flex-1"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 text-gray-400 pointer-events-none" />
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]{12}"
+                  minLength={12}
+                  maxLength={12}
+                  placeholder="Type LRN then press Enter to search"
+                  value={query}
+                  onChange={(e) => handleLrnInput(e.target.value)}
+                  onKeyDown={handleLrnKeyDown}
+                  onFocus={() => {
+                    if (results.length > 0) setShowDropdown(true);
+                  }}
+                  className="w-full rounded-2xl border-2 border-gray-300 hover:border-gray-400 bg-white pl-14 pr-6 py-4 text-xl focus:border-gray-900 focus:outline-none placeholder:text-gray-400 transition-colors"
+                />
+                {isSearching && (
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-sm text-gray-400 animate-pulse select-none">
+                    Searching…
+                  </span>
+                )}
+              </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-[1fr_1.35fr]">
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 sm:p-4">
-            <h3 className="mb-3 text-base sm:text-lg font-semibold text-gray-900">Requirements</h3>
-            <ul className="space-y-2 text-xs sm:text-sm text-gray-700">
-              <li>
-                • Parent Birth Certificate <span className="text-gray-500 text-xs">(required unless Government ID is uploaded)</span>
-              </li>
-              <li>
-                • Government-issued ID <span className="text-gray-500 text-xs">(optional substitute)</span>
-              </li>
-              <li>
-                • Child Birth Certificate <span className="text-red-600">(required)</span>
-              </li>
-            </ul>
-          </div>
+              {showDropdown && (
+                <div
+                  className="mt-3 w-full max-h-[240px] overflow-y-auto rounded-2xl border-2 border-gray-200 bg-white shadow-lg"
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  {results.length > 0 ? (
+                    results.map((student) => {
+                      const isRegistrationVerified = student.is_verified;
+                      const isDisabled = isRegistrationVerified;
 
-          <div className="rounded-xl border border-gray-200 p-3 sm:p-4">
-            <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900">File Uploads</h3>
-              <label
-                htmlFor="required-files-upload"
-                className="cursor-pointer rounded-lg px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white whitespace-nowrap"
+                      return (
+                        <button
+                          key={student.student_id}
+                          type="button"
+                          disabled={isDisabled}
+                          onClick={() => {
+                            setFoundStudent(student);
+                            setQuery("");
+                            setShowDropdown(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-5 py-3 text-left transition-colors ${
+                            isDisabled
+                              ? "opacity-40 cursor-not-allowed bg-gray-50"
+                              : "hover:bg-green-50 cursor-pointer"
+                          }`}
+                        >
+                          <div>
+                            <p className="font-semibold text-gray-900">
+                              LRN: {student.lrn_number}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {student.fname} {student.lname} ·{" "}
+                              {student.grade_level.grade_level}
+                            </p>
+                          </div>
+                          {isRegistrationVerified && (
+                            <span className="text-xs text-red-600 font-bold italic">
+                              Verified by a parent
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <p className="px-5 py-4 text-sm text-gray-500 text-center">
+                      No enrolled students found with LRN starting with "{query}"
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-8">
+              <span className="text-xl sm:text-2xl text-black">Student name:</span>
+              <div className="bg-white px-4 py-1 font-bold text-lg sm:text-xl min-w-[200px] text-left text-black shadow-sm">
+                {foundStudent.fname} {foundStudent.lname}
+              </div>
+              <button
+                type="button"
+                onClick={resetSearch}
+                className="px-4 py-2 text-sm font-bold text-white rounded shadow-sm transition-colors bg-blue-600 hover:bg-blue-700 ml-0 sm:ml-2"
+              >
+                Change Student
+              </button>
+            </div>
+
+            <div className="text-xl sm:text-2xl mb-4 text-black">
+              Uploaded Files:
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-8 mb-8">
+              {/* Left Column */}
+              <div className="text-[#C0392B] md:pl-8 text-base sm:text-lg">
+                <div className="italic mb-2">Registration Requirements:</div>
+                <ul className="space-y-4">
+                  <li className="flex gap-2">
+                    <span>•</span>
+                    <span className="italic font-bold">Parent's Birth Certificate</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span>•</span>
+                    <span>
+                      <span className="italic font-bold">Government-issued ID</span> <span className="italic">if Parent's Birth Certificate is not available.</span>
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span>•</span>
+                    <span className="italic font-bold">Child's Birth Certificate</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Right Column */}
+              <div>
+                <p className="text-sm font-semibold italic text-gray-700 mb-2">Upload at least 2 files.</p>
+                <label
+                  htmlFor="required-files-upload"
+                  onClick={() => {
+                    let target: keyof PendingUploads = "parentBirthCertificate";
+                    if (pendingUploads.parentBirthCertificate || pendingUploads.governmentId) {
+                      if (!pendingUploads.childBirthCertificate) target = "childBirthCertificate";
+                      else target = "governmentId";
+                    }
+                    onSetUploadTarget(target);
+                  }}
+                  className="flex items-center justify-between cursor-pointer px-4 py-2 font-bold mb-2 text-black shadow-sm"
+                  style={{ backgroundColor: "var(--navbar-bg)" }}
+                >
+                  <span className="text-lg">File Upload</span>
+                  <span className="text-3xl font-bold leading-none">+</span>
+                </label>
+                <input
+                  id="required-files-upload"
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={onPendingFileChange}
+                />
+
+                <div className="space-y-1">
+                  {pendingUploads.parentBirthCertificate && (
+                    <div className="flex justify-between items-center bg-white/70 px-2 py-1 shadow-sm">
+                      <span className="text-sm text-black truncate pr-2">{pendingUploads.parentBirthCertificate.name}</span>
+                      <button type="button" onClick={() => onRemovePendingFile("parentBirthCertificate")} className="text-[#F87171] hover:text-[#EF4444] shrink-0">
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
+                  {pendingUploads.governmentId && (
+                    <div className="flex justify-between items-center bg-white/70 px-2 py-1 shadow-sm">
+                      <span className="text-sm text-black truncate pr-2">{pendingUploads.governmentId.name}</span>
+                      <button type="button" onClick={() => onRemovePendingFile("governmentId")} className="text-[#F87171] hover:text-[#EF4444] shrink-0">
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
+                  {pendingUploads.childBirthCertificate && (
+                    <div className="flex justify-between items-center bg-white/70 px-2 py-1 shadow-sm">
+                      <span className="text-sm text-black truncate pr-2">{pendingUploads.childBirthCertificate.name}</span>
+                      <button type="button" onClick={() => onRemovePendingFile("childBirthCertificate")} className="text-[#F87171] hover:text-[#EF4444] shrink-0">
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center mt-12 mb-4">
+              {[pendingUploads.parentBirthCertificate, pendingUploads.governmentId, pendingUploads.childBirthCertificate].filter(Boolean).length > 0 && 
+               [pendingUploads.parentBirthCertificate, pendingUploads.governmentId, pendingUploads.childBirthCertificate].filter(Boolean).length < 2 && (
+                <p className="text-red-600 font-bold mb-4">Error: Please upload at least 2 files.</p>
+              )}
+              <button
+                type="button"
+                onClick={() => onSubmit(foundStudent)}
+                disabled={!isFormValid || isSubmitting}
+                className="px-12 py-3 text-xl font-bold text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-2"
                 style={{ backgroundColor: "var(--button-green)" }}
               >
-                Upload File
-              </label>
-            </div>
-            <input
-              id="required-files-upload"
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              className="hidden"
-              onChange={onPendingFileChange}
-            />
-            <p className="mb-1 text-xs text-gray-500">Choose a target document first, then click Upload File.</p>
-            <p className="mb-3 text-xs text-gray-400">Accepted: PDF, JPG, JPEG, PNG · Max 10 MB per file</p>
-
-            <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <button
-                type="button"
-                onClick={() => onSetUploadTarget("parentBirthCertificate")}
-                className={`rounded-md border px-2 sm:px-3 py-2 text-xs font-semibold transition-colors ${
-                  pendingUploadTarget === "parentBirthCertificate"
-                    ? "border-green-600 bg-green-50 text-green-700"
-                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                Parent Birth Certificate
-              </button>
-              <button
-                type="button"
-                onClick={() => onSetUploadTarget("governmentId")}
-                className={`rounded-md border px-2 sm:px-3 py-2 text-xs font-semibold transition-colors ${
-                  pendingUploadTarget === "governmentId"
-                    ? "border-green-600 bg-green-50 text-green-700"
-                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                Government ID
-              </button>
-              <button
-                type="button"
-                onClick={() => onSetUploadTarget("childBirthCertificate")}
-                className={`rounded-md border px-2 sm:px-3 py-2 text-xs font-semibold transition-colors ${
-                  pendingUploadTarget === "childBirthCertificate"
-                    ? "border-green-600 bg-green-50 text-green-700"
-                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                Child Birth Certificate
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  "Submit"
+                )}
               </button>
             </div>
-
-            <div className="space-y-3 text-sm text-gray-800">
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="mb-2">
-                  <p className="font-medium text-sm">Parent Birth Certificate <span className="text-red-600">*</span></p>
-                </div>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-3 py-2">
-                  <span className="truncate text-xs flex-1">{pendingUploads.parentBirthCertificate?.name || "No file selected"}</span>
-                  {pendingUploads.parentBirthCertificate && (
-                    <button
-                      type="button"
-                      onClick={() => onRemovePendingFile("parentBirthCertificate")}
-                      className="text-xs font-medium text-red-600 hover:text-red-700 shrink-0"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="mb-2">
-                  <p className="font-medium text-sm">Government-issued ID</p>
-                </div>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-3 py-2">
-                  <span className="truncate text-xs flex-1">{pendingUploads.governmentId?.name || "No file selected"}</span>
-                  {pendingUploads.governmentId && (
-                    <button
-                      type="button"
-                      onClick={() => onRemovePendingFile("governmentId")}
-                      className="text-xs font-medium text-red-600 hover:text-red-700 shrink-0"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="mb-2">
-                  <p className="font-medium text-sm">Child Birth Certificate <span className="text-red-600">*</span></p>
-                </div>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-3 py-2">
-                  <span className="truncate text-xs flex-1">{pendingUploads.childBirthCertificate?.name || "No file selected"}</span>
-                  {pendingUploads.childBirthCertificate && (
-                    <button
-                      type="button"
-                      onClick={() => onRemovePendingFile("childBirthCertificate")}
-                      className="text-xs font-medium text-red-600 hover:text-red-700 shrink-0"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 rounded-xl border border-gray-200 bg-gray-50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-600">
-            Required to submit: Child Birth Certificate and either Parent Birth Certificate or Government-issued ID.
-          </p>
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={!isFormValid}
-            className="rounded-xl px-6 sm:px-8 py-2 sm:py-3 text-sm sm:text-base font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 shrink-0 whitespace-nowrap"
-            style={{ backgroundColor: "var(--button-green)" }}
-          >
-            Submit
-          </button>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

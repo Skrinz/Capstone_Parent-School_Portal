@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Trash2, Upload, Plus, Search, X, CheckCircle2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { authApi, studentsApi, type StudentSearchResult } from "@/lib/api";
 import { setDeviceToken } from "@/lib/auth";
 import { useApiFeedbackStore } from "@/lib/store/apiFeedbackStore";
@@ -83,6 +83,8 @@ function useDebouncedCallback<T extends unknown[]>(
 
 export const RegisterCard = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const autoVerifyStartedRef = useRef(false);
   const nextRowId = useRef(2);
   const nextFileId = useRef(1);
 
@@ -244,6 +246,61 @@ export const RegisterCard = () => {
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
+
+  // ─── Automatic OTP Verification from Email ──────────────────────────────────
+  useEffect(() => {
+    const emailFromLink = searchParams.get("email")?.trim() ?? "";
+    const otpFromLink = searchParams.get("otp")?.trim() ?? "";
+    const shouldAutoVerify = searchParams.get("autoVerify") === "1";
+    const normalizedOtpFromLink = otpFromLink.replace(/\D/g, "").slice(0, 6);
+    const autoVerifyKey = `otp-auto-verify-reg:${emailFromLink}:${normalizedOtpFromLink}`;
+
+    if (emailFromLink) {
+      setPendingEmail(emailFromLink);
+    }
+
+    if (normalizedOtpFromLink) {
+      setOtpCode(normalizedOtpFromLink);
+      setStep("otp");
+    }
+
+    if (
+      !shouldAutoVerify ||
+      autoVerifyStartedRef.current ||
+      sessionStorage.getItem(autoVerifyKey) === "done" ||
+      !emailFromLink ||
+      normalizedOtpFromLink.length !== 6
+    ) {
+      return;
+    }
+
+    autoVerifyStartedRef.current = true;
+    sessionStorage.setItem(autoVerifyKey, "done");
+    setStep("otp");
+    clearFeedback();
+    setIsVerifyingOtp(true);
+
+    void authApi
+      .verifyRegistrationOtp(emailFromLink, normalizedOtpFromLink)
+      .then((res) => {
+        showSuccess(res.message || "OTP verified successfully.");
+        if (res.data?.deviceToken) setDeviceToken(res.data.deviceToken);
+        setStep("complete");
+      })
+      .catch((err) => {
+        sessionStorage.removeItem(autoVerifyKey);
+        showError(
+          getErrorMessage(err, "Automatic OTP verification failed"),
+        );
+      })
+      .finally(() => {
+        setIsVerifyingOtp(false);
+        const next = new URLSearchParams(searchParams);
+        next.delete("otp");
+        next.delete("autoVerify");
+        setSearchParams(next, { replace: true });
+      });
+  }, [clearFeedback, searchParams, setSearchParams, showError, showSuccess]);
 
   // ─── File handling ───────────────────────────────────────────────────────────
 
@@ -485,9 +542,11 @@ export const RegisterCard = () => {
                       htmlFor="dob-input"
                       className="flex h-14 w-full items-center rounded-full border-2 border-gray-900 bg-white px-6 gap-2 cursor-pointer"
                     >
-                      <span className="shrink-0 text-lg text-gray-500 whitespace-nowrap">
-                        Date of Birth
-                      </span>
+                      {!formData.dateOfBirth && (
+                        <span className="shrink-0 text-lg text-gray-500 whitespace-nowrap">
+                          Date of Birth
+                        </span>
+                      )}
                       <input
                         id="dob-input"
                         name="dateOfBirth"
@@ -903,8 +962,9 @@ export const RegisterCard = () => {
               Registration Complete
             </h2>
             <p className="mt-4 text-gray-700">
-              Your email has been verified. Your parent account is now pending
-              activation by an administrator.
+              Your email has been verified. Your parent account is now pending.
+              Please wait for an administrator or teacher to check your
+              registration.
             </p>
             <Button
               type="button"

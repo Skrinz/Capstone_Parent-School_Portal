@@ -45,9 +45,47 @@ const parentsController = {
         return res.status(404).json({ message: error.message });
       }
       if (
-        error.message === "Parent already has an active or pending registration"
+        error.message === "One or more students already have an active or pending registration under your account"
       ) {
         return res.status(409).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
+
+  async resubmitRegistration(req, res, next) {
+    try {
+      const { id } = req.params;
+      const parent_id = req.user.user_id;
+      const files = req.files || [];
+
+      let file_ids = undefined;
+      if (files.length > 0) {
+        const createdFiles = await usersService.createFiles(files, parent_id, {
+          storageTarget: "parent_docs",
+        });
+        file_ids = createdFiles.map((f) => f.file_id);
+      }
+
+      const registration = await parentsService.resubmitRegistration({
+        pr_id: parseInt(id),
+        parent_id,
+        file_ids,
+      });
+
+      res.status(200).json({
+        message: "Registration resubmitted successfully",
+        data: registration,
+      });
+    } catch (error) {
+      if (error.message === "Registration not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message === "Access denied: You do not own this registration") {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error.message === "Only denied registrations can be resubmitted") {
+        return res.status(400).json({ message: error.message });
       }
       next(error);
     }
@@ -120,6 +158,19 @@ const parentsController = {
     }
   },
 
+  async getMyRegistrations(req, res, next) {
+    try {
+      const parent_id = req.user.user_id;
+      const registrations = await parentsService.getMyRegistrations(parent_id);
+
+      res.status(200).json({
+        data: registrations,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async getMyChildren(req, res, next) {
     try {
       const parent_id = req.user.user_id;
@@ -169,6 +220,52 @@ const parentsController = {
 
       res.status(200).json({
         data: attendance,
+      });
+    } catch (error) {
+      if (error.message === "Access denied to this student record") {
+        return res.status(403).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
+
+  async getChildSchedule(req, res, next) {
+    try {
+      const { studentId } = req.params;
+      const parent_id = req.user.user_id;
+
+      const schedule = await parentsService.getChildSchedule({
+        parent_id,
+        student_id: parseInt(studentId),
+      });
+
+      res.status(200).json({
+        data: schedule,
+      });
+    } catch (error) {
+      if (error.message === "Access denied to this student record") {
+        return res.status(403).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
+
+  async getChildLibraryRecords(req, res, next) {
+    try {
+      const { studentId } = req.params;
+      const { page = 1, limit = 10 } = req.query;
+      const parent_id = req.user.user_id;
+
+      const result = await parentsService.getChildLibraryRecords({
+        parent_id,
+        student_id: parseInt(studentId),
+        page,
+        limit,
+      });
+
+      res.status(200).json({
+        data: result.records,
+        pagination: result.pagination,
       });
     } catch (error) {
       if (error.message === "Access denied to this student record") {
