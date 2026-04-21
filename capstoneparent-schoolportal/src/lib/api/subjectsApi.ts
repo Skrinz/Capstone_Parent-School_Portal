@@ -46,6 +46,21 @@ export const subjectsApi = {
     });
   },
 
+  getArchivedSubjects: async () => {
+    return apiFetch<{ data: ManagedSubject[] }>("/predefined-subjects/archived", {
+      method: "GET",
+      headers: bearerHeaders(),
+    });
+  },
+
+  unarchiveSubject: async (subjectId: number) => {
+    return apiFetch<void>(`/predefined-subjects/subjects/${subjectId}/unarchive`, {
+      method: "PUT",
+      successMessage: "Subject restored successfully.",
+      headers: bearerHeaders(),
+    });
+  },
+
   assignSubjectToGradeLevel: async (gradeLevelId: number, subjectId: number) => {
     return apiFetch(`/predefined-subjects/grade-levels/${gradeLevelId}`, {
       method: "POST",
@@ -82,6 +97,21 @@ export const subjectsApi = {
         successMessage: "Subject unassigned successfully.",
         headers: bearerHeaders(),
       },
+    );
+  },
+
+  unassignSubjectsFromGradeLevel: async (gradeLevelId: number, subjectIds: number[]) => {
+    return Promise.all(
+      subjectIds.map((subjectId) =>
+        apiFetch<void>(
+          `/predefined-subjects/grade-levels/${gradeLevelId}/subjects/${subjectId}`,
+          {
+            method: "DELETE",
+            skipSuccessFeedback: true,
+            headers: bearerHeaders(),
+          },
+        ),
+      ),
     );
   },
 

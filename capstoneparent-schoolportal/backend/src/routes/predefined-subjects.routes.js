@@ -11,6 +11,8 @@ router.use(authorize("Admin", "Principal"));
 
 router.get("/", predefinedSubjectsController.getAllSubjects);
 
+router.get("/archived", predefinedSubjectsController.getArchivedSubjects);
+
 router.post(
   "/subjects",
   body("name").notEmpty().withMessage("Subject name is required"),
@@ -23,6 +25,13 @@ router.delete(
   param("subjectId").isInt(),
   validate,
   predefinedSubjectsController.archiveSubject,
+);
+
+router.put(
+  "/subjects/:subjectId/unarchive",
+  param("subjectId").isInt(),
+  validate,
+  predefinedSubjectsController.unarchiveSubject,
 );
 
 router.get(

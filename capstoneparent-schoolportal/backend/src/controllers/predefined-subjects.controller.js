@@ -62,6 +62,28 @@ const predefinedSubjectsController = {
     }
   },
 
+  async getArchivedSubjects(req, res, next) {
+    console.log("GET /archived route hit");
+    try {
+      const subjects = await predefinedSubjectsService.getArchivedSubjects();
+      res.status(200).json({ data: subjects });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async unarchiveSubject(req, res, next) {
+    try {
+      await predefinedSubjectsService.unarchiveSubject(parseInt(req.params.subjectId, 10));
+      res.status(200).json({ message: "Subject restored successfully" });
+    } catch (error) {
+      if (error.message === "Subject not found" || error.message === "Subject is not archived") {
+        return res.status(404).json({ message: error.message });
+      }
+      next(error);
+    }
+  },
+
   async getSubjectsByGradeLevel(req, res, next) {
     try {
       const items = await predefinedSubjectsService.getSubjectsByGradeLevel(
