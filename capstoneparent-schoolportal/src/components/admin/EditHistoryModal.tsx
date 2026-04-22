@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 interface EditHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialContent: HistoryContent;
   onSave: (content: HistoryContent) => void | Promise<void>;
   errors?: Record<string, string>;
 }

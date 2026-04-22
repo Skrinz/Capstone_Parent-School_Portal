@@ -69,7 +69,6 @@ export const ClassList = () => {
     isLoadingClasses,
     isLoadingSubjects,
     isLoadingStudents,
-    studentCountByClass,
     filterClasses,
     filterSubjects,
     filterStudents,

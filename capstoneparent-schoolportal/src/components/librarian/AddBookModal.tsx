@@ -38,8 +38,8 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ onClose, onAdd, subjects })
 			await onAdd?.({
 				title: bookTitle.trim(),
 				author: authorName.trim(),
-				subject_id: subjectId,
-				gl_id: glId,
+				subject_id: subjectId as number,
+				gl_id: glId as number,
 			});
 			onClose();
 		} finally {

@@ -40,8 +40,8 @@ const AddLearningResourceModal: React.FC<AddLearningResourceModalProps> = ({
 		try {
 			await onAdd?.({
 				title: resourceTitle.trim(),
-				category_id: categoryId,
-				gl_id: glId,
+				category_id: categoryId as number,
+				gl_id: glId as number,
 			});
 			onClose();
 		} finally {

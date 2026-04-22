@@ -84,7 +84,6 @@ export const ManageClassLists = () => {
     isLoadingSections,
     isLoadingGradeLevels,
     isLoadingTeachers,
-    studentCountByClass,
     classPagination,
     loadClasses,
     loadStudents,
