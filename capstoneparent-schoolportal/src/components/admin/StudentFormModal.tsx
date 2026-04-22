@@ -42,6 +42,15 @@ export const StudentFormModal = ({
   canEditStatus = true,
   errors = {},
 }: StudentFormModalProps) => {
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 21 }, (_, i) =>
+    String(currentYear - 10 + i)
+  );
+  const parsedSchoolYearStart = Number.parseInt(formData.schoolYearStart, 10);
+  const endYearOptions = Number.isNaN(parsedSchoolYearStart)
+    ? yearOptions
+    : yearOptions.filter((year) => Number.parseInt(year, 10) > parsedSchoolYearStart);
+
   const getFieldClassName = (fieldName: keyof StudentFormData) => {
     const errorState = errors[fieldName]
       ? "border-red-500 focus:ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
@@ -132,31 +141,49 @@ export const StudentFormModal = ({
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <input
-              type="number"
-              min="2000"
-              max="2100"
-              placeholder="School Year Start (e.g. 2024)"
+            <select
               value={formData.schoolYearStart}
               onChange={(e) =>
-                setFormData({ ...formData, schoolYearStart: e.target.value })
+                setFormData({
+                  ...formData,
+                  schoolYearStart: e.target.value,
+                  schoolYearEnd: e.target.value
+                    ? String(Number.parseInt(e.target.value, 10) + 1)
+                    : "",
+                })
               }
               className={getFieldClassName("schoolYearStart")}
-            />
+            >
+              <option value="">Select school year start</option>
+              {yearOptions.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
             {renderError("schoolYearStart")}
           </div>
           <div>
-            <input
-              type="number"
-              min="2000"
-              max="2101"
-              placeholder="School Year End (e.g. 2025)"
+            <select
               value={formData.schoolYearEnd}
               onChange={(e) =>
-                setFormData({ ...formData, schoolYearEnd: e.target.value })
+                setFormData({
+                  ...formData,
+                  schoolYearEnd:
+                    Number.parseInt(e.target.value, 10) > parsedSchoolYearStart
+                      ? e.target.value
+                      : formData.schoolYearEnd,
+                })
               }
               className={getFieldClassName("schoolYearEnd")}
-            />
+            >
+              <option value="">Select school year end</option>
+              {endYearOptions.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
             {renderError("schoolYearEnd")}
           </div>
         </div>

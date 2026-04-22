@@ -343,7 +343,15 @@ export const ManageClassLists = () => {
 
   // Generate year options (current year - 5 to current year + 5)
   const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
+  const yearOptions = Array.from({ length: 21 }, (_, i) => currentYear - 10 + i);
+  const addStartYearNumber = Number.parseInt(addFormData.schoolYearStart, 10);
+  const editStartYearNumber = Number.parseInt(editFormData.schoolYearStart, 10);
+  const addEndYearOptions = Number.isNaN(addStartYearNumber)
+    ? yearOptions
+    : yearOptions.filter((year) => year > addStartYearNumber);
+  const editEndYearOptions = Number.isNaN(editStartYearNumber)
+    ? yearOptions
+    : yearOptions.filter((year) => year > editStartYearNumber);
   const selectedEditTeacher = teachers.find(
     (teacher) => teacher.id.toString() === editFormData.teacherId
   );
@@ -706,14 +714,20 @@ export const ManageClassLists = () => {
             {/* School Year End */}
             <Select 
               value={addFormData.schoolYearEnd} 
-              onValueChange={(value) => setAddFormData({...addFormData, schoolYearEnd: value})}
+              onValueChange={(value) => {
+                const selectedEndYear = Number.parseInt(value, 10);
+                if (!Number.isNaN(addStartYearNumber) && selectedEndYear <= addStartYearNumber) {
+                  return;
+                }
+                setAddFormData({ ...addFormData, schoolYearEnd: value });
+              }}
               disabled={isSubmitting}
             >
               <SelectTrigger className={`w-full h-12 bg-white ${getSelectColor(addFormData.schoolYearEnd)}`}>
                 <SelectValue placeholder="School Year End" />
               </SelectTrigger>
               <SelectContent className="bg-white font-semibold">
-                {yearOptions.map((year) => (
+                {addEndYearOptions.map((year) => (
                   <SelectItem className="hover:underline" key={year} value={year.toString()}>
                     {year}
                   </SelectItem>
@@ -882,14 +896,20 @@ export const ManageClassLists = () => {
             {/* School Year End */}
             <Select 
               value={editFormData.schoolYearEnd} 
-              onValueChange={(value) => setEditFormData({...editFormData, schoolYearEnd: value})}
+              onValueChange={(value) => {
+                const selectedEndYear = Number.parseInt(value, 10);
+                if (!Number.isNaN(editStartYearNumber) && selectedEndYear <= editStartYearNumber) {
+                  return;
+                }
+                setEditFormData({ ...editFormData, schoolYearEnd: value });
+              }}
               disabled={isSubmitting}
             >
               <SelectTrigger className="w-full h-12 bg-white border-gray-300">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-white font-semibold">
-                {yearOptions.map((year) => (
+                {editEndYearOptions.map((year) => (
                   <SelectItem className="hover:underline" key={year} value={year.toString()}>
                     {year}
                   </SelectItem>

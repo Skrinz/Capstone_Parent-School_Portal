@@ -61,6 +61,10 @@ export const EditOrganizationalChartModal = ({
   const { showError, clearFeedback } = useApiFeedbackStore();
 
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 21 }, (_, i) =>
+    String(currentYear - 10 + i)
+  );
 
   const chartForEdit = useMemo(() => {
     if (mode !== "edit") {
@@ -210,9 +214,8 @@ export const EditOrganizationalChartModal = ({
           <label htmlFor="org-chart-year" className="text-lg font-semibold">
             School year
           </label>
-          <input
+          <select
             id="org-chart-year"
-            type="number"
             value={yearInput}
             onChange={(event) => setYearInput(event.target.value)}
             disabled={isSaving}
@@ -221,9 +224,14 @@ export const EditOrganizationalChartModal = ({
                 ? "border-red-500 focus:ring-red-500"
                 : "border-black focus:ring-(--button-green)"
             }`}
-            min={1900}
-            max={2100}
-          />
+          >
+            <option value="">Select school year</option>
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
           {errors.yearInput && (
             <p className="mt-1 text-sm font-medium text-red-600">{errors.yearInput}</p>
           )}

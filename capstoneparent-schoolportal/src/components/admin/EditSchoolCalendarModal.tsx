@@ -59,6 +59,10 @@ export const EditSchoolCalendarModal = ({
   const { showError, clearFeedback } = useApiFeedbackStore();
 
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 21 }, (_, i) =>
+    String(currentYear - 10 + i)
+  );
 
   const calendarForEdit = useMemo(() => {
     if (mode !== "edit" || !editYear) {
@@ -191,9 +195,8 @@ export const EditSchoolCalendarModal = ({
           <label htmlFor="school-calendar-year" className="text-lg font-semibold">
             School year
           </label>
-          <input
+          <select
             id="school-calendar-year"
-            type="number"
             value={yearInput}
             onChange={(event) => setYearInput(event.target.value)}
             className={`w-full rounded-md border-2 bg-white px-4 py-3 text-lg focus:outline-none focus:ring-2 transition-all ${
@@ -201,9 +204,15 @@ export const EditSchoolCalendarModal = ({
                 ? "border-red-500 focus:ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
                 : "border-black focus:ring-(--button-green)"
             }`}
-            min={1900}
-            max={2100}
-          />
+            disabled={isSaving}
+          >
+            <option value="">Select school year</option>
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
           <FormInputError message={errors.yearInput} />
         </div>
 
