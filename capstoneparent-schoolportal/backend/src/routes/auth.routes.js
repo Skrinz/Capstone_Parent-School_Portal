@@ -50,7 +50,16 @@ router.post(
   authorize("Admin", "Principal", "Vice_Principal"),
   upload.array("attachments", 10), // Even if they don't upload attachments, multer handles it
   [
-    body("email").isEmail().normalizeEmail(),
+    body("email")
+      .isEmail()
+      .withMessage("A valid email address is required")
+      .normalizeEmail()
+      .custom((value) => {
+        if (!value.endsWith("@deped.gov.ph")) {
+          throw new Error("Email must be a @deped.gov.ph address");
+        }
+        return true;
+      }),
     body("password").isLength({ min: 8 }),
     body("fname").notEmpty().trim(),
     body("lname").notEmpty().trim(),

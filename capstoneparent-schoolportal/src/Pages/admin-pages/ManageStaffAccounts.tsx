@@ -49,6 +49,7 @@ export const ManageStaffAccounts = () => {
   const [generatedTemporaryPassword, setGeneratedTemporaryPassword] = useState("");
 
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof typeof emptyFormState, string>>>({});
 
   const availableRoles = [
     "Admin",
@@ -261,16 +262,31 @@ export const ManageStaffAccounts = () => {
 
   // Add staff handler
   const handleAddStaff = async () => {
-    if (
-      !formData.firstName.trim() ||
-      !formData.lastName.trim() ||
-      !formData.contactNo.trim() ||
-      !formData.dateOfBirth.trim() ||
-      !formData.address.trim() ||
-      !formData.email.trim() ||
-      selectedRoles.length === 0
-    )
+    const errors: Partial<Record<keyof typeof emptyFormState, string>> = {};
+    
+    if (!formData.firstName.trim()) errors.firstName = "First name is required";
+    if (!formData.lastName.trim()) errors.lastName = "Last name is required";
+    if (!formData.contactNo.trim()) errors.contactNo = "Contact number is required";
+    if (!formData.dateOfBirth.trim()) errors.dateOfBirth = "Date of birth is required";
+    if (!formData.address.trim()) errors.address = "Address is required";
+    
+    const email = formData.email.trim().toLowerCase();
+    if (!email) {
+      errors.email = "Email is required";
+    } else if (!email.endsWith("@deped.gov.ph")) {
+      errors.email = "Staff email must be a @deped.gov.ph address";
+    }
+    
+    if (selectedRoles.length === 0) {
+      // Roles doesn't have a specific field in emptyFormState, but we can handle it if needed
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
+    }
+
+    setFormErrors({});
 
     const payload = new FormData();
     payload.append("fname", formData.firstName.trim());
@@ -291,6 +307,12 @@ export const ManageStaffAccounts = () => {
       setSelectedRoles([]);
       setGeneratedTemporaryPassword("");
       setIsAddModalOpen(false);
+      setFormErrors({});
+    } catch (error: any) {
+      if (error.status === 400 && error.message) {
+        // Handle backend validation errors if they return a specific field
+        setFormErrors({ email: error.message });
+      }
     } finally {
       setIsAddingStaff(false);
     }
@@ -310,6 +332,7 @@ export const ManageStaffAccounts = () => {
     });
     setSelectedRoles(staff.roles.split(", ").map((r) => r.trim()));
     setIsEditModalOpen(true);
+    setFormErrors({});
   };
 
   const editFormHasChanges = useMemo(() => {
@@ -335,6 +358,14 @@ export const ManageStaffAccounts = () => {
       selectedRoles.length === 0
     )
       return;
+
+    const email = formData.email.trim().toLowerCase();
+    if (!email.endsWith("@deped.gov.ph")) {
+      setFormErrors({ email: "Staff email must be a @deped.gov.ph address" });
+      return;
+    }
+
+    setFormErrors({});
 
     await usersApi.updateProfile(editingStaff.id, {
       fname: formData.firstName.trim(),
@@ -475,6 +506,7 @@ export const ManageStaffAccounts = () => {
           setFormData(emptyFormState);
           setSelectedRoles([]);
           setGeneratedTemporaryPassword("");
+          setFormErrors({});
         }}
         onSubmit={handleAddStaff}
         title="Add Account"
@@ -488,6 +520,7 @@ export const ManageStaffAccounts = () => {
         temporaryPassword={generatedTemporaryPassword}
         showStatusField={false}
         isSubmitting={isAddingStaff}
+        errors={formErrors}
       />
 
       <StaffFormModal
@@ -497,6 +530,7 @@ export const ManageStaffAccounts = () => {
           setEditingStaff(null);
           setFormData(emptyFormState);
           setSelectedRoles([]);
+          setFormErrors({});
         }}
         onSubmit={handleUpdateStaff}
         title="Edit Account"
@@ -510,6 +544,7 @@ export const ManageStaffAccounts = () => {
         useEditDisplayStyle
         disableSubmit={!editFormHasChanges}
         isEditingSelf={editingStaff?.id === currentUserId}
+        errors={formErrors}
       />
     </div>
   );
