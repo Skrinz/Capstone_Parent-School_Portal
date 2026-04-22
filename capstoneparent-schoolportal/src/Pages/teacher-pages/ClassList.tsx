@@ -66,15 +66,16 @@ export const ClassList = () => {
     sections,
     subjects,
     allStudents,
+    selectedClassStudents,
     isLoadingClasses,
     isLoadingSubjects,
-    isLoadingStudents,
+    isLoadingSelectedClassStudents,
     studentCountByClass,
     filterClasses,
     filterSubjects,
     filterStudents,
-    getStudentsForClass,
-    loadStudents,
+    loadClassStudents,
+    loadSubjectsIfNeeded,
   } = useClassData();
 
   // Apply filters
@@ -88,9 +89,10 @@ export const ClassList = () => {
     [subjects, subjectSearchQuery, subjectGradeLevel, subjectSection, subjectYear]
   );
 
-  const studentsForSelectedClass = useMemo(
-    () => selectedClass ? getStudentsForClass(allStudents, selectedClass.clist_id) : [],
-    [selectedClass, allStudents]
+  // Uses selectedClassStudents — the per-class fetch result, separate from allStudents.
+  const filteredStudents = useMemo(
+    () => filterStudents(selectedClassStudents, studentSearchQuery, remarksFilter),
+    [selectedClassStudents, studentSearchQuery, remarksFilter]
   );
 
   // Generate unique school years from existing classes
@@ -102,7 +104,7 @@ export const ClassList = () => {
     return Array.from(yearsSet).sort().reverse();
   }, [classes]);
 
-  // Students for selected subject (filtered by grade/section/year)
+  // Filters from allStudents (the stable full list) — unaffected by class card clicks.
   const studentsForSelectedSubject = useMemo(() => {
     if (!selectedSubject) return [];
     
@@ -145,11 +147,6 @@ export const ClassList = () => {
       return matchesSearch && matchesRemarks;
     });
   }, [subjectStudentGrades, studentSearchQuery, remarksFilter]);
-
-  const filteredStudents = useMemo(
-    () => filterStudents(studentsForSelectedClass, studentSearchQuery, remarksFilter),
-    [studentsForSelectedClass, studentSearchQuery, remarksFilter]
-  );
 
   const isDetailView = selectedClass !== null || selectedSubject !== null;
 
@@ -262,7 +259,13 @@ export const ClassList = () => {
           <Tabs 
             defaultValue="class" 
             className="w-full h-full flex flex-col"
-            onValueChange={(value) => setActiveTab(value)}
+            onValueChange={(value) => {
+              setActiveTab(value);
+              // Lazily load subjects only on first visit to Subject tab
+              if (value === 'subject') {
+                loadSubjectsIfNeeded();
+              }
+            }}
           >
              <TabsList className="w-full rounded-none rounded-t-xl bg-white p-0 border-b border-gray-200">
                <TabsTrigger value="class" className="flex-1 rounded-none data-[state=active]:bg-(--div-bg)">
@@ -351,7 +354,8 @@ export const ClassList = () => {
                           setRemarksFilter('all');
                           setStudentSearchQuery('');
                           setSelectedStudent(null);
-                          loadStudents(classItem.clist_id);
+                          // Loads into selectedClassStudents — does NOT touch allStudents
+                          loadClassStudents(classItem.clist_id);
                         }}
                       >
                           <div className="flex justify-between items-start">
@@ -361,7 +365,7 @@ export const ClassList = () => {
                                 {classItem.syear_start} - {classItem.syear_end}
                               </p>
                             </div>
-                            {/* DYNAMIC STUDENT COUNT */}
+                            {/* DYNAMIC STUDENT COUNT — stable because allStudents is never overwritten */}
                             <span className="font-medium">
                               {studentCountByClass[classItem.clist_id] || 0} Students
                             </span>
@@ -646,7 +650,7 @@ export const ClassList = () => {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                              {isLoadingStudents ? (
+                              {isLoadingSelectedClassStudents ? (
                                 <tr>
                                   <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
                                     Loading students...
@@ -697,7 +701,7 @@ export const ClassList = () => {
                   </TabsContent>
 
                   <TabsContent value="summary" className="flex-1 overflow-y-auto">
-                    <ClassSummary students={studentsForSelectedClass} />
+                    <ClassSummary students={selectedClassStudents} />
                   </TabsContent>
                 </Tabs>
               </div>
@@ -814,13 +818,7 @@ export const ClassList = () => {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200">
-                            {isLoadingStudents ? (
-                              <tr>
-                                <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                                  Loading students...
-                                </td>
-                              </tr>
-                            ) : filteredSubjectStudents.length > 0 ? (
+                            {filteredSubjectStudents.length > 0 ? (
                               filteredSubjectStudents.map((student) => (
                                 <tr key={student.id} className="hover:bg-gray-50">
                                   <td className="px-6 py-4 whitespace-nowrap text-sm text-left text-gray-900">

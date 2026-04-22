@@ -74,23 +74,25 @@ export const ManageClassLists = () => {
   const {
     classes,
     subjects,
-    allStudents,
+    selectedClassStudents,     // ← replaces allStudents for the right panel
     sections,
     gradeLevels,
     teachers,
     isLoadingClasses,
     isLoadingSubjects,
-    isLoadingStudents,
+    isLoadingSelectedClassStudents, // ← used as the loading flag for StudentList
     isLoadingSections,
     isLoadingGradeLevels,
     isLoadingTeachers,
-    studentCountByClass,
+    studentCountByClass,       // ← now stable; derived from allStudents which is never overwritten
     classPagination,
     loadClasses,
-    loadStudents,
+    loadClassStudents,         // ← fires on card click; writes to selectedClassStudents only
     filterClasses,
     reloadClasses,
     reloadSubjects,
+    reloadStudents,
+    reloadClassStudents,       // ← refreshes selectedClassStudents after add/remove
   } = useClassData();
 
   // Apply filters
@@ -200,11 +202,9 @@ export const ManageClassLists = () => {
     );
   }, [selectedClass, subjects]);
 
-  // Get students for selected class
-  const classStudents = useMemo(() => {
-    if (!selectedClass) return [];
-    return allStudents.filter((student) => student.classId === selectedClass.id);
-  }, [selectedClass, allStudents]);
+  // selectedClassStudents is already filtered by the API — use it directly.
+  // No need to filter from allStudents (which is reserved for stable count computation).
+  const classStudents = selectedClassStudents;
 
   // Handle opening Add Class modal
   const handleOpenAddModal = () => {
@@ -304,7 +304,9 @@ export const ManageClassLists = () => {
       await removeStudentFromClass(selectedClass.id, student.id);
       await Promise.all([
         reloadClasses(),
-        loadStudents(1, selectedClass.id),
+        // Refresh full list so counts stay accurate, and the right panel
+        reloadStudents(),
+        reloadClassStudents(selectedClass.id),
       ]);
     } catch (error) {
       console.error('Failed to remove student:', error);
@@ -362,7 +364,9 @@ export const ManageClassLists = () => {
 
     await Promise.all([
       reloadClasses(),
-      loadStudents(1, selectedClass.id),
+      // Refresh full list for stable counts, and the right panel separately
+      reloadStudents(),
+      reloadClassStudents(selectedClass.id),
     ]);
   };
 
@@ -466,7 +470,8 @@ export const ManageClassLists = () => {
                   }`}
                   onClick={() => {
                     setSelectedClass(classItem);
-                    loadStudents(1, classItem.id);
+                    // Writes to selectedClassStudents — does NOT touch allStudents
+                    loadClassStudents(1, classItem.id);
                   }}
                 >
                   <div className="flex justify-between items-start gap-3">
@@ -484,6 +489,7 @@ export const ManageClassLists = () => {
                     </div>
                     
                     <div className="flex items-center gap-3">
+                      {/* STUDENT COUNT — stable because allStudents is never overwritten */}
                       <span className="font-medium whitespace-nowrap">
                         {studentCountByClass[classItem.id] || 0} Students
                       </span>
@@ -584,7 +590,7 @@ export const ManageClassLists = () => {
                 <TabsContent value="students" className="flex-1 mt-0 overflow-hidden">
                   <StudentList
                     students={classStudents}
-                    isLoadingStudents={isLoadingStudents}
+                    isLoadingStudents={isLoadingSelectedClassStudents}
                     onBack={() => setSelectedClass(null)}
                     onRemoveStudent={handleRemoveStudent}
                     onAddStudent={handleOpenAddStudentModal}
