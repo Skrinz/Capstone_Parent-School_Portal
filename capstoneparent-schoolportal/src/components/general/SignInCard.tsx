@@ -11,6 +11,7 @@ import {
 import { authApi, type AuthUser } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useApiFeedbackStore } from "@/lib/store/apiFeedbackStore";
+import { FormInputError } from "@/components/ui/FormInputError";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,8 +23,9 @@ export const SignInCard = () => {
   const [step, setStep] = useState<Step>("credentials");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [otpCode, setOtpCode] = useState("");
+   const [otpCode, setOtpCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const { showError, showSuccess, clearFeedback } = useApiFeedbackStore();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -55,18 +57,24 @@ export const SignInCard = () => {
     clearFeedback();
 
     const normalizedEmail = email.trim();
+    const newErrors: Record<string, string> = {};
+
     if (!normalizedEmail) {
-      showError("Email is required.");
-      return;
+      newErrors.email = "Email is required.";
+    } else if (!emailPattern.test(normalizedEmail)) {
+      newErrors.email = "Please enter a valid email address.";
     }
-    if (!emailPattern.test(normalizedEmail)) {
-      showError("Please enter a valid email address.");
-      return;
-    }
+
     if (!password) {
-      showError("Password is required.");
+      newErrors.password = "Password is required.";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
+
+    setErrors({});
 
     setLoading(true);
 
@@ -112,9 +120,10 @@ export const SignInCard = () => {
       return;
     }
     if (otpCode.length !== 6) {
-      showError("OTP code must be exactly 6 digits.");
+      setErrors({ otp: "OTP code must be exactly 6 digits." });
       return;
     }
+    setErrors({});
 
     setLoading(true);
 
@@ -229,23 +238,31 @@ export const SignInCard = () => {
         {/* ── Credentials step ── */}
         {step === "credentials" && (
           <form onSubmit={handleCredentials} className="space-y-5">
-            <Input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
-              className="h-13 rounded-2xl border border-gray-500 bg-gray-100 px-6 text-3xl text-gray-800 placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-(--button-green)"
-            />
+            <div>
+              <Input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+                aria-invalid={!!errors.email}
+                className="h-13 rounded-2xl border border-gray-500 bg-gray-100 px-6 text-3xl text-gray-800 placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-(--button-green)"
+              />
+              <FormInputError message={errors.email} className="px-2" />
+            </div>
 
-            <Input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-              className="h-13 rounded-2xl border border-gray-500 bg-gray-100 px-6 text-3xl text-gray-800 placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-(--button-green)"
-            />
+            <div>
+              <Input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                aria-invalid={!!errors.password}
+                className="h-13 rounded-2xl border border-gray-500 bg-gray-100 px-6 text-3xl text-gray-800 placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-(--button-green)"
+              />
+              <FormInputError message={errors.password} className="px-2" />
+            </div>
 
             <p className="text-sm text-gray-900">
               Forgot password?{" "}
@@ -282,18 +299,22 @@ export const SignInCard = () => {
               enter the OTP code manually here.
             </p>
 
-            <Input
-              type="text"
-              inputMode="numeric"
-              placeholder="6-digit code"
-              value={otpCode}
-              onChange={(e) =>
-                setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-              }
-              disabled={loading}
-              maxLength={6}
-              className="h-13 rounded-2xl border border-gray-500 bg-gray-100 px-6 text-3xl tracking-widest text-gray-800 placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-(--button-green)"
-            />
+            <div>
+              <Input
+                type="text"
+                inputMode="numeric"
+                placeholder="6-digit code"
+                value={otpCode}
+                onChange={(e) =>
+                  setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                }
+                disabled={loading}
+                aria-invalid={!!errors.otp}
+                maxLength={6}
+                className="h-13 rounded-2xl border border-gray-500 bg-gray-100 px-6 text-3xl tracking-widest text-gray-800 placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-(--button-green)"
+              />
+              <FormInputError message={errors.otp} className="px-2" />
+            </div>
 
             <div className="pt-3 text-center">
               <Button

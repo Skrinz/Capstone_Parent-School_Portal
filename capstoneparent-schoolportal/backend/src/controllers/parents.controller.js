@@ -131,6 +131,13 @@ const parentsController = {
     try {
       const { id } = req.params;
       const { status, remarks } = req.body;
+
+      if (status === "DENIED" && (!remarks || !remarks.trim())) {
+        return res.status(400).json({
+          message: "Remarks are required when denying registration",
+        });
+      }
+
       const verified_by = req.user.user_id;
 
       const registration = await parentsService.verifyRegistration({

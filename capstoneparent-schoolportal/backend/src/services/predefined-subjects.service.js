@@ -65,11 +65,7 @@ const predefinedSubjectsService = {
     });
 
     if (existingSubject?.deleted_at) {
-      return prisma.subject.update({
-        where: { subject_id: existingSubject.subject_id },
-        data: { deleted_at: null },
-        include: buildSubjectInclude(),
-      });
+      throw new Error("Subject is in the archives. Please restore it from the archives tab.");
     }
 
     if (existingSubject) {
@@ -112,6 +108,33 @@ const predefinedSubjectsService = {
     });
 
     return true;
+  },
+
+  async getArchivedSubjects() {
+    return prisma.subject.findMany({
+      where: {
+        deleted_at: { not: null },
+      },
+      include: buildSubjectInclude(),
+      orderBy: { name: "asc" },
+    });
+  },
+
+  async unarchiveSubject(subjectId) {
+    const subject = await findOrThrow(
+      () => prisma.subject.findUnique({ where: { subject_id: subjectId } }),
+      "Subject not found",
+    );
+
+    if (!subject.deleted_at) {
+      throw new Error("Subject is not archived");
+    }
+
+    return prisma.subject.update({
+      where: { subject_id: subjectId },
+      data: { deleted_at: null },
+      include: buildSubjectInclude(),
+    });
   },
 
   async getSubjectsByGradeLevel(gradeLevelId) {

@@ -37,6 +37,7 @@ const studentsController = {
         grade_level,
         syear_start,
         clist_id,
+        search,
       } = req.query;
       const result = await studentsService.getAllStudents({
         page,
@@ -45,6 +46,7 @@ const studentsController = {
         grade_level,
         syear_start,
         clist_id,
+        search,
       });
 
       res.status(200).json({

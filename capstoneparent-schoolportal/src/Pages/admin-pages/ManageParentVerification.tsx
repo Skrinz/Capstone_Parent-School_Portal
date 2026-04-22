@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { RotateCw } from "lucide-react";
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
 import { StatusDropdown } from "../../components/general/StatusDropdown";
 import {
@@ -45,6 +46,10 @@ export const ManageParentVerification = () => {
       month: "long",
       day: "numeric",
       year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
     }).format(parsedDate);
   };
 
@@ -139,6 +144,10 @@ export const ManageParentVerification = () => {
 
   const updateVerification = async (nextStatus: "VERIFIED" | "DENIED") => {
     if (!selectedVerification) return;
+    if (nextStatus === "DENIED" && !modalRemarks.trim()) {
+      showError("Remarks are required when denying registration");
+      return;
+    }
 
     setSubmittingState(nextStatus === "VERIFIED" ? "approving" : "denying");
     try {
@@ -224,6 +233,15 @@ export const ManageParentVerification = () => {
                     className="min-w-36 bg-transparent text-sm text-gray-900 focus:outline-none [color-scheme:light]"
                   />
                 </label>
+                <button
+                  type="button"
+                  onClick={() => void loadRegistrations()}
+                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 flex items-center gap-2"
+                  disabled={isLoading}
+                >
+                  <RotateCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                  Refresh
+                </button>
                 <button
                   type="button"
                   onClick={clearFilters}

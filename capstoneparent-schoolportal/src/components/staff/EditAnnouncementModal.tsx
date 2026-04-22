@@ -313,7 +313,7 @@ export const EditAnnouncementModal = ({
               <SelectTrigger className="w-full sm:w-48 bg-yellow-400 text-black font-semibold border-0 text-sm sm:text-base">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white">
                 <SelectItem value="general">General</SelectItem>
                 <SelectItem value="staffs">Staff</SelectItem>
                 <SelectItem value="memorandum">Memorandum</SelectItem>

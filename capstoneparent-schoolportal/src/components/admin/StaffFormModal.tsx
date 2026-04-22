@@ -2,6 +2,7 @@ import React from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Modal } from "../ui/modal";
+import { FormInputError } from "../ui/FormInputError";
 
 type StaffStatus = "ACTIVE" | "INACTIVE";
 
@@ -32,6 +33,7 @@ interface StaffFormModalProps {
   isSubmitting?: boolean;
   useEditDisplayStyle?: boolean;
   isEditingSelf?: boolean;
+  errors?: Partial<Record<keyof StaffFormData, string>>;
 }
 
 export const StaffFormModal = ({
@@ -51,6 +53,7 @@ export const StaffFormModal = ({
   isSubmitting = false,
   useEditDisplayStyle = false,
   isEditingSelf = false,
+  errors = {},
 }: StaffFormModalProps) => {
   const isProfileReadOnly = useEditDisplayStyle;
   const formatDateForDisplay = (value: string) => {
@@ -72,6 +75,19 @@ export const StaffFormModal = ({
   const rowClassName = "grid grid-cols-[170px_1fr] items-center gap-3";
   const labelClassName = "text-[18px] font-bold leading-tight text-black";
 
+  const getFieldClassName = (fieldName: keyof StaffFormData, baseClassName: string) => {
+    if (isProfileReadOnly) return baseClassName;
+    if (!errors[fieldName]) return baseClassName;
+    
+    return baseClassName
+      .replace("border-transparent", "border-red-500")
+      .replace("focus:ring-(--button-green)", "focus:ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]");
+  };
+
+  const renderError = (fieldName: keyof StaffFormData) => (
+    <FormInputError message={errors[fieldName]} />
+  );
+
   return (
     <Modal
       isOpen={isOpen}
@@ -82,72 +98,90 @@ export const StaffFormModal = ({
       <div className={`space-y-2 ${useEditDisplayStyle ? "pt-1" : ""}`}>
         <div className={rowClassName}>
           <label className={labelClassName}>First Name:</label>
-          <input
-            type="text"
-            value={formData.firstName}
-            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-            readOnly={isProfileReadOnly}
-            className={inputClassName}
-          />
+          <div>
+            <input
+              type="text"
+              value={formData.firstName}
+              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+              readOnly={isProfileReadOnly}
+              className={getFieldClassName("firstName", inputClassName)}
+            />
+            {renderError("firstName")}
+          </div>
         </div>
         <div className={rowClassName}>
           <label className={labelClassName}>Last Name:</label>
-          <input
-            type="text"
-            value={formData.lastName}
-            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-            readOnly={isProfileReadOnly}
-            className={inputClassName}
-          />
+          <div>
+            <input
+              type="text"
+              value={formData.lastName}
+              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+              readOnly={isProfileReadOnly}
+              className={getFieldClassName("lastName", inputClassName)}
+            />
+            {renderError("lastName")}
+          </div>
         </div>
         <div className={rowClassName}>
           <label className={labelClassName}>Contact No:</label>
-          <input
-            type="tel"
-            value={formData.contactNo}
-            onChange={(e) => setFormData({ ...formData, contactNo: e.target.value.replace(/\D/g, "") })}
-            readOnly={isProfileReadOnly}
-            className={inputClassName}
-          />
+          <div>
+            <input
+              type="tel"
+              value={formData.contactNo}
+              onChange={(e) => setFormData({ ...formData, contactNo: e.target.value.replace(/\D/g, "") })}
+              readOnly={isProfileReadOnly}
+              className={getFieldClassName("contactNo", inputClassName)}
+            />
+            {renderError("contactNo")}
+          </div>
         </div>
         <div className={rowClassName}>
           <label className={labelClassName}>Date of Birth:</label>
-          {isProfileReadOnly ? (
-            <input
-              type="text"
-              value={formatDateForDisplay(formData.dateOfBirth)}
-              readOnly
-              className={inputClassName}
-            />
-          ) : (
-            <input
-              type="date"
-              value={formData.dateOfBirth}
-              onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-              max={new Date().toISOString().split("T")[0]}
-              className={`${inputClassName} pr-3 [color-scheme:light] [&::-webkit-datetime-edit]:text-gray-800 [&::-webkit-datetime-edit-fields-wrapper]:p-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-100`}
-            />
-          )}
+          <div className="flex flex-col">
+            {isProfileReadOnly ? (
+              <input
+                type="text"
+                value={formatDateForDisplay(formData.dateOfBirth)}
+                readOnly
+                className={getFieldClassName("dateOfBirth", inputClassName)}
+              />
+            ) : (
+              <input
+                type="date"
+                value={formData.dateOfBirth}
+                onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                max={new Date().toISOString().split("T")[0]}
+                className={`${getFieldClassName("dateOfBirth", inputClassName)} pr-3 [color-scheme:light] [&::-webkit-datetime-edit]:text-gray-800 [&::-webkit-datetime-edit-fields-wrapper]:p-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-100`}
+              />
+            )}
+            {renderError("dateOfBirth")}
+          </div>
         </div>
         <div className={rowClassName}>
           <label className={labelClassName}>Address:</label>
-          <input
-            type="text"
-            value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-            readOnly={isProfileReadOnly}
-            className={inputClassName}
-          />
+          <div>
+            <input
+              type="text"
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              readOnly={isProfileReadOnly}
+              className={getFieldClassName("address", inputClassName)}
+            />
+            {renderError("address")}
+          </div>
         </div>
         <div className={rowClassName}>
           <label className={labelClassName}>Email:</label>
-          <input
-            type="email"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            readOnly={isProfileReadOnly}
-            className={inputClassName}
-          />
+          <div>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              readOnly={isProfileReadOnly}
+              className={getFieldClassName("email", inputClassName)}
+            />
+            {renderError("email")}
+          </div>
         </div>
         {temporaryPassword ? (
           <div className={rowClassName}>
@@ -212,7 +246,9 @@ export const StaffFormModal = ({
                     formData.status === "ACTIVE"
                       ? "text-(--status-active)"
                       : "text-(--status-inactive)"
-                  } focus:outline-none ${useEditDisplayStyle ? "" : "focus:ring-2 focus:ring-(--button-green)"}`}
+                  } focus:outline-none ${useEditDisplayStyle ? "" : "focus:ring-2 focus:ring-(--button-green)"} ${
+                    errors.status && !useEditDisplayStyle ? "border border-red-500 focus:ring-red-500" : ""
+                  }`}
                 >
                   <option value="ACTIVE">Active</option>
                   <option value="INACTIVE">Inactive</option>
@@ -221,6 +257,7 @@ export const StaffFormModal = ({
                   className={`pointer-events-none absolute top-1/2 h-0 w-0 -translate-y-1/2 border-l-[10px] border-r-[10px] border-t-[16px] border-l-transparent border-r-transparent border-t-black ${useEditDisplayStyle ? "right-5" : "right-4"}`}
                 />
               </div>
+              {renderError("status")}
               {isEditingSelf && (
                 <p className="text-[13px] text-gray-500 italic">
                   You cannot edit your own status.

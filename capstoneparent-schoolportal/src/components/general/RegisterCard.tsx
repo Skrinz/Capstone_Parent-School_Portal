@@ -7,6 +7,7 @@ import { authApi, studentsApi, type StudentSearchResult } from "@/lib/api";
 import { setDeviceToken } from "@/lib/auth";
 import { useApiFeedbackStore } from "@/lib/store/apiFeedbackStore";
 import { validateFiles } from "@/lib/fileValidation";
+import { FormInputError } from "@/components/ui/FormInputError";
 
 type RegistrationStep = "form" | "otp" | "complete";
 
@@ -121,6 +122,7 @@ export const RegisterCard = () => {
   const { showError, showSuccess, clearFeedback } = useApiFeedbackStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   // ─── LRN search ─────────────────────────────────────────────────────────────
@@ -369,60 +371,53 @@ export const RegisterCard = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    clearFeedback();
+    const newErrors: Record<string, string> = {};
 
     if (!formData.firstName.trim()) {
-      showError("First name is required.");
-      return;
+      newErrors.firstName = "First name is required.";
     }
     if (!formData.lastName.trim()) {
-      showError("Last name is required.");
-      return;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      showError("Passwords do not match");
-      return;
-    }
-    if (!formData.contact.trim()) {
-      showError("Contact number is required.");
-      return;
-    }
-    if (!formData.address.trim()) {
-      showError("Address is required.");
-      return;
-    }
-    if (!formData.email.trim()) {
-      showError("Email is required.");
-      return;
-    }
-    if (!emailPattern.test(formData.email.trim())) {
-      showError("Please enter a valid email address.");
-      return;
-    }
-    if (!formData.password) {
-      showError("Password is required.");
-      return;
-    }
-    if (!formData.confirmPassword) {
-      showError("Please confirm your password.");
-      return;
-    }
-    if (formData.password.length < 8) {
-      showError("Password must be at least 8 characters");
-      return;
+      newErrors.lastName = "Last name is required.";
     }
     if (!formData.dateOfBirth) {
-      showError("Please enter your date of birth");
-      return;
+      newErrors.dateOfBirth = "Please enter your date of birth";
     }
+    if (!formData.contact.trim()) {
+      newErrors.contact = "Contact number is required.";
+    }
+    if (!formData.address.trim()) {
+      newErrors.address = "Address is required.";
+    }
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required.";
+    } else if (!emailPattern.test(formData.email.trim())) {
+      newErrors.email = "Please enter a valid email address.";
+    }
+    if (!formData.password) {
+      newErrors.password = "Password is required.";
+    } else if (formData.password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
+    }
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = "Please confirm your password.";
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+
     if (selectedStudents.length === 0) {
-      showError("Please select at least one student");
-      return;
+      newErrors.students = "Please select at least one student";
     }
     if (uploadedFiles.length < 2) {
-      showError("Please upload at least two supporting documents");
+      newErrors.files = "Please upload at least two supporting documents";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      showError("Please correct the errors in the form.");
       return;
     }
+
+    setErrors({});
 
     setIsSubmitting(true);
     try {
@@ -463,9 +458,10 @@ export const RegisterCard = () => {
       return;
     }
     if (otpCode.length !== 6) {
-      showError("OTP code must be exactly 6 digits");
+      setErrors({ otp: "OTP code must be exactly 6 digits" });
       return;
     }
+    setErrors({});
     setIsVerifyingOtp(true);
     try {
       const otpResult = await authApi.verifyRegistrationOtp(
@@ -519,8 +515,10 @@ export const RegisterCard = () => {
                       onChange={(e) =>
                         handleInputChange("firstName", e.target.value)
                       }
+                      aria-invalid={!!errors.firstName}
                       className="h-14 rounded-full border-2 border-gray-900 bg-white px-6 text-lg placeholder:text-gray-500"
                     />
+                    <FormInputError message={errors.firstName} className="px-4" />
                   </div>
                   <div>
                     <FieldLabel label="Last Name" required htmlFor="last-name" />
@@ -533,14 +531,18 @@ export const RegisterCard = () => {
                       onChange={(e) =>
                         handleInputChange("lastName", e.target.value)
                       }
+                      aria-invalid={!!errors.lastName}
                       className="h-14 rounded-full border-2 border-gray-900 bg-white px-6 text-lg placeholder:text-gray-500"
                     />
+                    <FormInputError message={errors.lastName} className="px-4" />
                   </div>
                   <div>
                     <FieldLabel label="Date of Birth" required htmlFor="dob-input" />
                     <label
                       htmlFor="dob-input"
-                      className="flex h-14 w-full items-center rounded-full border-2 border-gray-900 bg-white px-6 gap-2 cursor-pointer"
+                      className={`flex h-14 w-full items-center rounded-full border-2 bg-white px-6 gap-2 cursor-pointer transition-all ${
+                        errors.dateOfBirth ? "border-red-500 ring-2 ring-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.1)]" : "border-gray-900"
+                      }`}
                     >
                       {!formData.dateOfBirth && (
                         <span className="shrink-0 text-lg text-gray-500 whitespace-nowrap">
@@ -559,6 +561,7 @@ export const RegisterCard = () => {
                         className="flex-1 min-w-0 bg-transparent text-lg text-gray-900 focus:outline-none [color-scheme:light]"
                       />
                     </label>
+                    <FormInputError message={errors.dateOfBirth} className="px-4" />
                   </div>
                   <div>
                     <FieldLabel
@@ -575,8 +578,10 @@ export const RegisterCard = () => {
                       onChange={(e) =>
                         handleInputChange("contact", e.target.value.replace(/\D/g, ""))
                       }
+                      aria-invalid={!!errors.contact}
                       className="h-14 rounded-full border-2 border-gray-900 bg-white px-6 text-lg placeholder:text-gray-500"
                     />
+                    <FormInputError message={errors.contact} className="px-4" />
                   </div>
                   <div>
                     <FieldLabel label="Address" required htmlFor="address" />
@@ -589,8 +594,10 @@ export const RegisterCard = () => {
                       onChange={(e) =>
                         handleInputChange("address", e.target.value)
                       }
+                      aria-invalid={!!errors.address}
                       className="h-14 rounded-full border-2 border-gray-900 bg-white px-6 text-lg placeholder:text-gray-500"
                     />
+                    <FormInputError message={errors.address} className="px-4" />
                   </div>
                   <div>
                     <FieldLabel label="Email" required htmlFor="email" />
@@ -603,8 +610,10 @@ export const RegisterCard = () => {
                       onChange={(e) =>
                         handleInputChange("email", e.target.value)
                       }
+                      aria-invalid={!!errors.email}
                       className="h-14 rounded-full border-2 border-gray-900 bg-white px-6 text-lg placeholder:text-gray-500"
                     />
+                    <FormInputError message={errors.email} className="px-4" />
                   </div>
                   <div>
                     <FieldLabel label="Password" required htmlFor="password" />
@@ -618,8 +627,10 @@ export const RegisterCard = () => {
                       onChange={(e) =>
                         handleInputChange("password", e.target.value)
                       }
+                      aria-invalid={!!errors.password}
                       className="h-14 rounded-full border-2 border-gray-900 bg-white px-6 text-lg placeholder:text-gray-500"
                     />
+                    <FormInputError message={errors.password} className="px-4" />
                   </div>
                   <div>
                     <FieldLabel
@@ -636,8 +647,10 @@ export const RegisterCard = () => {
                       onChange={(e) =>
                         handleInputChange("confirmPassword", e.target.value)
                       }
+                      aria-invalid={!!errors.confirmPassword}
                       className="h-14 rounded-full border-2 border-gray-900 bg-white px-6 text-lg placeholder:text-gray-500"
                     />
+                    <FormInputError message={errors.confirmPassword} className="px-4" />
                   </div>
                 </div>
               </div>

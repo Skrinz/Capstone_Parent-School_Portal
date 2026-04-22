@@ -299,6 +299,7 @@ const classesController = {
         limit,
         school_year,
         grade_level,
+        user: req.user,
       });
 
       res.status(200).json({
@@ -420,7 +421,7 @@ const classesController = {
 
   async createClass(req, res, next) {
     try {
-      const classData = req.body;
+      const classData = { ...req.body, created_by: req.user.user_id };
       const newClass = await classesService.createClass(classData);
 
       res.status(201).json({

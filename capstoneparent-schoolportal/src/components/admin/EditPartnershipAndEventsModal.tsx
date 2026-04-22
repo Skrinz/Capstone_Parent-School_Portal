@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { FormInputError } from "@/components/ui/FormInputError";
 import { FileText, Plus, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useApiFeedbackStore } from "@/lib/store/apiFeedbackStore";
@@ -30,6 +31,7 @@ interface EditPartnershipAndEventsModalProps {
   initialData?: PartnershipEventFormData;
   onSave: (data: PartnershipEventFormData) => void | Promise<void>;
   isLoading?: boolean;
+  errors?: Record<string, string>;
 }
 
 interface ModalFormData {
@@ -72,6 +74,7 @@ export const EditPartnershipAndEventsModal = ({
   initialData,
   onSave,
   isLoading = false,
+  errors = {},
 }: EditPartnershipAndEventsModalProps) => {
   const isEditMode = Boolean(initialData?.id);
   const [formData, setFormData] = useState<ModalFormData>(
@@ -210,22 +213,32 @@ export const EditPartnershipAndEventsModal = ({
         </div>
 
         <div className="space-y-6">
-          <input
-            type="text"
-            value={formData.title}
-            onChange={(e) => handleChange("title", e.target.value)}
-            autoComplete="off"
-            className="w-full border border-gray-500 bg-[#f3f3f3] px-5 py-4 text-xl text-gray-900 focus:outline-none"
-            placeholder="Add your title here"
-          />
+          <div>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => handleChange("title", e.target.value)}
+              autoComplete="off"
+              className={`w-full border bg-[#f3f3f3] px-5 py-4 text-xl text-gray-900 focus:outline-none transition-all ${
+                errors.title ? "border-red-500 focus:ring-1 focus:ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]" : "border-gray-500 focus:ring-1 focus:ring-(--button-green)"
+              }`}
+              placeholder="Add your title here"
+            />
+            <FormInputError message={errors.title} />
+          </div>
 
-          <textarea
-            value={formData.description}
-            onChange={(e) => handleChange("description", e.target.value)}
-            className="min-h-55 max-h-[34vh] w-full resize-y border border-gray-500 bg-[#f3f3f3] px-5 py-4 text-lg leading-relaxed text-gray-900 focus:outline-none"
-            placeholder="Write your partnership/event post details"
-            rows={8}
-          />
+          <div>
+            <textarea
+              value={formData.description}
+              onChange={(e) => handleChange("description", e.target.value)}
+              className={`min-h-55 max-h-[34vh] w-full resize-y border bg-[#f3f3f3] px-5 py-4 text-lg leading-relaxed text-gray-900 focus:outline-none transition-all ${
+                errors.description ? "border-red-500 focus:ring-1 focus:ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]" : "border-gray-500 focus:ring-1 focus:ring-(--button-green)"
+              }`}
+              placeholder="Write your partnership/event post details"
+              rows={8}
+            />
+            <FormInputError message={errors.description} />
+          </div>
 
           <div className="relative min-h-45">
             <div className="max-w-60 space-y-2">

@@ -10,6 +10,7 @@ export interface ClassItem {
   // For UI compatibility, I'll keep the flattened properties but update nomenclature
   grade?: string; // Mapped from grade_level.grade_level
   section_name?: string; // Mapped from section.section_name
+  student_count?: number;
 }
 
 export interface SubjectItem {

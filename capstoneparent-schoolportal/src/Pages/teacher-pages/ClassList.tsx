@@ -102,14 +102,12 @@ export const ClassList = () => {
     return Array.from(yearsSet).sort().reverse();
   }, [classes]);
 
-  // Students for selected subject (filtered by grade/section/year)
+  // Students for selected subject (filtered by subject record enrollment)
   const studentsForSelectedSubject = useMemo(() => {
     if (!selectedSubject) return [];
     
     return allStudents.filter(
-      (student) =>
-        student.gradeSection === `${selectedSubject.grade} - ${selectedSubject.section}` &&
-        student.schoolYear === `${selectedSubject.syear_start} - ${selectedSubject.syear_end}`
+      (student) => student.subject_records?.some(sr => sr.srecord_id === selectedSubject.srecord_id)
     );
   }, [selectedSubject, allStudents]);
 
@@ -362,9 +360,9 @@ export const ClassList = () => {
                               </p>
                             </div>
                             {/* DYNAMIC STUDENT COUNT */}
-                            <span className="font-medium">
-                              {studentCountByClass[classItem.clist_id] || 0} Students
-                            </span>
+                              <span className="font-medium whitespace-nowrap">
+                                {classItem.student_count || 0} Students
+                              </span>
                          </div>
                       </Card>
                     ))
@@ -464,9 +462,9 @@ export const ClassList = () => {
                           setStudentSearchQuery('');
                         }}
                       >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-semibold text-base">
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-base" title={subjectItem.subject_name}>
                               {subjectItem.subject_name}
                             </h3>
                             <p className={`text-sm transition-colors ${
@@ -477,7 +475,7 @@ export const ClassList = () => {
                               {subjectItem.grade} - {subjectItem.section}
                             </p>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right flex-shrink-0 whitespace-nowrap">
                             <p className={`text-sm font-medium transition-colors ${
                               selectedSubject?.srecord_id === subjectItem.srecord_id
                                 ? 'text-white'

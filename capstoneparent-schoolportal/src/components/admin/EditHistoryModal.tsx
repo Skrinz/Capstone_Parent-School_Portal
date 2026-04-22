@@ -1,13 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { FormInputError } from "@/components/ui/FormInputError";
 import type { HistoryContent } from "@/lib/historyContent";
 import { useEffect, useState } from "react";
 
 interface EditHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialContent: HistoryContent;
   onSave: (content: HistoryContent) => void | Promise<void>;
+  errors?: Record<string, string>;
 }
 
 export const EditHistoryModal = ({
@@ -15,6 +16,7 @@ export const EditHistoryModal = ({
   onClose,
   initialContent,
   onSave,
+  errors = {},
 }: EditHistoryModalProps) => {
   const [title, setTitle] = useState(initialContent.title);
   const [body, setBody] = useState(initialContent.body);
@@ -61,8 +63,13 @@ export const EditHistoryModal = ({
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             disabled={isSaving}
-            className="w-full rounded-md border-2 border-black px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-(--button-green) disabled:opacity-50"
+            className={`w-full rounded-md border-2 px-4 py-3 text-lg focus:outline-none focus:ring-2 transition-all disabled:opacity-50 ${
+              errors.title
+                ? "border-red-500 focus:ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
+                : "border-black focus:ring-(--button-green)"
+            }`}
           />
+          <FormInputError message={errors.title} />
         </div>
 
         <div>
@@ -75,8 +82,13 @@ export const EditHistoryModal = ({
             onChange={(event) => setBody(event.target.value)}
             rows={10}
             disabled={isSaving}
-            className="w-full rounded-md border-2 border-black px-4 py-3 text-lg leading-relaxed focus:outline-none focus:ring-2 focus:ring-(--button-green) disabled:opacity-50"
+            className={`w-full rounded-md border-2 px-4 py-3 text-lg leading-relaxed focus:outline-none focus:ring-2 transition-all disabled:opacity-50 ${
+              errors.body
+                ? "border-red-500 focus:ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
+                : "border-black focus:ring-(--button-green)"
+            }`}
           />
+          <FormInputError message={errors.body} />
           <p className="mt-1 text-xs text-gray-600">
             Use a blank line to create a new paragraph.
           </p>

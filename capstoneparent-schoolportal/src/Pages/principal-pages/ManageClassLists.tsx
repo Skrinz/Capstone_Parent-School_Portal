@@ -485,7 +485,7 @@ export const ManageClassLists = () => {
                     
                     <div className="flex items-center gap-3">
                       <span className="font-medium whitespace-nowrap">
-                        {studentCountByClass[classItem.id] || 0} Students
+                        {classItem.student_count || 0} Students
                       </span>
                       
                       <button

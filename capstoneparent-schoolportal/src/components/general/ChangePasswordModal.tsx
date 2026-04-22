@@ -44,6 +44,7 @@ export const ChangePasswordModal = ({
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      onClose();
     } catch (err: any) {
       // Notification handled by ProfileDropdown (validation) or apiFetch (API error)
     } finally {

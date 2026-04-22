@@ -14,22 +14,30 @@ export const ManageSubjects = () => {
   const [gradeLevels, setGradeLevels] = useState<GradeLevelOption[]>([]);
   const [selectedGradeLevelId, setSelectedGradeLevelId] = useState<number | null>(null);
   const [pendingAssignedSubjectIds, setPendingAssignedSubjectIds] = useState<number[]>([]);
+  const [pendingUnassignedSubjectIds, setPendingUnassignedSubjectIds] = useState<number[]>([]);
   const [newSubjectName, setNewSubjectName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [subjectToArchive, setSubjectToArchive] = useState<ManagedSubject | null>(null);
+  const [activeTab, setActiveTab] = useState<"active" | "archived">("active");
+  const [archivedSubjects, setArchivedSubjects] = useState<ManagedSubject[]>([]);
+  const [showAddSubjectConfirm, setShowAddSubjectConfirm] = useState(false);
+  const [showAssignSubjectConfirm, setShowAssignSubjectConfirm] = useState(false);
+  const [showUnassignSubjectConfirm, setShowUnassignSubjectConfirm] = useState(false);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [subjectsResponse, gradeLevelsResponse] = await Promise.all([
+      const [subjectsResponse, gradeLevelsResponse, archivedSubjectsResponse] = await Promise.all([
         subjectsApi.getAllSubjects(),
         subjectsApi.getGradeLevels(),
+        subjectsApi.getArchivedSubjects(),
       ]);
 
       setSubjects(subjectsResponse.data);
       setGradeLevels(gradeLevelsResponse.data);
+      setArchivedSubjects(archivedSubjectsResponse.data);
       setSelectedGradeLevelId((current) => current ?? gradeLevelsResponse.data[0]?.gl_id ?? null);
     } catch (error) {
       showError(error instanceof Error ? error.message : "Failed to load subjects");
@@ -44,12 +52,18 @@ export const ManageSubjects = () => {
 
   useEffect(() => {
     setPendingAssignedSubjectIds([]);
+    setPendingUnassignedSubjectIds([]);
   }, [selectedGradeLevelId]);
 
   const libraryFilteredSubjects = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
     return subjects.filter((subject) => subject.name.toLowerCase().includes(normalizedQuery));
   }, [searchQuery, subjects]);
+
+  const archivedFilteredSubjects = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    return archivedSubjects.filter((subject) => subject.name.toLowerCase().includes(normalizedQuery));
+  }, [searchQuery, archivedSubjects]);
 
   const assignedSubjectIds = useMemo(() => {
     if (!selectedGradeLevelId) {
@@ -74,7 +88,12 @@ export const ManageSubjects = () => {
     [pendingAssignedSubjectIds],
   );
 
-  const handleCreateSubject = async () => {
+  const pendingUnassignedSubjectIdSet = useMemo(
+    () => new Set(pendingUnassignedSubjectIds),
+    [pendingUnassignedSubjectIds],
+  );
+
+  const confirmCreateSubject = async () => {
     const trimmedName = newSubjectName.trim();
     if (!trimmedName) {
       showError("Subject name is required");
@@ -85,12 +104,22 @@ export const ManageSubjects = () => {
     try {
       await subjectsApi.createSubject(trimmedName);
       setNewSubjectName("");
+      setShowAddSubjectConfirm(false);
       await loadData();
     } catch (error) {
       showError(error instanceof Error ? error.message : "Failed to add subject");
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleCreateSubject = () => {
+    const trimmedName = newSubjectName.trim();
+    if (!trimmedName) {
+      showError("Subject name is required");
+      return;
+    }
+    setShowAddSubjectConfirm(true);
   };
 
   const handleArchiveSubject = (subject: ManagedSubject) => {
@@ -112,6 +141,19 @@ export const ManageSubjects = () => {
     }
   };
 
+  const handleUnarchiveSubject = async (subject: ManagedSubject) => {
+    setIsSaving(true);
+    try {
+      await subjectsApi.unarchiveSubject(subject.subject_id);
+      showSuccess(`${subject.name} has been unarchived.`);
+      await loadData();
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Failed to unarchive subject");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleTogglePendingAssignment = (subjectId: number) => {
     setPendingAssignedSubjectIds((current) =>
       current.includes(subjectId)
@@ -120,7 +162,34 @@ export const ManageSubjects = () => {
     );
   };
 
-  const handleAssignSubjects = async () => {
+  const handleTogglePendingUnassignment = (subjectId: number) => {
+    setPendingUnassignedSubjectIds((current) =>
+      current.includes(subjectId)
+        ? current.filter((item) => item !== subjectId)
+        : [...current, subjectId],
+    );
+  };
+
+  const confirmAssignSubjects = async () => {
+    if (!selectedGradeLevelId) return;
+
+    setIsSaving(true);
+    try {
+      await subjectsApi.assignSubjectsToGradeLevel(selectedGradeLevelId, pendingAssignedSubjectIds);
+      showSuccess(
+        `${pendingAssignedSubjectIds.length} subject${pendingAssignedSubjectIds.length === 1 ? "" : "s"} assigned successfully.`,
+      );
+      setPendingAssignedSubjectIds([]);
+      setShowAssignSubjectConfirm(false);
+      await loadData();
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Failed to assign subjects");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAssignSubjects = () => {
     if (!selectedGradeLevelId) {
       showError("Select a grade level first");
       return;
@@ -131,36 +200,40 @@ export const ManageSubjects = () => {
       return;
     }
 
+    setShowAssignSubjectConfirm(true);
+  };
+
+  const confirmUnassignSubjects = async () => {
+    if (!selectedGradeLevelId) return;
+
     setIsSaving(true);
     try {
-      await subjectsApi.assignSubjectsToGradeLevel(selectedGradeLevelId, pendingAssignedSubjectIds);
+      await subjectsApi.unassignSubjectsFromGradeLevel(selectedGradeLevelId, pendingUnassignedSubjectIds);
       showSuccess(
-        `${pendingAssignedSubjectIds.length} subject${pendingAssignedSubjectIds.length === 1 ? "" : "s"} assigned successfully.`,
+        `${pendingUnassignedSubjectIds.length} subject${pendingUnassignedSubjectIds.length === 1 ? "" : "s"} unassigned successfully.`,
       );
-      setPendingAssignedSubjectIds([]);
+      setPendingUnassignedSubjectIds([]);
+      setShowUnassignSubjectConfirm(false);
       await loadData();
     } catch (error) {
-      showError(error instanceof Error ? error.message : "Failed to assign subjects");
+      showError(error instanceof Error ? error.message : "Failed to unassign subjects");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleUnassignSubject = async (subject: ManagedSubject) => {
+  const handleUnassignSubjects = () => {
     if (!selectedGradeLevelId) {
       showError("Select a grade level first");
       return;
     }
 
-    setIsSaving(true);
-    try {
-      await subjectsApi.removeSubjectFromGradeLevel(selectedGradeLevelId, subject.subject_id);
-      await loadData();
-    } catch (error) {
-      showError(error instanceof Error ? error.message : "Failed to unassign subject");
-    } finally {
-      setIsSaving(false);
+    if (pendingUnassignedSubjectIds.length === 0) {
+      showError("Select at least one subject to unassign");
+      return;
     }
+
+    setShowUnassignSubjectConfirm(true);
   };
 
   return (
@@ -208,6 +281,31 @@ export const ManageSubjects = () => {
                 </div>
               </div>
 
+              <div className="flex gap-6 border-b border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("active")}
+                  className={`pb-3 text-sm font-semibold uppercase tracking-wide transition-colors ${
+                    activeTab === "active"
+                      ? "border-b-2 border-green-600 text-green-700"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  Active Subjects
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("archived")}
+                  className={`pb-3 text-sm font-semibold uppercase tracking-wide transition-colors ${
+                    activeTab === "archived"
+                      ? "border-b-2 border-amber-600 text-amber-700"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  Archived Subjects
+                </button>
+              </div>
+
               <div className="rounded-2xl border border-gray-200">
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-b border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
                   <span>Subject Library</span>
@@ -219,38 +317,70 @@ export const ManageSubjects = () => {
                     <Loader2 className="h-5 w-5 animate-spin" />
                     <span>Loading subjects...</span>
                   </div>
-                ) : libraryFilteredSubjects.length > 0 ? (
-                  <div className="divide-y divide-gray-200">
-                    {libraryFilteredSubjects.map((subject) => (
-                      <div
-                        key={subject.subject_id}
-                        className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-3"
-                      >
-                        <div>
-                          <p className="font-semibold text-gray-900">{subject.name}</p>
-                          <p className="text-sm text-gray-500">
-                            Assigned to {subject.grade_levels.length} grade level
-                            {subject.grade_levels.length === 1 ? "" : "s"}
-                          </p>
-                        </div>
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => handleArchiveSubject(subject)}
-                          disabled={isSaving}
-                          className="border-amber-200 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                ) : activeTab === "active" ? (
+                  libraryFilteredSubjects.length > 0 ? (
+                    <div className="divide-y divide-gray-200">
+                      {libraryFilteredSubjects.map((subject) => (
+                        <div
+                          key={subject.subject_id}
+                          className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-3"
                         >
-                          <Archive className="mr-2 h-4 w-4" />
-                          Archive
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                          <div>
+                            <p className="font-semibold text-gray-900">{subject.name}</p>
+                            <p className="text-sm text-gray-500">
+                              Assigned to {subject.grade_levels.length} grade level
+                              {subject.grade_levels.length === 1 ? "" : "s"}
+                            </p>
+                          </div>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => handleArchiveSubject(subject)}
+                            disabled={isSaving}
+                            className="border-amber-200 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                          >
+                            <Archive className="mr-2 h-4 w-4" />
+                            Archive
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="px-4 py-12 text-center text-gray-500">
+                      No active subjects match your search.
+                    </div>
+                  )
                 ) : (
-                  <div className="px-4 py-12 text-center text-gray-500">
-                    No subjects match your search.
-                  </div>
+                  archivedFilteredSubjects.length > 0 ? (
+                    <div className="divide-y divide-gray-200 bg-amber-50/30">
+                      {archivedFilteredSubjects.map((subject) => (
+                        <div
+                          key={subject.subject_id}
+                          className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-3"
+                        >
+                          <div>
+                            <p className="font-semibold text-gray-900">{subject.name}</p>
+                            <p className="text-sm text-gray-500">Archived</p>
+                          </div>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => handleUnarchiveSubject(subject)}
+                            disabled={isSaving}
+                            className="border-green-200 text-green-600 hover:bg-green-50 hover:text-green-700"
+                          >
+                            Unarchive
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="px-4 py-12 text-center text-gray-500">
+                      No archived subjects match your search.
+                    </div>
+                  )
                 )}
               </div>
             </div>
@@ -282,19 +412,28 @@ export const ManageSubjects = () => {
 
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-gray-600">
-                {pendingAssignedSubjectIds.length > 0
-                  ? `${pendingAssignedSubjectIds.length} subject${pendingAssignedSubjectIds.length === 1 ? "" : "s"} selected for assignment`
-                  : "Select one or more unassigned subjects, then assign them in one action."}
+                {pendingAssignedSubjectIds.length > 0 || pendingUnassignedSubjectIds.length > 0
+                  ? `${pendingAssignedSubjectIds.length} to assign, ${pendingUnassignedSubjectIds.length} to unassign`
+                  : "Select subjects to assign or unassign in bulk."}
               </p>
-              <Button
-                type="button"
-                onClick={handleAssignSubjects}
-                disabled={isSaving || !selectedGradeLevelId || pendingAssignedSubjectIds.length === 0}
-                className="bg-(--button-green) text-white hover:bg-green-700"
-              >
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Assign Subjects
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  onClick={handleUnassignSubjects}
+                  disabled={isSaving || pendingUnassignedSubjectIds.length === 0}
+                  className="bg-red-600 text-white hover:bg-red-700"
+                >
+                  Unassign Selected
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleAssignSubjects}
+                  disabled={isSaving || pendingAssignedSubjectIds.length === 0}
+                  className="bg-(--button-green) text-white hover:bg-green-700"
+                >
+                  Assign Selected
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -333,11 +472,16 @@ export const ManageSubjects = () => {
                       {isAssigned ? (
                         <Button
                           type="button"
-                          onClick={() => handleUnassignSubject(subject)}
+                          variant="outline"
+                          onClick={() => handleTogglePendingUnassignment(subject.subject_id)}
                           disabled={isSaving || !selectedGradeLevelId}
-                          className="bg-red-600 text-white hover:bg-red-700"
+                          className={
+                            pendingUnassignedSubjectIdSet.has(subject.subject_id)
+                              ? "border-red-300 bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800"
+                              : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                          }
                         >
-                          Unassign
+                          {pendingUnassignedSubjectIdSet.has(subject.subject_id) ? "Selected to Unassign" : "Select to Unassign"}
                         </Button>
                       ) : (
                         <Button
@@ -404,6 +548,115 @@ export const ManageSubjects = () => {
                   Confirm Archive
                 </>
               )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showAddSubjectConfirm}
+        onClose={() => setShowAddSubjectConfirm(false)}
+        title="Confirm New Subject"
+      >
+        <div className="flex flex-col gap-6">
+          <div className="flex items-start gap-4 rounded-xl bg-blue-50 p-4 text-blue-800">
+            <div className="space-y-1">
+              <p className="font-semibold">Add Subject</p>
+              <p className="text-sm leading-relaxed">
+                Are you sure you want to add <span className="font-bold underline">{newSubjectName.trim()}</span> to the subject library?
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowAddSubjectConfirm(false)}
+              className="flex-1 h-12 border-gray-300 text-gray-700 hover:bg-gray-100"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmCreateSubject}
+              disabled={isSaving}
+              className="flex-1 h-12 bg-(--button-green) text-white hover:bg-green-700 shadow-lg shadow-green-200"
+            >
+              {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : "Confirm Add"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showAssignSubjectConfirm}
+        onClose={() => setShowAssignSubjectConfirm(false)}
+        title="Confirm Assignment"
+      >
+        <div className="flex flex-col gap-6">
+          <div className="space-y-3">
+            <p className="text-sm text-gray-700">
+              You are about to assign the following subjects to <span className="font-semibold">{selectedGradeLevel?.grade_level}</span>:
+            </p>
+            <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50 p-3">
+              <ul className="list-inside list-disc text-sm text-gray-700">
+                {pendingAssignedSubjectIds.map(id => {
+                  const subject = subjects.find(s => s.subject_id === id);
+                  return <li key={id} className="py-1">{subject?.name}</li>;
+                })}
+              </ul>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowAssignSubjectConfirm(false)}
+              className="flex-1 h-12 border-gray-300 text-gray-700 hover:bg-gray-100"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmAssignSubjects}
+              disabled={isSaving}
+              className="flex-1 h-12 bg-(--button-green) text-white hover:bg-green-700 shadow-lg shadow-green-200"
+            >
+              {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : "Confirm Assignment"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showUnassignSubjectConfirm}
+        onClose={() => setShowUnassignSubjectConfirm(false)}
+        title="Confirm Unassignment"
+      >
+        <div className="flex flex-col gap-6">
+          <div className="space-y-3">
+            <p className="text-sm text-gray-700">
+              You are about to unassign the following subjects from <span className="font-semibold">{selectedGradeLevel?.grade_level}</span>:
+            </p>
+            <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50 p-3">
+              <ul className="list-inside list-disc text-sm text-gray-700">
+                {pendingUnassignedSubjectIds.map(id => {
+                  const subject = subjects.find(s => s.subject_id === id);
+                  return <li key={id} className="py-1">{subject?.name}</li>;
+                })}
+              </ul>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowUnassignSubjectConfirm(false)}
+              className="flex-1 h-12 border-gray-300 text-gray-700 hover:bg-gray-100"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmUnassignSubjects}
+              disabled={isSaving}
+              className="flex-1 h-12 bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-200"
+            >
+              {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : "Confirm Unassignment"}
             </Button>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Pencil,
   ChevronLeft,
@@ -23,6 +23,8 @@ import type {
 } from "@/lib/api/types";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useApiFeedbackStore } from "@/lib/store/apiFeedbackStore";
+
+type FormErrors = Partial<Record<keyof StudentFormData, string>>;
 
 const ITEMS_PER_PAGE = 10;
 
@@ -89,17 +91,29 @@ export const ManageStudents = () => {
   const { clearFeedback } = useApiFeedbackStore();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [gradeLevelFilter, setGradeLevelFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [formData, setFormData] = useState<StudentFormData>(emptyForm);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [editingStudent, setEditingStudent] = useState<StudentRecord | null>(null);
+  const requestRef = useRef(0);
 
   const loadStudents = async (page = currentPage) => {
+    const requestId = ++requestRef.current;
     setIsLoading(true);
     clearFeedback();
 
@@ -114,16 +128,22 @@ export const ManageStudents = () => {
         limit: ITEMS_PER_PAGE,
         status,
         grade_level: gradeLevelId,
+        search: debouncedSearchQuery || undefined,
       });
+
+      if (requestId !== requestRef.current) return;
 
       setStudents(response.data);
       setPagination(response.pagination);
     } catch (err) {
+      if (requestId !== requestRef.current) return;
       showError(
         err instanceof Error ? err.message : "Failed to fetch students",
       );
     } finally {
-      setIsLoading(false);
+      if (requestId === requestRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -148,27 +168,17 @@ export const ManageStudents = () => {
 
   useEffect(() => {
     loadStudents(currentPage);
-  }, [currentPage, gradeLevelFilter, statusFilter]);
+  }, [currentPage, gradeLevelFilter, statusFilter, debouncedSearchQuery]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [gradeLevelFilter, statusFilter]);
+  }, [gradeLevelFilter, statusFilter, debouncedSearchQuery]);
 
-  const filteredStudents = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
 
-    if (!normalizedQuery) return students;
-
-    return students.filter((student) => {
-      const fullName = `${student.fname} ${student.lname}`.toLowerCase();
-      return (
-        fullName.includes(normalizedQuery) ||
-        student.lrn_number.includes(searchQuery)
-      );
-    });
-  }, [students, searchQuery]);
-
-  const resetForm = () => setFormData(emptyForm());
+  const resetForm = () => {
+    setFormData(emptyForm());
+    setFormErrors({});
+  };
 
   const openAddModal = () => {
     setEditingStudent(null);
@@ -176,36 +186,46 @@ export const ManageStudents = () => {
     setIsAddModalOpen(true);
   };
 
-  const validateForm = () => {
-    if (
-      !formData.firstName.trim() ||
-      !formData.lastName.trim() ||
-      !formData.sex ||
-      !formData.lrn.trim() ||
-      !formData.gradeLevelId ||
-      !formData.status ||
-      !formData.schoolYearStart ||
-      !formData.schoolYearEnd
-    ) {
-      return "Please complete all required fields.";
+  const validateForm = (): FormErrors | null => {
+    const errors: FormErrors = {};
+
+    if (!formData.firstName.trim()) errors.firstName = "First name is required";
+    if (!formData.lastName.trim()) errors.lastName = "Last name is required";
+    if (!formData.sex) errors.sex = "Sex is required";
+    
+    if (!formData.lrn.trim()) {
+      errors.lrn = "LRN is required";
+    } else if (!/^\d{12}$/.test(formData.lrn)) {
+      errors.lrn = "LRN must be exactly 12 digits";
+    }
+    
+    if (!formData.gradeLevelId) errors.gradeLevelId = "Grade level is required";
+    if (!formData.status) errors.status = "Status is required";
+    
+    if (!formData.schoolYearStart) {
+      errors.schoolYearStart = "Required";
+    }
+    if (!formData.schoolYearEnd) {
+      errors.schoolYearEnd = "Required";
     }
 
-    if (!/^\d{12}$/.test(formData.lrn)) {
-      return "LRN must be exactly 12 digits.";
+    if (formData.schoolYearStart && formData.schoolYearEnd) {
+      const yearStart = Number(formData.schoolYearStart);
+      const yearEnd = Number(formData.schoolYearEnd);
+
+      if (Number.isNaN(yearStart)) {
+        errors.schoolYearStart = "Invalid year";
+      }
+      if (Number.isNaN(yearEnd)) {
+        errors.schoolYearEnd = "Invalid year";
+      }
+      
+      if (!Number.isNaN(yearStart) && !Number.isNaN(yearEnd) && yearEnd < yearStart) {
+        errors.schoolYearEnd = "End year must be >= start year";
+      }
     }
 
-    const schoolYearStart = Number(formData.schoolYearStart);
-    const schoolYearEnd = Number(formData.schoolYearEnd);
-
-    if (Number.isNaN(schoolYearStart) || Number.isNaN(schoolYearEnd)) {
-      return "School year must be a valid number.";
-    }
-
-    if (schoolYearEnd < schoolYearStart) {
-      return "School year end must be greater than or equal to the start year.";
-    }
-
-    return null;
+    return Object.keys(errors).length > 0 ? errors : null;
   };
 
   const toPayload = (): StudentPayload => ({
@@ -220,11 +240,12 @@ export const ManageStudents = () => {
   });
 
   const handleAddStudent = async () => {
-    const validationError = validateForm();
-    if (validationError) {
-      showError(validationError);
+    const errors = validateForm();
+    if (errors) {
+      setFormErrors(errors);
       return;
     }
+    setFormErrors({});
 
     setIsSubmitting(true);
     try {
@@ -255,11 +276,12 @@ export const ManageStudents = () => {
   const handleUpdateStudent = async () => {
     if (!editingStudent) return;
 
-    const validationError = validateForm();
-    if (validationError) {
-      showError(validationError);
+    const errors = validateForm();
+    if (errors) {
+      setFormErrors(errors);
       return;
     }
+    setFormErrors({});
 
     setIsSubmitting(true);
     try {
@@ -315,12 +337,12 @@ export const ManageStudents = () => {
 
   const totalPages = pagination.totalPages;
   const showingStart =
-    filteredStudents.length === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
+    students.length === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
   const showingEnd =
-    filteredStudents.length === 0
+    students.length === 0
       ? 0
       : Math.min(
-          (pagination.page - 1) * pagination.limit + filteredStudents.length,
+          (pagination.page - 1) * pagination.limit + students.length,
           pagination.total,
         );
 
@@ -423,7 +445,7 @@ export const ManageStudents = () => {
               <p>Loading students...</p>
             </div>
 
-          ) : filteredStudents.length === 0 ? (
+          ) : students.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-10 text-center text-gray-500">
               No students found.
             </div>
@@ -453,7 +475,7 @@ export const ManageStudents = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredStudents.map((student) => (
+                  {students.map((student) => (
                     <tr
                       key={student.student_id}
                       className="border-b border-gray-200 hover:bg-gray-50"
@@ -559,6 +581,7 @@ export const ManageStudents = () => {
         gradeLevels={gradeLevels}
         isSubmitting={isSubmitting}
         disableSubmit={!addFormIsValid}
+        errors={formErrors}
       />
 
       <StudentFormModal
@@ -576,6 +599,7 @@ export const ManageStudents = () => {
         gradeLevels={gradeLevels}
         isSubmitting={isSubmitting}
         disableSubmit={!editFormHasChanges}
+        errors={formErrors}
       />
 
       <StudentBatchUploadModal

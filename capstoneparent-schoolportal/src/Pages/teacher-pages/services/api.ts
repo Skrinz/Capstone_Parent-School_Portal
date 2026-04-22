@@ -66,7 +66,8 @@ export const fetchClasses = async (): Promise<ClassItem[]> => {
     return response.data.map(item => ({
       ...item,
       grade: item.grade_level?.grade_level,
-      section_name: item.section?.section_name
+      section_name: item.section?.section_name,
+      student_count: item._count?.students || 0
     }));
   } catch (error) {
     console.error('Error fetching classes:', error);

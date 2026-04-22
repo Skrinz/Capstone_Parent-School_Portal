@@ -2,9 +2,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/store/authStore";
 import { Lock, Eye, FileText } from "lucide-react";
+import { authApi } from "@/lib/api";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 export const PrivacyPolicyModal = () => {
-  const { hasAcceptedPrivacy, acceptPrivacy } = useAuthStore();
+  const { hasAcceptedPrivacy, acceptPrivacy, logout } = useAuthStore();
+  const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleDisagree = async () => {
+    setIsLoggingOut(true);
+    try {
+      await authApi.logout();
+    } catch {
+      // Server-side logout failed, proceed with local cleanup
+    } finally {
+      logout();
+      setIsLoggingOut(false);
+      navigate("/login");
+    }
+  };
 
   return (
     <Dialog open={!hasAcceptedPrivacy} onOpenChange={() => {}}>
@@ -81,10 +99,17 @@ export const PrivacyPolicyModal = () => {
           </div>
         </div>
 
-        <DialogFooter className="p-8 pt-6 border-t border-gray-900/10 bg-white/30">
+        <DialogFooter className="p-8 pt-6 border-t border-gray-900/10 bg-white/30 flex flex-col md:flex-row gap-4">
+          <Button 
+            onClick={handleDisagree}
+            disabled={isLoggingOut}
+            className="flex-1 h-16 rounded-full bg-(--button-red) hover:bg-(--button-hover-red) text-white text-2xl font-bold transition-all duration-300 border-2 border-gray-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none disabled:opacity-50"
+          >
+            {isLoggingOut ? "Logging out..." : "Disagree"}
+          </Button>
           <Button 
             onClick={acceptPrivacy}
-            className="w-full h-16 rounded-full bg-(--button-green) hover:bg-(--button-hover-green) text-white text-2xl font-bold transition-all duration-300 border-2 border-gray-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none"
+            className="flex-[2] h-16 rounded-full bg-(--button-green) hover:bg-(--button-hover-green) text-white text-2xl font-bold transition-all duration-300 border-2 border-gray-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none"
           >
             Agree and Continue
           </Button>

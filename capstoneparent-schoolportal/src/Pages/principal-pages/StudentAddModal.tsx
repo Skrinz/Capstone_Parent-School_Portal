@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, CheckCircle2, PlusCircle, Search, UserPlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { FormInputError } from '@/components/ui/FormInputError';
+import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -352,7 +354,11 @@ export const StudentAddModal = ({
                       value={singleQuery}
                       onChange={(event) => setSingleQuery(event.target.value)}
                       placeholder="Search by 12-digit LRN or full student name"
-                      className="h-12 bg-white pl-10"
+                      className={`h-12 bg-white pl-10 transition-all ${
+                        lookupMessage.includes('Failed') || lookupMessage.includes('No student') 
+                          ? 'border-red-500 ring-2 ring-red-500/20' 
+                          : ''
+                      }`}
                       disabled={isSearching || isSubmitting}
                     />
                   </div>
@@ -367,9 +373,15 @@ export const StudentAddModal = ({
                 </div>
 
                 {lookupMessage ? (
-                  <div className="rounded-lg border border-gray-300 bg-white p-4 text-sm text-gray-600">
-                    {lookupMessage}
-                  </div>
+                  <FormInputError 
+                    message={lookupMessage} 
+                    className={cn(
+                      "rounded-lg border p-4 text-sm bg-white",
+                      (lookupMessage.includes('Failed') || lookupMessage.includes('No student'))
+                        ? "border-red-200 text-red-600"
+                        : "border-gray-300 text-gray-600"
+                    )}
+                  />
                 ) : null}
 
                 {lookupResults.length > 0 && (

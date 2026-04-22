@@ -22,7 +22,8 @@ model User {
   date_of_birth          DateTime?                @db.Date
   photo_path             String?
   announcements          Announcement[]
-  class_advisers         ClassList[]
+  class_advisers         ClassList[]      @relation("adviser")
+  created_classes        ClassList[]      @relation("ClassCreator")
   events                 Event[]
   files                  File[]
   uploaded_materials     LearningMaterial[]
@@ -265,18 +266,21 @@ model ClassList {
   gl_id           Int
   section_id      Int
   class_adviser   Int
+  created_by      Int?
   syear_start     Int
   syear_end       Int
   class_sched     String?
   students        ClassListStudent[]
   subject_records ClassListSubjectRecord[]
-  adviser         User                     @relation(fields: [class_adviser], references: [user_id])
+  adviser         User                     @relation("adviser", fields: [class_adviser], references: [user_id])
+  creator         User?                    @relation("ClassCreator", fields: [created_by], references: [user_id])
   grade_level     GradeLevel               @relation(fields: [gl_id], references: [gl_id])
   section         Section                  @relation(fields: [section_id], references: [section_id])
 
   @@index([class_adviser, syear_start])
   @@index([gl_id, section_id, syear_start])
   @@index([section_id])
+  @@index([created_by])
   @@map("class_lists")
 }
 

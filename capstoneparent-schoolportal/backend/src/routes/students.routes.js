@@ -56,6 +56,7 @@ router.get(
     query("clist_id").optional().isInt(),
     query("page").optional().isInt({ min: 1 }),
     query("limit").optional().isInt({ min: 1, max: 1000 }),
+    query("search").optional().isString(),
   ],
   validate,
   studentsController.getAllStudents,

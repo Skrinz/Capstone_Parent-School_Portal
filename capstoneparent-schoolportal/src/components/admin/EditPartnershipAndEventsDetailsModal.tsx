@@ -25,6 +25,7 @@ interface EditPartnershipAndEventsDetailsModalProps {
   event: PartnershipEventItem;
   onSave: (data: PartnershipEventFormData) => void | Promise<void>;
   isLoading?: boolean;
+  errors?: Record<string, string>;
 }
 
 export const EditPartnershipAndEventsDetailsModal = ({
@@ -33,6 +34,7 @@ export const EditPartnershipAndEventsDetailsModal = ({
   event,
   onSave,
   isLoading = false,
+  errors = {},
 }: EditPartnershipAndEventsDetailsModalProps) => {
   const initialData: PartnershipEventFormData = {
     ...event,
@@ -47,6 +49,7 @@ export const EditPartnershipAndEventsDetailsModal = ({
       initialData={initialData}
       onSave={onSave}
       isLoading={isLoading}
+      errors={errors}
     />
   );
 };

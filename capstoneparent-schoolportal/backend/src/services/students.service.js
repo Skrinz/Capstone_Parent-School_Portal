@@ -118,7 +118,7 @@ const studentsService = {
           take: 1,
         },
       },
-      orderBy: [{ lname: "asc" }, { fname: "asc" }, { lrn_number: "asc" }],
+      orderBy: [{ fname: "asc" }, { lname: "asc" }, { lrn_number: "asc" }],
       take: 20,
     });
 
@@ -132,6 +132,7 @@ const studentsService = {
     grade_level,
     syear_start,
     clist_id,
+    search,
   } = {}) {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const take = parseInt(limit);
@@ -147,6 +148,31 @@ const studentsService = {
           clist_id: parseInt(clist_id),
         },
       };
+    }
+
+    if (search) {
+      const normalizedQuery = String(search).trim();
+      const isNumericLookup = /^\d+$/.test(normalizedQuery);
+      
+      if (isNumericLookup) {
+        where.lrn_number = {
+          startsWith: normalizedQuery,
+        };
+      } else {
+        const nameTokens = normalizedQuery
+          .toLowerCase()
+          .split(/\s+/)
+          .filter(Boolean);
+          
+        if (nameTokens.length > 0) {
+          where.AND = nameTokens.map((token) => ({
+            OR: [
+              { fname: { contains: token, mode: "insensitive" } },
+              { lname: { contains: token, mode: "insensitive" } },
+            ],
+          }));
+        }
+      }
     }
 
     const [students, total] = await Promise.all([
@@ -203,20 +229,26 @@ const studentsService = {
             }
           },
         },
-        orderBy: [{ lname: "asc" }, { fname: "asc" }],
+        orderBy: [{ fname: "asc" }, { lname: "asc" }],
       }),
       prisma.student.count({ where }),
     ]);
 
     const studentsWithClass = students.map((student) => {
-      const firstClassList = student.class_lists?.[0];
-      const clist_id = firstClassList?.clist_id ?? null;
+      // If clist_id was provided in query, prioritize that specific membership
+      // otherwise fallback to the first one found.
+      const targetClistId = clist_id ? parseInt(clist_id) : null;
+      const matchedClassList = targetClistId
+        ? student.class_lists.find(cl => cl.clist_id === targetClistId)
+        : student.class_lists?.[0];
+
+      const effective_clist_id = matchedClassList?.clist_id ?? null;
       const section_name =
-        firstClassList?.class_list?.section?.section_name ?? null;
+        matchedClassList?.class_list?.section?.section_name ?? null;
 
       return {
         ...student,
-        clist_id,
+        clist_id: effective_clist_id,
         section_name,
       };
     });
@@ -432,7 +464,7 @@ const studentsService = {
     return prisma.student.findMany({
       where: { student_id: { in: savedStudentIds } },
       include: { grade_level: true },
-      orderBy: [{ lname: "asc" }, { fname: "asc" }],
+      orderBy: [{ fname: "asc" }, { lname: "asc" }],
     });
   },
 

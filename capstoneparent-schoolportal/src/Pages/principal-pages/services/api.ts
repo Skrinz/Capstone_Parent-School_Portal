@@ -10,7 +10,7 @@ import type {
 } from '@/Pages/principal-pages/types';
 import { apiFetch, bearerHeaders } from '@/lib/api/base';
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = '';
 
 // ==================== API FUNCTIONS ====================
 
@@ -29,7 +29,8 @@ export const fetchClasses = async (page = 1, limit = 10): Promise<PaginatedRespo
       start_year: item.syear_start,
       end_year: item.syear_end,
       teacher_id: item.adviser?.user_id,
-      teacher_name: item.adviser ? `${item.adviser.fname} ${item.adviser.lname}` : undefined
+      teacher_name: item.adviser ? `${item.adviser.fname} ${item.adviser.lname}` : undefined,
+      student_count: item._count?.students || 0
     }));
 
     return {

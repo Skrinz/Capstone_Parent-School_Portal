@@ -2,6 +2,7 @@ import { X, Search, Loader2, Trash2 } from "lucide-react";
 import type { PendingUploads } from "./parentModalTypes";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { studentsApi } from "@/lib/api/studentsApi";
+import { FormInputError } from "../ui/FormInputError";
 import type { StudentSearchResult } from "@/lib/api";
 
 function useDebouncedCallback<T extends unknown[]>(
@@ -305,7 +306,9 @@ export const ApplyRegistrationModal = ({
             <div className="flex flex-col items-center mt-12 mb-4">
               {[pendingUploads.parentBirthCertificate, pendingUploads.governmentId, pendingUploads.childBirthCertificate].filter(Boolean).length > 0 && 
                [pendingUploads.parentBirthCertificate, pendingUploads.governmentId, pendingUploads.childBirthCertificate].filter(Boolean).length < 2 && (
-                <p className="text-red-600 font-bold mb-4">Error: Please upload at least 2 files.</p>
+                <div className="mb-4">
+                  <FormInputError message="Error: Please upload at least 2 files." />
+                </div>
               )}
               <button
                 type="button"

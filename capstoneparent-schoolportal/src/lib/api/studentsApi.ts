@@ -19,6 +19,7 @@ export interface StudentListParams {
   status?: StudentStatus;
   grade_level?: number;
   syear_start?: number;
+  search?: string;
 }
 
 export interface StudentPayload {
@@ -52,6 +53,9 @@ export const studentsApi = {
     }
     if (params.syear_start) {
       searchParams.set("syear_start", String(params.syear_start));
+    }
+    if (params.search) {
+      searchParams.set("search", params.search);
     }
 
     const query = searchParams.toString();
