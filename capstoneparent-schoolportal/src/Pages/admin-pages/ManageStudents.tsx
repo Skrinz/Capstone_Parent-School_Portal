@@ -243,7 +243,6 @@ export const ManageStudents = () => {
     const errors = validateForm();
     if (errors) {
       setFormErrors(errors);
-      showError("Please correct the errors in the form.");
       return;
     }
     setFormErrors({});
@@ -280,7 +279,6 @@ export const ManageStudents = () => {
     const errors = validateForm();
     if (errors) {
       setFormErrors(errors);
-      showError("Please correct the errors in the form.");
       return;
     }
     setFormErrors({});

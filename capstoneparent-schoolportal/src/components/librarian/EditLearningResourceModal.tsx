@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal } from '../ui/modal';
 import { Button } from '../ui/button';
+import { FormInputError } from '../ui/FormInputError';
 import type { LibraryCategory } from '@/lib/api/types';
 import { GRADE_LEVELS } from '@/lib/libraryHelpers';
 
@@ -25,6 +26,7 @@ const EditLearningResourceModal: React.FC<EditLearningResourceModalProps> = ({
 	const [categoryId, setCategoryId] = React.useState<number | ''>(initialResource?.category_id ?? '');
 	const [glId, setGlId] = React.useState<number | ''>(initialResource?.gl_id ?? '');
 	const [isSubmitting, setIsSubmitting] = React.useState(false);
+	const [errors, setErrors] = React.useState<Record<string, string>>({});
 
 	const hasChanges =
 		resourceTitle.trim() !== (initialResource?.title ?? '').trim() ||
@@ -32,9 +34,18 @@ const EditLearningResourceModal: React.FC<EditLearningResourceModalProps> = ({
 		glId !== (initialResource?.gl_id ?? '');
 
 	const handleSave = async () => {
-		if (!resourceTitle.trim() || categoryId === '' || glId === '' || isSubmitting) {
+		const newErrors: Record<string, string> = {};
+		if (!resourceTitle.trim()) newErrors.title = "Resource title is required.";
+		if (categoryId === '') newErrors.category = "Category is required.";
+		if (glId === '') newErrors.gradeLevel = "Grade level is required.";
+
+		if (Object.keys(newErrors).length > 0) {
+			setErrors(newErrors);
 			return;
 		}
+
+		setErrors({});
+		if (isSubmitting) return;
 
 		setIsSubmitting(true);
 		try {
@@ -52,38 +63,53 @@ const EditLearningResourceModal: React.FC<EditLearningResourceModalProps> = ({
 	return (
 		<Modal isOpen={true} onClose={onClose} title="Edit Learning Resource">
 			<div className="space-y-4">
-				<input
-					type="text"
-					value={resourceTitle}
-					onChange={(event) => setResourceTitle(event.target.value)}
-					placeholder="Name of Learning Resource"
-					className="w-full px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green) placeholder-gray-400"
-				/>
+				<div>
+					<input
+						type="text"
+						value={resourceTitle}
+						onChange={(event) => setResourceTitle(event.target.value)}
+						placeholder="Name of Learning Resource"
+						className={`w-full px-4 py-3 text-lg border-2 rounded-md focus:outline-none focus:ring-2 transition-all placeholder-gray-400 ${
+							errors.title ? "border-red-500 focus:ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]" : "border-black focus:ring-(--button-green)"
+						}`}
+					/>
+					<FormInputError message={errors.title} />
+				</div>
 				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-					<select
-						value={categoryId}
-						onChange={(event) => setCategoryId(Number(event.target.value))}
-						className="w-full bg-white px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
-					>
-						<option value="" disabled>CATEGORY</option>
-						{categories.map((cat) => (
-							<option key={cat.category_id} value={cat.category_id}>
-								{cat.category_name}
-							</option>
-						))}
-					</select>
-					<select
-						value={glId}
-						onChange={(event) => setGlId(Number(event.target.value))}
-						className="w-full bg-white px-4 py-3 text-lg border-2 border-black rounded-md focus:outline-none focus:ring-2 focus:ring-(--button-green)"
-					>
-						<option value="" disabled>GRADE LEVEL</option>
-						{GRADE_LEVELS.map((g) => (
-							<option key={g.id} value={g.id}>
-								{g.label}
-							</option>
-						))}
-					</select>
+					<div>
+						<select
+							value={categoryId}
+							onChange={(event) => setCategoryId(Number(event.target.value))}
+							className={`w-full bg-white px-4 py-3 text-lg border-2 rounded-md focus:outline-none focus:ring-2 transition-all ${
+								errors.category ? "border-red-500 focus:ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]" : "border-black focus:ring-(--button-green)"
+							}`}
+						>
+							<option value="" disabled>CATEGORY</option>
+							{categories.map((cat) => (
+								<option key={cat.category_id} value={cat.category_id}>
+									{cat.category_name}
+								</option>
+							))}
+						</select>
+						<FormInputError message={errors.category} />
+					</div>
+					<div>
+						<select
+							value={glId}
+							onChange={(event) => setGlId(Number(event.target.value))}
+							className={`w-full bg-white px-4 py-3 text-lg border-2 rounded-md focus:outline-none focus:ring-2 transition-all ${
+								errors.gradeLevel ? "border-red-500 focus:ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]" : "border-black focus:ring-(--button-green)"
+							}`}
+						>
+							<option value="" disabled>GRADE LEVEL</option>
+							{GRADE_LEVELS.map((g) => (
+								<option key={g.id} value={g.id}>
+									{g.label}
+								</option>
+							))}
+						</select>
+						<FormInputError message={errors.gradeLevel} />
+					</div>
 				</div>
 				<div className="flex justify-end gap-3">
 					<Button

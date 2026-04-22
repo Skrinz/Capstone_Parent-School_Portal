@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "../ui/button";
 import { Modal } from "../ui/modal";
+import { FormInputError } from "../ui/FormInputError";
 import type { GradeLevel, StudentStatus } from "@/lib/api/types";
 
 export interface StudentFormData {
@@ -44,22 +45,15 @@ export const StudentFormModal = ({
   errors = {},
 }: StudentFormModalProps) => {
   const getFieldClassName = (fieldName: keyof StudentFormData) => {
-    const borderClass = errors[fieldName]
-      ? "border-red-500 focus:ring-red-500"
+    const errorState = errors[fieldName]
+      ? "border-red-500 focus:ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
       : "border-black focus:ring-(--button-green)";
-    return `w-full rounded-md border-2 px-4 py-3 text-lg placeholder-gray-400 focus:outline-none focus:ring-2 ${borderClass}`;
+    return `w-full rounded-md border-2 px-4 py-3 text-lg placeholder-gray-400 focus:outline-none focus:ring-2 transition-all ${errorState}`;
   };
 
-  const renderError = (fieldName: keyof StudentFormData) => {
-    if (errors[fieldName]) {
-      return (
-        <p className="mt-1 text-sm font-medium text-red-600">
-          {errors[fieldName]}
-        </p>
-      );
-    }
-    return null;
-  };
+  const renderError = (fieldName: keyof StudentFormData) => (
+    <FormInputError message={errors[fieldName]} />
+  );
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>

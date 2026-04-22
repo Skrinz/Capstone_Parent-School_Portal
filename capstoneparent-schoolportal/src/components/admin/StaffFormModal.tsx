@@ -2,6 +2,7 @@ import React from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Modal } from "../ui/modal";
+import { FormInputError } from "../ui/FormInputError";
 
 type StaffStatus = "ACTIVE" | "INACTIVE";
 
@@ -75,22 +76,17 @@ export const StaffFormModal = ({
   const labelClassName = "text-[18px] font-bold leading-tight text-black";
 
   const getFieldClassName = (fieldName: keyof StaffFormData, baseClassName: string) => {
-    if (!errors[fieldName] || isProfileReadOnly) return baseClassName;
+    if (isProfileReadOnly) return baseClassName;
+    if (!errors[fieldName]) return baseClassName;
+    
     return baseClassName
       .replace("border-transparent", "border-red-500")
-      .replace("focus:ring-(--button-green)", "focus:ring-red-500");
+      .replace("focus:ring-(--button-green)", "focus:ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]");
   };
 
-  const renderError = (fieldName: keyof StaffFormData) => {
-    if (errors[fieldName]) {
-      return (
-        <p className="mt-1 text-sm font-medium text-red-600 leading-tight">
-          {errors[fieldName]}
-        </p>
-      );
-    }
-    return null;
-  };
+  const renderError = (fieldName: keyof StaffFormData) => (
+    <FormInputError message={errors[fieldName]} />
+  );
 
   return (
     <Modal

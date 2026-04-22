@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { FormInputError } from "@/components/ui/FormInputError";
 import { resolveMediaUrl } from "@/lib/api/base";
 import type { SchoolCalendarItem } from "@/lib/schoolCalendarContent";
 import { Plus } from "lucide-react";
@@ -184,17 +185,15 @@ export const EditSchoolCalendarModal = ({
             type="number"
             value={yearInput}
             onChange={(event) => setYearInput(event.target.value)}
-            className={`w-full rounded-md border-2 bg-white px-4 py-3 text-lg focus:outline-none focus:ring-2 ${
+            className={`w-full rounded-md border-2 bg-white px-4 py-3 text-lg focus:outline-none focus:ring-2 transition-all ${
               errors.yearInput
-                ? "border-red-500 focus:ring-red-500"
+                ? "border-red-500 focus:ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
                 : "border-black focus:ring-(--button-green)"
             }`}
             min={1900}
             max={2100}
           />
-          {errors.yearInput && (
-            <p className="mt-1 text-sm font-medium text-red-600">{errors.yearInput}</p>
-          )}
+          <FormInputError message={errors.yearInput} />
         </div>
 
         <div

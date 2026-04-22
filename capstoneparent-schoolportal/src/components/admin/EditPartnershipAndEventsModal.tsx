@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { FormInputError } from "@/components/ui/FormInputError";
 import { FileText, Plus, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useApiFeedbackStore } from "@/lib/store/apiFeedbackStore";
@@ -218,29 +219,25 @@ export const EditPartnershipAndEventsModal = ({
               value={formData.title}
               onChange={(e) => handleChange("title", e.target.value)}
               autoComplete="off"
-              className={`w-full border bg-[#f3f3f3] px-5 py-4 text-xl text-gray-900 focus:outline-none ${
-                errors.title ? "border-red-500 focus:ring-1 focus:ring-red-500" : "border-gray-500"
+              className={`w-full border bg-[#f3f3f3] px-5 py-4 text-xl text-gray-900 focus:outline-none transition-all ${
+                errors.title ? "border-red-500 focus:ring-1 focus:ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]" : "border-gray-500 focus:ring-1 focus:ring-(--button-green)"
               }`}
               placeholder="Add your title here"
             />
-            {errors.title && (
-              <p className="mt-1 text-sm font-medium text-red-600">{errors.title}</p>
-            )}
+            <FormInputError message={errors.title} />
           </div>
 
           <div>
             <textarea
               value={formData.description}
               onChange={(e) => handleChange("description", e.target.value)}
-              className={`min-h-55 max-h-[34vh] w-full resize-y border bg-[#f3f3f3] px-5 py-4 text-lg leading-relaxed text-gray-900 focus:outline-none ${
-                errors.description ? "border-red-500 focus:ring-1 focus:ring-red-500" : "border-gray-500"
+              className={`min-h-55 max-h-[34vh] w-full resize-y border bg-[#f3f3f3] px-5 py-4 text-lg leading-relaxed text-gray-900 focus:outline-none transition-all ${
+                errors.description ? "border-red-500 focus:ring-1 focus:ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]" : "border-gray-500 focus:ring-1 focus:ring-(--button-green)"
               }`}
               placeholder="Write your partnership/event post details"
               rows={8}
             />
-            {errors.description && (
-              <p className="mt-1 text-sm font-medium text-red-600">{errors.description}</p>
-            )}
+            <FormInputError message={errors.description} />
           </div>
 
           <div className="relative min-h-45">

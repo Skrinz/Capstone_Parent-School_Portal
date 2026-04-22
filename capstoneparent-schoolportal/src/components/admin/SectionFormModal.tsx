@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "../ui/button";
 import { Modal } from "../ui/modal";
+import { FormInputError } from "../ui/FormInputError";
 
 interface SectionFormData {
   name: string;
@@ -32,22 +33,15 @@ export const SectionFormModal = ({
   errors = {},
 }: SectionFormModalProps) => {
   const getFieldClassName = (fieldName: keyof SectionFormData) => {
-    const borderClass = errors[fieldName]
-      ? "border-red-500 focus:ring-red-500"
+    const errorState = errors[fieldName]
+      ? "border-red-500 focus:ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
       : "border-black focus:ring-(--button-green)";
-    return `w-full px-4 py-3 text-lg border-2 rounded-md focus:outline-none focus:ring-2 placeholder-gray-400 ${borderClass}`;
+    return `w-full px-4 py-3 text-lg border-2 rounded-md focus:outline-none focus:ring-2 placeholder-gray-400 transition-all ${errorState}`;
   };
 
-  const renderError = (fieldName: keyof SectionFormData) => {
-    if (errors[fieldName]) {
-      return (
-        <p className="mt-1 text-sm font-medium text-red-600">
-          {errors[fieldName]}
-        </p>
-      );
-    }
-    return null;
-  };
+  const renderError = (fieldName: keyof SectionFormData) => (
+    <FormInputError message={errors[fieldName]} />
+  );
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>

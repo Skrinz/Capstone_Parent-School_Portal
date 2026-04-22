@@ -22,6 +22,7 @@ export const ManageSection = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -94,9 +95,10 @@ export const ManageSection = () => {
 
   const handleAddSection = async () => {
     if (!formData.name.trim()) {
-      showError("Section name is required");
+      setFormErrors({ name: "Section name is required" });
       return;
     }
+    setFormErrors({});
 
     setIsSubmitting(true);
     try {
@@ -123,9 +125,10 @@ export const ManageSection = () => {
     if (!editingSection) return;
 
     if (!formData.name.trim()) {
-      showError("Section name is required");
+      setFormErrors({ name: "Section name is required" });
       return;
     }
+    setFormErrors({});
 
     setIsSubmitting(true);
     try {
@@ -292,6 +295,7 @@ export const ManageSection = () => {
         onClose={() => {
           setIsAddModalOpen(false);
           setFormData({ name: "" });
+          setFormErrors({});
         }}
         onSubmit={handleAddSection}
         title="Add Section"
@@ -300,6 +304,7 @@ export const ManageSection = () => {
         setFormData={setFormData}
         disableSubmit={!formData.name.trim()}
         isLoading={isSubmitting}
+        errors={formErrors}
       />
 
       <SectionFormModal
@@ -308,6 +313,7 @@ export const ManageSection = () => {
           setIsEditModalOpen(false);
           setEditingSection(null);
           setFormData({ name: "" });
+          setFormErrors({});
         }}
         onSubmit={handleUpdateSection}
         title="Edit Section"
@@ -316,6 +322,7 @@ export const ManageSection = () => {
         setFormData={setFormData}
         disableSubmit={!editFormHasChanges}
         isLoading={isSubmitting}
+        errors={formErrors}
       />
 
       <SectionDeleteModal
