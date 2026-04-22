@@ -23,6 +23,7 @@ export interface ClassItem {
   end_year: number;
   teacher_id?: number;
   teacher_name?: string; // Populated from join
+  student_count?: number;
 }
 
 export interface SubjectItem {

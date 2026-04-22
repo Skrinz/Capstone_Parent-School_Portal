@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import type { ClassItem, SubjectItem, TeacherItem } from '@/Pages/principal-pages/types';
+import { ConfirmActionModal } from '@/Pages/principal-pages/ConfirmActionModal';
 
 interface SubjectsProps {
   selectedClass: ClassItem;
@@ -20,6 +21,14 @@ interface SubjectsProps {
   onBack: () => void;
   onAssignTeacher: (subject: SubjectItem, teacherId: number) => void;
   onAssignAdviser: (teacherId: number) => void;
+}
+
+// Shape for a pending confirmation
+interface PendingConfirmation {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  onConfirm: () => void;
 }
 
 export const Subjects = ({
@@ -45,6 +54,25 @@ export const Subjects = ({
   const [teacherSearchQuery, setTeacherSearchQuery] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherItem | null>(null);
 
+  // ── Confirmation modal state ──────────────────────────────────────────────
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+
+  const requestConfirmation = (confirmation: PendingConfirmation) => {
+    setPendingConfirmation(confirmation);
+  };
+
+  const handleConfirmed = () => {
+    if (!pendingConfirmation) return;
+    const { onConfirm } = pendingConfirmation;
+    setPendingConfirmation(null);
+    onConfirm();
+  };
+
+  const handleCancelConfirmation = () => {
+    setPendingConfirmation(null);
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
   const filteredSubjects = subjects.filter((subject) =>
     subject.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -57,23 +85,41 @@ export const Subjects = ({
     teacher.name.toLowerCase().includes(teacherSearchQuery.toLowerCase())
   );
 
+  // ── Assign Adviser ────────────────────────────────────────────────────────
+  // Step 1: validate selection, then open confirmation dialog
   const handleSubmitAssignAdviser = () => {
-    if (selectedAdviser) {
-      onAssignAdviser(selectedAdviser.id);
-      setSelectedAdviser(null);
-      setAdviserSearchQuery('');
-      setIsAssignAdviserModalOpen(false);
-    }
+    if (!selectedAdviser) return;
+
+    requestConfirmation({
+      title: 'Assign Class Adviser',
+      message: `Assign ${selectedAdviser.name} as class adviser for ${selectedClass.grade} - ${selectedClass.section}?`,
+      confirmLabel: 'Yes, Assign',
+      onConfirm: () => {
+        onAssignAdviser(selectedAdviser.id);
+        setSelectedAdviser(null);
+        setAdviserSearchQuery('');
+        setIsAssignAdviserModalOpen(false);
+      },
+    });
   };
 
+  // ── Assign Subject Teacher ────────────────────────────────────────────────
+  // Step 1: validate selection, then open confirmation dialog
   const handleSubmitAssignTeacher = () => {
-    if (selectedTeacher && selectedSubjectForTeacher) {
-      onAssignTeacher(selectedSubjectForTeacher, selectedTeacher.id);
-      setSelectedTeacher(null);
-      setTeacherSearchQuery('');
-      setSelectedSubjectForTeacher(null);
-      setIsAssignTeacherModalOpen(false);
-    }
+    if (!selectedTeacher || !selectedSubjectForTeacher) return;
+
+    requestConfirmation({
+      title: 'Assign Teacher',
+      message: `Assign ${selectedTeacher.name} to ${selectedSubjectForTeacher.name}?`,
+      confirmLabel: 'Yes, Assign',
+      onConfirm: () => {
+        onAssignTeacher(selectedSubjectForTeacher, selectedTeacher.id);
+        setSelectedTeacher(null);
+        setTeacherSearchQuery('');
+        setSelectedSubjectForTeacher(null);
+        setIsAssignTeacherModalOpen(false);
+      },
+    });
   };
 
   const handleOpenAssignTeacher = (subject: SubjectItem) => {
@@ -180,6 +226,7 @@ export const Subjects = ({
         </div>
       </div>
 
+      {/* ASSIGN ADVISER MODAL */}
       <Dialog open={isAssignAdviserModalOpen} onOpenChange={setIsAssignAdviserModalOpen}>
         <DialogContent className="bg-[#FFFACD] border-none max-w-md p-0 gap-0" showCloseButton={false}>
           <DialogHeader className="p-6 pb-4">
@@ -253,6 +300,7 @@ export const Subjects = ({
               </div>
             )}
 
+            {/* Assign button — now opens confirmation dialog */}
             <Button
               onClick={handleSubmitAssignAdviser}
               disabled={!selectedAdviser}
@@ -264,6 +312,7 @@ export const Subjects = ({
         </DialogContent>
       </Dialog>
 
+      {/* ASSIGN TEACHER MODAL */}
       <Dialog open={isAssignTeacherModalOpen} onOpenChange={setIsAssignTeacherModalOpen}>
         <DialogContent className="bg-[#FFFACD] border-none max-w-md p-0 gap-0" showCloseButton={false}>
           <DialogHeader className="p-6 pb-4">
@@ -345,6 +394,7 @@ export const Subjects = ({
               </div>
             )}
 
+            {/* Assign button — now opens confirmation dialog */}
             <Button
               onClick={handleSubmitAssignTeacher}
               disabled={!selectedTeacher}
@@ -355,6 +405,16 @@ export const Subjects = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* CONFIRMATION MODAL — single instance, driven by pendingConfirmation state */}
+      <ConfirmActionModal
+        isOpen={pendingConfirmation !== null}
+        title={pendingConfirmation?.title}
+        message={pendingConfirmation?.message}
+        confirmLabel={pendingConfirmation?.confirmLabel}
+        onConfirm={handleConfirmed}
+        onCancel={handleCancelConfirmation}
+      />
     </>
   );
 };

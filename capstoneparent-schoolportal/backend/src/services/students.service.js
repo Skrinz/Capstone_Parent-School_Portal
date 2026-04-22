@@ -209,14 +209,20 @@ const studentsService = {
     ]);
 
     const studentsWithClass = students.map((student) => {
-      const firstClassList = student.class_lists?.[0];
-      const clist_id = firstClassList?.clist_id ?? null;
+      // If clist_id was provided in query, prioritize that specific membership
+      // otherwise fallback to the first one found.
+      const targetClistId = clist_id ? parseInt(clist_id) : null;
+      const matchedClassList = targetClistId
+        ? student.class_lists.find(cl => cl.clist_id === targetClistId)
+        : student.class_lists?.[0];
+
+      const effective_clist_id = matchedClassList?.clist_id ?? null;
       const section_name =
-        firstClassList?.class_list?.section?.section_name ?? null;
+        matchedClassList?.class_list?.section?.section_name ?? null;
 
       return {
         ...student,
-        clist_id,
+        clist_id: effective_clist_id,
         section_name,
       };
     });

@@ -32,6 +32,15 @@ import { Subjects } from '@/Pages/principal-pages/Subjects';
 import { StudentList } from '@/Pages/principal-pages/StudentList';
 import { StudentAddModal } from '@/Pages/principal-pages/StudentAddModal';
 import { useApiFeedbackStore } from '@/lib/store/apiFeedbackStore';
+import { ConfirmActionModal } from '@/Pages/principal-pages/ConfirmActionModal';
+
+// Shape for a pending confirmation request
+interface PendingConfirmation {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  onConfirm: () => void;
+}
 
 export const ManageClassLists = () => {
   const showError = useApiFeedbackStore((state) => state.showError);
@@ -49,6 +58,29 @@ export const ManageClassLists = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
+
+  // ── Confirmation modal state ──────────────────────────────────────────────
+  // Null = closed. Populated = a confirmation is pending.
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+
+  // Helper: open the confirm dialog with the given action
+  const requestConfirmation = (confirmation: PendingConfirmation) => {
+    setPendingConfirmation(confirmation);
+  };
+
+  // Called when user clicks "Yes, Proceed"
+  const handleConfirmed = () => {
+    if (!pendingConfirmation) return;
+    const { onConfirm } = pendingConfirmation;
+    setPendingConfirmation(null);
+    onConfirm();
+  };
+
+  // Called when user clicks "No, Cancel" or closes the dialog
+  const handleCancelConfirmation = () => {
+    setPendingConfirmation(null);
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Form states for Add Class
   const [addFormData, setAddFormData] = useState({
@@ -74,25 +106,22 @@ export const ManageClassLists = () => {
   const {
     classes,
     subjects,
-    selectedClassStudents,     // ← replaces allStudents for the right panel
+    allStudents,
     sections,
     gradeLevels,
     teachers,
     isLoadingClasses,
     isLoadingSubjects,
-    isLoadingSelectedClassStudents, // ← used as the loading flag for StudentList
+    isLoadingStudents,
     isLoadingSections,
     isLoadingGradeLevels,
     isLoadingTeachers,
-    studentCountByClass,       // ← now stable; derived from allStudents which is never overwritten
     classPagination,
     loadClasses,
-    loadClassStudents,         // ← fires on card click; writes to selectedClassStudents only
+    loadStudents,
     filterClasses,
     reloadClasses,
     reloadSubjects,
-    reloadStudents,
-    reloadClassStudents,       // ← refreshes selectedClassStudents after add/remove
   } = useClassData();
 
   // Apply filters
@@ -202,9 +231,11 @@ export const ManageClassLists = () => {
     );
   }, [selectedClass, subjects]);
 
-  // selectedClassStudents is already filtered by the API — use it directly.
-  // No need to filter from allStudents (which is reserved for stable count computation).
-  const classStudents = selectedClassStudents;
+  // Get students for selected class
+  const classStudents = useMemo(() => {
+    if (!selectedClass) return [];
+    return allStudents.filter((student) => student.classId === selectedClass.id);
+  }, [selectedClass, allStudents]);
 
   // Handle opening Add Class modal
   const handleOpenAddModal = () => {
@@ -234,8 +265,9 @@ export const ManageClassLists = () => {
     setIsEditModalOpen(true);
   };
 
-  // Handle Add Class submission
-  const handleAddClass = async () => {
+  // ── Add Class ─────────────────────────────────────────────────────────────
+  // Step 1: validate inputs, then open confirmation dialog
+  const handleAddClass = () => {
     const selectedGradeLevel = gradeLevels.find((item) => item.name === addFormData.gradeLevel);
     const selectedSection = sections.find((item) => item.name === addFormData.section);
     const selectedTeacherId = addFormData.teacherId ? parseInt(addFormData.teacherId, 10) : undefined;
@@ -244,6 +276,22 @@ export const ManageClassLists = () => {
       showError('Please select a valid grade level, section, and class adviser.');
       return;
     }
+
+    requestConfirmation({
+      title: 'Add Class',
+      message: `Add ${addFormData.gradeLevel} - ${addFormData.section} (S.Y. ${addFormData.schoolYearStart}–${addFormData.schoolYearEnd})?`,
+      confirmLabel: 'Yes, Add',
+      onConfirm: () => executeAddClass(),
+    });
+  };
+
+  // Step 2: execute the actual API call after confirmation
+  const executeAddClass = async () => {
+    const selectedGradeLevel = gradeLevels.find((item) => item.name === addFormData.gradeLevel);
+    const selectedSection = sections.find((item) => item.name === addFormData.section);
+    const selectedTeacherId = addFormData.teacherId ? parseInt(addFormData.teacherId, 10) : undefined;
+
+    if (!selectedGradeLevel || !selectedSection || !selectedTeacherId) return;
 
     setIsSubmitting(true);
     try {
@@ -264,8 +312,27 @@ export const ManageClassLists = () => {
     }
   };
 
-  // Handle Edit Class submission
-  const handleSaveChanges = async () => {
+  // ── Edit Class ────────────────────────────────────────────────────────────
+  // Step 1: validate inputs, then open confirmation dialog
+  const handleSaveChanges = () => {
+    if (!editingClass) return;
+
+    const selectedGradeLevel = gradeLevels.find((item) => item.name === editFormData.gradeLevel);
+    const selectedSection = sections.find((item) => item.name === editFormData.section);
+    const selectedTeacherId = editFormData.teacherId ? parseInt(editFormData.teacherId, 10) : undefined;
+
+    if (!selectedGradeLevel || !selectedSection || !selectedTeacherId) return;
+
+    requestConfirmation({
+      title: 'Save Changes',
+      message: `Save changes to ${editFormData.gradeLevel} - ${editFormData.section} (S.Y. ${editFormData.schoolYearStart}–${editFormData.schoolYearEnd})?`,
+      confirmLabel: 'Yes, Save',
+      onConfirm: () => executeSaveChanges(),
+    });
+  };
+
+  // Step 2: execute the actual API call after confirmation
+  const executeSaveChanges = async () => {
     if (!editingClass) return;
 
     const selectedGradeLevel = gradeLevels.find((item) => item.name === editFormData.gradeLevel);
@@ -296,21 +363,27 @@ export const ManageClassLists = () => {
     handleAssignSubjectTeacher(subject, teacherId);
   };
 
-  const handleRemoveStudent = async (student: Student) => {
+  // ── Remove Student ────────────────────────────────────────────────────────
+  // Replaces the old window.confirm() call with the confirmation modal
+  const handleRemoveStudent = (student: Student) => {
     if (!selectedClass) return;
-    if (!confirm(`Remove ${student.name} from this class?`)) return;
 
-    try {
-      await removeStudentFromClass(selectedClass.id, student.id);
-      await Promise.all([
-        reloadClasses(),
-        // Refresh full list so counts stay accurate, and the right panel
-        reloadStudents(),
-        reloadClassStudents(selectedClass.id),
-      ]);
-    } catch (error) {
-      console.error('Failed to remove student:', error);
-    }
+    requestConfirmation({
+      title: 'Remove Student',
+      message: `Remove ${student.name} from this class? This action cannot be undone.`,
+      confirmLabel: 'Yes, Remove',
+      onConfirm: async () => {
+        try {
+          await removeStudentFromClass(selectedClass.id, student.id);
+          await Promise.all([
+            reloadClasses(),
+            loadStudents(1, selectedClass.id),
+          ]);
+        } catch (error) {
+          console.error('Failed to remove student:', error);
+        }
+      },
+    });
   };
 
   const handleOpenAddStudentModal = () => {
@@ -364,9 +437,7 @@ export const ManageClassLists = () => {
 
     await Promise.all([
       reloadClasses(),
-      // Refresh full list for stable counts, and the right panel separately
-      reloadStudents(),
-      reloadClassStudents(selectedClass.id),
+      loadStudents(1, selectedClass.id),
     ]);
   };
 
@@ -470,8 +541,7 @@ export const ManageClassLists = () => {
                   }`}
                   onClick={() => {
                     setSelectedClass(classItem);
-                    // Writes to selectedClassStudents — does NOT touch allStudents
-                    loadClassStudents(1, classItem.id);
+                    loadStudents(1, classItem.id);
                   }}
                 >
                   <div className="flex justify-between items-start gap-3">
@@ -489,9 +559,8 @@ export const ManageClassLists = () => {
                     </div>
                     
                     <div className="flex items-center gap-3">
-                      {/* STUDENT COUNT — stable because allStudents is never overwritten */}
                       <span className="font-medium whitespace-nowrap">
-                        {studentCountByClass[classItem.id] || 0} Students
+                        {classItem.student_count || 0} Students
                       </span>
                       
                       <button
@@ -590,7 +659,7 @@ export const ManageClassLists = () => {
                 <TabsContent value="students" className="flex-1 mt-0 overflow-hidden">
                   <StudentList
                     students={classStudents}
-                    isLoadingStudents={isLoadingSelectedClassStudents}
+                    isLoadingStudents={isLoadingStudents}
                     onBack={() => setSelectedClass(null)}
                     onRemoveStudent={handleRemoveStudent}
                     onAddStudent={handleOpenAddStudentModal}
@@ -771,7 +840,7 @@ export const ManageClassLists = () => {
               )}
             </div>
 
-            {/* Add Button */}
+            {/* Add Button — now opens confirmation dialog */}
             <Button
               onClick={handleAddClass}
               disabled={isSubmitting || !addFormData.gradeLevel || !addFormData.section || !addFormData.schoolYearStart || !addFormData.teacherId}
@@ -948,7 +1017,7 @@ export const ManageClassLists = () => {
               )}
             </div>
 
-            {/* Save Changes Button */}
+            {/* Save Changes Button — now opens confirmation dialog */}
             <Button
               onClick={handleSaveChanges}
               disabled={isSubmitting || !editFormData.gradeLevel || !editFormData.section || !editFormData.teacherId || !editFormHasChanges}
@@ -966,6 +1035,16 @@ export const ManageClassLists = () => {
         selectedClass={selectedClass}
         existingStudents={classStudents}
         onStudentsChanged={handleStudentsChanged}
+      />
+
+      {/* CONFIRMATION MODAL — single instance, driven by pendingConfirmation state */}
+      <ConfirmActionModal
+        isOpen={pendingConfirmation !== null}
+        title={pendingConfirmation?.title}
+        message={pendingConfirmation?.message}
+        confirmLabel={pendingConfirmation?.confirmLabel}
+        onConfirm={handleConfirmed}
+        onCancel={handleCancelConfirmation}
       />
     </div>
   );

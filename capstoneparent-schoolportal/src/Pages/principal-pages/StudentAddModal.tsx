@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { addStudentToClass, lookupStudents } from '@/Pages/principal-pages/services/api';
 import type { ClassItem, Student, StudentAddSummary, StudentLookupResult } from '@/Pages/principal-pages/types';
+import { ConfirmActionModal } from '@/Pages/principal-pages/ConfirmActionModal';
 
 interface StudentAddModalProps {
   isOpen: boolean;
@@ -13,6 +14,14 @@ interface StudentAddModalProps {
   selectedClass: ClassItem | null;
   existingStudents: Student[];
   onStudentsChanged: () => Promise<void>;
+}
+
+// Shape for a pending confirmation
+interface PendingConfirmation {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  onConfirm: () => void;
 }
 
 const normalizeText = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -70,6 +79,25 @@ export const StudentAddModal = ({
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // ── Confirmation modal state ──────────────────────────────────────────────
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+
+  const requestConfirmation = (confirmation: PendingConfirmation) => {
+    setPendingConfirmation(confirmation);
+  };
+
+  const handleConfirmed = () => {
+    if (!pendingConfirmation) return;
+    const { onConfirm } = pendingConfirmation;
+    setPendingConfirmation(null);
+    onConfirm();
+  };
+
+  const handleCancelConfirmation = () => {
+    setPendingConfirmation(null);
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
   const enrolledStudentIds = useMemo(
     () => new Set(existingStudents.map((student) => student.id)),
     [existingStudents]
@@ -88,6 +116,7 @@ export const StudentAddModal = ({
     setSummary(null);
     setIsSearching(false);
     setIsSubmitting(false);
+    setPendingConfirmation(null);
   };
 
   useEffect(() => {
@@ -135,27 +164,34 @@ export const StudentAddModal = ({
     }
   };
 
-  const handleAddSingleStudent = async () => {
+  // ── Add Single Student ────────────────────────────────────────────────────
+  // Step 1: validate, then open confirmation dialog
+  const handleAddSingleStudent = () => {
     if (!selectedClass || !selectedStudent) return;
 
+    // If already enrolled, skip confirmation and show summary directly
     if (enrolledStudentIds.has(selectedStudent.id)) {
-      setSummary({
-        ...emptySummary,
-        unchanged: 1,
-        totalProcessed: 1,
-      });
+      setSummary({ ...emptySummary, unchanged: 1, totalProcessed: 1 });
       return;
     }
+
+    requestConfirmation({
+      title: 'Add Student',
+      message: `Add ${selectedStudent.name} (LRN: ${selectedStudent.lrn}) to ${selectedClass.grade} - ${selectedClass.section}?`,
+      confirmLabel: 'Yes, Add',
+      onConfirm: () => executeAddSingleStudent(),
+    });
+  };
+
+  // Step 2: execute the actual API call after confirmation
+  const executeAddSingleStudent = async () => {
+    if (!selectedClass || !selectedStudent) return;
 
     setIsSubmitting(true);
     try {
       await addStudentToClass(selectedClass.id, { student_id: selectedStudent.id });
       await onStudentsChanged();
-      setSummary({
-        ...emptySummary,
-        added: 1,
-        totalProcessed: 1,
-      });
+      setSummary({ ...emptySummary, added: 1, totalProcessed: 1 });
     } catch (error) {
       console.error('Failed to add student:', error);
       setSummary({
@@ -174,7 +210,9 @@ export const StudentAddModal = ({
     }
   };
 
-  const handleBatchAdd = async () => {
+  // ── Batch Add ─────────────────────────────────────────────────────────────
+  // Step 1: validate entries, then open confirmation dialog
+  const handleBatchAdd = () => {
     if (!selectedClass) return;
 
     const entries = parseBatchEntries(batchInput);
@@ -187,6 +225,18 @@ export const StudentAddModal = ({
       });
       return;
     }
+
+    requestConfirmation({
+      title: 'Batch Add Students',
+      message: `Process ${entries.length} entr${entries.length === 1 ? 'y' : 'ies'} and add matching students to ${selectedClass.grade} - ${selectedClass.section}?`,
+      confirmLabel: 'Yes, Add',
+      onConfirm: () => executeBatchAdd(entries),
+    });
+  };
+
+  // Step 2: execute the actual batch API calls after confirmation
+  const executeBatchAdd = async (entries: string[]) => {
+    if (!selectedClass) return;
 
     setIsSubmitting(true);
 
@@ -409,9 +459,10 @@ export const StudentAddModal = ({
                   </div>
                 )}
 
+                {/* Add Student button — now opens confirmation dialog */}
                 <Button
                   type="button"
-                  onClick={() => void handleAddSingleStudent()}
+                  onClick={() => handleAddSingleStudent()}
                   disabled={!selectedStudent || isSearching || isSubmitting}
                   className="h-12 w-full bg-(--button-green) text-lg font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -437,9 +488,10 @@ export const StudentAddModal = ({
                   </p>
                 </div>
 
+                {/* Add Students (batch) button — now opens confirmation dialog */}
                 <Button
                   type="button"
-                  onClick={() => void handleBatchAdd()}
+                  onClick={() => handleBatchAdd()}
                   disabled={isSubmitting || parseBatchEntries(batchInput).length === 0}
                   className="h-12 w-full bg-(--button-green) text-lg font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -451,6 +503,16 @@ export const StudentAddModal = ({
           )}
         </div>
       </DialogContent>
+
+      {/* CONFIRMATION MODAL — single instance, driven by pendingConfirmation state */}
+      <ConfirmActionModal
+        isOpen={pendingConfirmation !== null}
+        title={pendingConfirmation?.title}
+        message={pendingConfirmation?.message}
+        confirmLabel={pendingConfirmation?.confirmLabel}
+        onConfirm={handleConfirmed}
+        onCancel={handleCancelConfirmation}
+      />
     </Dialog>
   );
 };

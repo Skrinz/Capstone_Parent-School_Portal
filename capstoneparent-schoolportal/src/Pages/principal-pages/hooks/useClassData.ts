@@ -20,10 +20,7 @@ export const useClassData = () => {
   // Loading states
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
   const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
-  // isLoadingStudents = full list load on mount
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
-  // isLoadingSelectedClassStudents = per-class fetch triggered by a card click
-  const [isLoadingSelectedClassStudents, setIsLoadingSelectedClassStudents] = useState(false);
   const [isLoadingSections, setIsLoadingSections] = useState(false);
   const [isLoadingGradeLevels, setIsLoadingGradeLevels] = useState(false);
   const [isLoadingTeachers, setIsLoadingTeachers] = useState(false);
@@ -31,12 +28,7 @@ export const useClassData = () => {
   // Data
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
-  // allStudents: full list loaded once on mount — NEVER overwritten by a class-specific fetch.
-  // Keeps studentCountByClass stable across all card clicks and tab switches.
   const [allStudents, setAllStudents] = useState<Student[]>([]);
-  // selectedClassStudents: students for the currently selected class card only.
-  // Safe to overwrite on every class card click.
-  const [selectedClassStudents, setSelectedClassStudents] = useState<Student[]>([]);
   const [sections, setSections] = useState<SectionItem[]>([]);
   const [gradeLevels, setGradeLevels] = useState<GradeLevelItem[]>([]);
   const [teachers, setTeachers] = useState<TeacherItem[]>([]);
@@ -44,7 +36,6 @@ export const useClassData = () => {
   // Pagination states
   const [classPagination, setClassPagination] = useState({ page: 1, limit: 10, total: 0 });
   const [studentPagination, setStudentPagination] = useState({ page: 1, limit: 100, total: 0 });
-  const [selectedClassStudentPagination, setSelectedClassStudentPagination] = useState({ page: 1, limit: 100, total: 0 });
   const [subjectPagination, setSubjectPagination] = useState({ page: 1, limit: 100, total: 0 });
 
   const loadClasses = useCallback(async (page = 1) => {
@@ -63,25 +54,13 @@ export const useClassData = () => {
     setIsLoadingSubjects(false);
   }, [subjectPagination.limit]);
 
-  // Loads the FULL student list into allStudents. Only called on mount (no classId).
-  // Must never be called with a classId — that path is handled by loadClassStudents.
-  const loadStudents = useCallback(async (page = 1) => {
+  const loadStudents = useCallback(async (page = 1, classId?: number) => {
     setIsLoadingStudents(true);
-    const result = await fetchStudents(page, studentPagination.limit);
+    const result = await fetchStudents(page, studentPagination.limit, classId);
     setAllStudents(result.data || []);
     setStudentPagination(prev => ({ ...prev, page: result.pagination.page, total: result.pagination.total }));
     setIsLoadingStudents(false);
   }, [studentPagination.limit]);
-
-  // Loads students for a specific class into selectedClassStudents.
-  // Does NOT touch allStudents, so studentCountByClass stays stable.
-  const loadClassStudents = useCallback(async (page = 1, classId?: number) => {
-    setIsLoadingSelectedClassStudents(true);
-    const result = await fetchStudents(page, selectedClassStudentPagination.limit, classId);
-    setSelectedClassStudents(result.data || []);
-    setSelectedClassStudentPagination(prev => ({ ...prev, page: result.pagination.page, total: result.pagination.total }));
-    setIsLoadingSelectedClassStudents(false);
-  }, [selectedClassStudentPagination.limit]);
 
   const loadSections = useCallback(async () => {
     setIsLoadingSections(true);
@@ -104,7 +83,7 @@ export const useClassData = () => {
     setIsLoadingTeachers(false);
   }, []);
 
-  // On mount: loadStudents() fetches the full list with no classId.
+  // Load data on mount
   useEffect(() => {
     loadClasses();
     loadSubjects();
@@ -114,7 +93,7 @@ export const useClassData = () => {
     loadTeachers();
   }, [loadClasses, loadSubjects, loadStudents, loadSections, loadGradeLevels, loadTeachers]);
 
-  // Stable: derived from allStudents which is never overwritten after mount.
+  // Calculate student counts (defensive check)
   const studentCountByClass = useMemo(
     () => {
       if (!Array.isArray(allStudents)) return {};
@@ -123,6 +102,7 @@ export const useClassData = () => {
     [allStudents]
   );
 
+  // Reload functions
   const reloadClasses = async () => {
     await loadClasses(classPagination.page);
   };
@@ -131,28 +111,20 @@ export const useClassData = () => {
     await loadSubjects(subjectPagination.page);
   };
 
-  // Reloads the full student list — use after add/remove to keep counts accurate.
   const reloadStudents = async () => {
     await loadStudents(studentPagination.page);
-  };
-
-  // Reloads only the selected class's student list for the right panel.
-  const reloadClassStudents = async (classId: number) => {
-    await loadClassStudents(selectedClassStudentPagination.page, classId);
   };
 
   return {
     classes,
     subjects,
     allStudents,
-    selectedClassStudents,
     sections,
     gradeLevels,
     teachers,
     isLoadingClasses,
     isLoadingSubjects,
     isLoadingStudents,
-    isLoadingSelectedClassStudents,
     isLoadingSections,
     isLoadingGradeLevels,
     isLoadingTeachers,
@@ -166,11 +138,9 @@ export const useClassData = () => {
     getStudentsForClass,
     loadClasses,
     loadStudents,
-    loadClassStudents,
     loadSubjects,
     reloadClasses,
     reloadSubjects,
     reloadStudents,
-    reloadClassStudents,
   };
 };

@@ -333,7 +333,7 @@ const buildAttendanceNameKeys = (student) => {
 };
 
 const classesService = {
-  async getAllClasses({ page, limit, school_year, grade_level }) {
+  async getAllClasses({ page, limit, school_year, grade_level, user }) {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const take = parseInt(limit);
 
@@ -343,6 +343,12 @@ const classesService = {
     }
     if (grade_level) {
       where.gl_id = parseInt(grade_level);
+    }
+
+    // Restriction for Principals: only see classes they created
+    const userRoles = user?.roles?.map(r => r.role) || [];
+    if (userRoles.includes('Principal') && !userRoles.includes('Admin')) {
+      where.created_by = user.user_id;
     }
 
     const [classes, total] = await Promise.all([
@@ -355,6 +361,9 @@ const classesService = {
           section: true,
           adviser: {
             select: { user_id: true, fname: true, lname: true },
+          },
+          _count: {
+            select: { students: true },
           },
         },
         orderBy: [
@@ -385,6 +394,9 @@ const classesService = {
         section: true,
         adviser: {
           select: { user_id: true, fname: true, lname: true },
+        },
+        _count: {
+          select: { students: true },
         },
       },
       orderBy: [
@@ -516,6 +528,7 @@ const classesService = {
       gl_id,
       section_id,
       class_adviser,
+      created_by,
       syear_start,
       syear_end,
       class_sched,
@@ -565,6 +578,7 @@ const classesService = {
             gl_id,
             section_id,
             class_adviser,
+            created_by,
             syear_start,
             syear_end,
             class_sched,
