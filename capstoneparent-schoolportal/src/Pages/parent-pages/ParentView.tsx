@@ -127,6 +127,15 @@ export const ParentView = () => {
     setSelectedPreviewUrl("");
   };
 
+  const resetApplyForm = () => {
+    setPendingUploads({
+      parentBirthCertificate: null,
+      governmentId: null,
+      childBirthCertificate: null,
+    });
+    setPendingUploadTarget("parentBirthCertificate");
+  };
+
   const openApplyModal = () => {
     setIsApplyModalOpen(true);
   };
@@ -206,6 +215,7 @@ export const ParentView = () => {
 
       await submitRegistration(formData);
       setIsApplyModalOpen(false);
+      resetApplyForm();
       showSuccess("Registration submitted successfully.");
     } catch (err: any) {
       showError(err.message || "Failed to submit registration");
@@ -394,17 +404,22 @@ export const ParentView = () => {
         </div>
       </main>
 
-      <ApplyRegistrationModal
-        isOpen={isApplyModalOpen}
-        pendingUploads={pendingUploads}
-        isFormValid={isPendingFormValid}
-        onSetUploadTarget={setPendingUploadTarget}
-        onPendingFileChange={handlePendingFileChange}
-        onRemovePendingFile={(key) => setPendingUploads((prev) => ({ ...prev, [key]: null }))}
-        onClose={() => setIsApplyModalOpen(false)}
-        onSubmit={handleSubmitRegistration}
-        isSubmitting={isSubmitting}
-      />
+      {isApplyModalOpen && (
+        <ApplyRegistrationModal
+          isOpen={isApplyModalOpen}
+          pendingUploads={pendingUploads}
+          isFormValid={isPendingFormValid}
+          onSetUploadTarget={setPendingUploadTarget}
+          onPendingFileChange={handlePendingFileChange}
+          onRemovePendingFile={(key) => setPendingUploads((prev) => ({ ...prev, [key]: null }))}
+          onClose={() => {
+            setIsApplyModalOpen(false);
+            resetApplyForm();
+          }}
+          onSubmit={handleSubmitRegistration}
+          isSubmitting={isSubmitting}
+        />
+      )}
 
       <PendingDetailsModal
         isOpen={isPendingModalOpen}
