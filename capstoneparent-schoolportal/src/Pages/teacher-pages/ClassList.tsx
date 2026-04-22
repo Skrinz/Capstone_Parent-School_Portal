@@ -102,14 +102,12 @@ export const ClassList = () => {
     return Array.from(yearsSet).sort().reverse();
   }, [classes]);
 
-  // Students for selected subject (filtered by grade/section/year)
+  // Students for selected subject (filtered by subject record enrollment)
   const studentsForSelectedSubject = useMemo(() => {
     if (!selectedSubject) return [];
     
     return allStudents.filter(
-      (student) =>
-        student.gradeSection === `${selectedSubject.grade} - ${selectedSubject.section}` &&
-        student.schoolYear === `${selectedSubject.syear_start} - ${selectedSubject.syear_end}`
+      (student) => student.subject_records?.some(sr => sr.srecord_id === selectedSubject.srecord_id)
     );
   }, [selectedSubject, allStudents]);
 
