@@ -141,6 +141,8 @@ export const ManageSection = () => {
   };
 
   const handleUpdateSectionConfirm = async () => {
+    if (!editingSection) return;
+
     setIsEditConfirmOpen(false);
     setIsSubmitting(true);
     try {
@@ -190,10 +192,6 @@ export const ManageSection = () => {
       <ArrowDown className="h-4 w-4" />
     );
   };
-
-  const editFormHasChanges = editingSection
-    ? formData.name.trim() !== editingSection.section_name.trim()
-    : false;
 
   return (
     <div className="min-h-screen bg-[#efefef]">

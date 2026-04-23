@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Pencil,
   ChevronLeft,
@@ -321,30 +321,6 @@ export const ManageStudents = () => {
       setIsSubmitting(false);
     }
   };
-
-  const editFormHasChanges = useMemo(() => {
-    if (!editingStudent) return false;
-    return (
-      formData.firstName.trim() !== editingStudent.fname.trim() ||
-      formData.lastName.trim() !== editingStudent.lname.trim() ||
-      formData.sex !== editingStudent.sex ||
-      formData.lrn.trim() !== editingStudent.lrn_number.trim() ||
-      formData.gradeLevelId !== String(editingStudent.gl_id) ||
-      formData.status !== editingStudent.status ||
-      formData.schoolYearStart !== String(editingStudent.syear_start) ||
-      formData.schoolYearEnd !== String(editingStudent.syear_end)
-    );
-  }, [formData, editingStudent]);
-
-  const addFormIsValid =
-    formData.firstName.trim().length > 0 &&
-    formData.lastName.trim().length > 0 &&
-    formData.sex !== "" &&
-    formData.lrn.trim().length === 12 &&
-    formData.gradeLevelId !== "" &&
-    formData.status !== "" &&
-    formData.schoolYearStart !== "" &&
-    formData.schoolYearEnd !== "";
 
   const totalPages = pagination.totalPages;
   const showingStart =
