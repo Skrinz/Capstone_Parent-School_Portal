@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { FormInputError } from "@/components/ui/FormInputError";
 import { useApiFeedbackStore } from "@/lib/store/apiFeedbackStore";
 
 interface ChangePasswordModalProps {
@@ -23,6 +24,7 @@ export const ChangePasswordModal = ({
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [inlineError, setInlineError] = useState<string | null>(null);
   const { clearFeedback } = useApiFeedbackStore();
 
   useEffect(() => {
@@ -30,11 +32,13 @@ export const ChangePasswordModal = ({
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
+    setInlineError(null);
     clearFeedback();
   }, [isOpen, clearFeedback]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setInlineError(null);
     clearFeedback();
     setIsLoading(true);
 
@@ -46,7 +50,7 @@ export const ChangePasswordModal = ({
       setConfirmPassword("");
       onClose();
     } catch (err: any) {
-      // Notification handled by ProfileDropdown (validation) or apiFetch (API error)
+      setInlineError(err instanceof Error ? err.message : "Unable to change password.");
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +71,10 @@ export const ChangePasswordModal = ({
             type="password"
             placeholder="Enter current password"
             value={currentPassword}
-            onChange={(event) => setCurrentPassword(event.target.value)}
+            onChange={(event) => {
+              setInlineError(null);
+              setCurrentPassword(event.target.value);
+            }}
             className="h-11 rounded-md border border-gray-300 bg-white"
             disabled={isLoading}
           />
@@ -85,7 +92,10 @@ export const ChangePasswordModal = ({
             type="password"
             placeholder="Enter new password"
             value={newPassword}
-            onChange={(event) => setNewPassword(event.target.value)}
+            onChange={(event) => {
+              setInlineError(null);
+              setNewPassword(event.target.value);
+            }}
             className="h-11 rounded-md border border-gray-300 bg-white"
             disabled={isLoading}
           />
@@ -103,13 +113,16 @@ export const ChangePasswordModal = ({
             type="password"
             placeholder="Confirm new password"
             value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
+            onChange={(event) => {
+              setInlineError(null);
+              setConfirmPassword(event.target.value);
+            }}
             className="h-11 rounded-md border border-gray-300 bg-white"
             disabled={isLoading}
           />
         </div>
 
-
+        <FormInputError message={inlineError ?? undefined} />
 
         <div className="flex justify-end pt-1">
           <Button

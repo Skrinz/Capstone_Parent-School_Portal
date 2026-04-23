@@ -120,6 +120,8 @@ export const ManagePartnershipAndEvents = () => {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredEvents.slice(start, start + itemsPerPage);
   }, [filteredEvents, currentPage]);
+  const hasActiveFilters =
+    searchQuery.trim() !== "" || selectedYear !== "all";
 
   const handleAddEvent = () => {
     setIsAddModalOpen(true);
@@ -146,15 +148,29 @@ export const ManagePartnershipAndEvents = () => {
               View and manage all partnership and event posts.
             </p>
           </div>
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
-            <input
-              type="text"
-              placeholder="Search event name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-4 text-base focus:outline-none focus:ring-2 focus:ring-(--button-green)"
-            />
+          <div className="flex w-full gap-3 md:w-auto md:items-center">
+            <div className="relative w-full md:w-96">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+              <input
+                type="text"
+                placeholder="Search event name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-4 text-base focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+              />
+            </div>
+            {hasActiveFilters ? (
+              <Button
+                type="button"
+                className="bg-(--status-inactive) text-white hover:brightness-110"
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedYear("all");
+                }}
+              >
+                Clear Filters
+              </Button>
+            ) : null}
           </div>
         </div>
 

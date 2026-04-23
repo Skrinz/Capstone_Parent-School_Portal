@@ -56,6 +56,8 @@ export const LibraryRecords = () => {
     const matchesStatus = statusFilter === "all" || status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+  const hasActiveFilters =
+    searchQuery.trim() !== "" || statusFilter !== "all";
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -148,16 +150,30 @@ export const LibraryRecords = () => {
                   className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-green-600 focus:outline-none"
                 />
               </div>
-              <select 
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 focus:border-green-600 focus:outline-none"
-              >
-                <option value="all">All Status</option>
-                <option value="BORROWED">Borrowed</option>
-                <option value="OVERDUE">Overdue</option>
-                <option value="RETURNED">Returned</option>
-              </select>
+              <div className="flex gap-3">
+                <select 
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-2 focus:border-green-600 focus:outline-none"
+                >
+                  <option value="all">All Status</option>
+                  <option value="BORROWED">Borrowed</option>
+                  <option value="OVERDUE">Overdue</option>
+                  <option value="RETURNED">Returned</option>
+                </select>
+                {hasActiveFilters ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setStatusFilter("all");
+                    }}
+                    className="rounded-lg bg-red-500 px-4 py-2 font-medium text-white transition-colors hover:bg-red-600"
+                  >
+                    Clear Filters
+                  </button>
+                ) : null}
+              </div>
             </div>
 
             {loading ? (

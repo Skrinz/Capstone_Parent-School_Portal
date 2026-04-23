@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Loader2,
   Upload,
+  Download,
 } from "lucide-react";
 import { RoleAwareNavbar } from "@/components/general/RoleAwareNavbar";
 import { Button } from "../../components/ui/button";
@@ -73,9 +74,7 @@ export const ManageStudents = () => {
   const showError = useApiFeedbackStore((state) => state.showError);
   const role = useAuthStore((state) => state.user?.role);
   const canManageStudents =
-    role === "admin" ||
-    role === "teacher" ||
-    role === "principal";
+    role === "admin" || role === "teacher" || role === "principal";
   const canCreateStudents = canManageStudents;
   const canBatchAddStudents = canManageStudents;
 
@@ -112,7 +111,9 @@ export const ManageStudents = () => {
   const [isEditConfirmOpen, setIsEditConfirmOpen] = useState(false);
   const [formData, setFormData] = useState<StudentFormData>(emptyForm);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [editingStudent, setEditingStudent] = useState<StudentRecord | null>(null);
+  const [editingStudent, setEditingStudent] = useState<StudentRecord | null>(
+    null,
+  );
   const requestRef = useRef(0);
 
   const loadStudents = async (page = currentPage) => {
@@ -177,7 +178,6 @@ export const ManageStudents = () => {
     setCurrentPage(1);
   }, [gradeLevelFilter, statusFilter, debouncedSearchQuery]);
 
-
   const resetForm = () => {
     setFormData(emptyForm());
     setFormErrors({});
@@ -195,16 +195,16 @@ export const ManageStudents = () => {
     if (!formData.firstName.trim()) errors.firstName = "First name is required";
     if (!formData.lastName.trim()) errors.lastName = "Last name is required";
     if (!formData.sex) errors.sex = "Sex is required";
-    
+
     if (!formData.lrn.trim()) {
       errors.lrn = "LRN is required";
     } else if (!/^\d{12}$/.test(formData.lrn)) {
       errors.lrn = "LRN must be exactly 12 digits";
     }
-    
+
     if (!formData.gradeLevelId) errors.gradeLevelId = "Grade level is required";
     if (!formData.status) errors.status = "Status is required";
-    
+
     if (!formData.schoolYearStart) {
       errors.schoolYearStart = "Required";
     }
@@ -222,8 +222,12 @@ export const ManageStudents = () => {
       if (Number.isNaN(yearEnd)) {
         errors.schoolYearEnd = "Invalid year";
       }
-      
-      if (!Number.isNaN(yearStart) && !Number.isNaN(yearEnd) && yearEnd < yearStart) {
+
+      if (
+        !Number.isNaN(yearStart) &&
+        !Number.isNaN(yearEnd) &&
+        yearEnd < yearStart
+      ) {
         errors.schoolYearEnd = "End year must be >= start year";
       }
     }
@@ -260,7 +264,8 @@ export const ManageStudents = () => {
       setIsAddModalOpen(false);
       resetForm();
       await loadStudents(currentPage);
-    } catch {} finally {
+    } catch {
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -301,7 +306,8 @@ export const ManageStudents = () => {
       setEditingStudent(null);
       resetForm();
       await loadStudents(currentPage);
-    } catch {} finally {
+    } catch {
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -314,11 +320,24 @@ export const ManageStudents = () => {
       await loadStudents(1);
       setCurrentPage(1);
     } catch (err) {
-      throw (err instanceof Error
+      throw err instanceof Error
         ? err
-        : new Error("Failed to upload student CSV"));
+        : new Error("Failed to upload student XLSX");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await studentsApi.getImportTemplate();
+      window.open(response.data.downloadUrl, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      showError(
+        err instanceof Error
+          ? err.message
+          : "Failed to download student import template",
+      );
     }
   };
 
@@ -332,6 +351,11 @@ export const ManageStudents = () => {
           (pagination.page - 1) * pagination.limit + students.length,
           pagination.total,
         );
+  const hasActiveFilters =
+    searchQuery.trim() !== "" ||
+    debouncedSearchQuery.trim() !== "" ||
+    gradeLevelFilter !== "all" ||
+    statusFilter !== "all";
 
   return (
     <div className="min-h-screen">
@@ -351,13 +375,22 @@ export const ManageStudents = () => {
             {canManageStudents && (
               <div className="flex flex-col gap-3 sm:flex-row">
                 {canBatchAddStudents && (
-                  <Button
-                    className="bg-white px-6 py-2 text-(--button-green) ring-1 ring-(--button-green) hover:bg-green-50"
-                    onClick={() => setIsBatchModalOpen(true)}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Batch Add Students
-                  </Button>
+                  <>
+                    <Button
+                      className="bg-(--navbar-bg) px-6 py-2 text-black hover:bg-yellow-300"
+                      onClick={handleDownloadTemplate}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Download XLSX Template
+                    </Button>
+                    <Button
+                      className="bg-(--button-green) px-6 py-2 text-white hover:bg-(--button-hover-green)"
+                      onClick={() => setIsBatchModalOpen(true)}
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      Batch Add Students
+                    </Button>
+                  </>
                 )}
                 {canCreateStudents && (
                   <Button
@@ -424,6 +457,20 @@ export const ManageStudents = () => {
                 },
               ]}
             />
+            {hasActiveFilters ? (
+              <Button
+                type="button"
+                className="bg-(--status-inactive) text-white hover:brightness-110"
+                onClick={() => {
+                  setSearchQuery("");
+                  setDebouncedSearchQuery("");
+                  setGradeLevelFilter("all");
+                  setStatusFilter("all");
+                }}
+              >
+                Clear Filters
+              </Button>
+            ) : null}
           </div>
 
           {isLoading ? (
@@ -431,7 +478,6 @@ export const ManageStudents = () => {
               <Loader2 className="mb-2 h-8 w-8 animate-spin text-(--button-green)" />
               <p>Loading students...</p>
             </div>
-
           ) : students.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-10 text-center text-gray-500">
               No students found.
@@ -448,7 +494,7 @@ export const ManageStudents = () => {
                       LRN
                     </th>
                     <th className="px-6 py-4 text-left font-semibold text-gray-700">
-                      Grade Level
+                      Grade - Section
                     </th>
                     <th className="px-6 py-4 text-left font-semibold text-gray-700">
                       School Year
@@ -544,7 +590,9 @@ export const ManageStudents = () => {
                 onClick={() =>
                   setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))
                 }
-                disabled={currentPage === totalPages || totalPages === 0 || isLoading}
+                disabled={
+                  currentPage === totalPages || totalPages === 0 || isLoading
+                }
                 className="rounded border border-gray-300 px-3 py-1 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ChevronRight className="h-4 w-4" />

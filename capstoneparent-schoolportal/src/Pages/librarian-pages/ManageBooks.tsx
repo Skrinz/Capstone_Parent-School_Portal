@@ -67,6 +67,8 @@ export const ManageBooks = () => {
       gradeFilter === "all" || book.gl_id.toString() === gradeFilter;
     return matchesSearch && matchesSubject && matchesGrade;
   });
+  const hasActiveFilters =
+    searchQuery.trim() !== "" || subjectFilter !== "all" || gradeFilter !== "all";
 
   const handleAddBooks = async (newBook: {
     title: string;
@@ -190,6 +192,19 @@ export const ManageBooks = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                {hasActiveFilters ? (
+                  <Button
+                    type="button"
+                    className="bg-(--status-inactive) text-white hover:brightness-110"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSubjectFilter("all");
+                      setGradeFilter("all");
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
+                ) : null}
               </div>
             </section>
 

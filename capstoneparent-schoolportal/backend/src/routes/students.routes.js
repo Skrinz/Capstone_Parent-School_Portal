@@ -62,6 +62,12 @@ router.get(
   studentsController.getAllStudents,
 );
 
+router.get(
+  "/import-template",
+  authorize("Admin", "Principal", "Teacher"),
+  studentsController.getImportTemplate,
+);
+
 // Get student by ID
 router.get(
   "/:id",
@@ -96,7 +102,7 @@ router.post(
   studentsController.createStudent,
 );
 
-// Import students via CSV
+// Import students via XLSX
 router.post(
   "/import",
   authorize("Admin", "Principal", "Teacher"),

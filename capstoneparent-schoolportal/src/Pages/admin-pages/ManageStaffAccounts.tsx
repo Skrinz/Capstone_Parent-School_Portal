@@ -219,6 +219,8 @@ export const ManageStaffAccounts = () => {
 
     return filtered;
   }, [staffList, searchQuery, roleFilter, statusFilter]);
+  const hasActiveFilters =
+    searchQuery.trim() !== "" || roleFilter !== "all" || statusFilter !== "all";
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -448,6 +450,19 @@ export const ManageStaffAccounts = () => {
                 },
               ]}
             />
+            {hasActiveFilters ? (
+              <Button
+                type="button"
+                className="bg-(--status-inactive) text-white hover:brightness-110"
+                onClick={() => {
+                  setSearchQuery("");
+                  setRoleFilter("all");
+                  setStatusFilter("all");
+                }}
+              >
+                Clear Filters
+              </Button>
+            ) : null}
           </div>
 
           {/* Table */}

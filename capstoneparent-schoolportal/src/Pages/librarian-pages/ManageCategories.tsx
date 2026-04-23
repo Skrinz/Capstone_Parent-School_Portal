@@ -2,6 +2,7 @@ import { NavbarLibrarian } from "@/components/librarian/NavbarLibrarian";
 import AddCategoryModal from "@/components/librarian/AddCategoryModal";
 import EditCategoryModal from "@/components/librarian/EditCategoryModal";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useLibraryStore } from "@/lib/store/libraryStore";
 import { useEffect, useState } from "react";
 import { Pencil } from "lucide-react";
@@ -38,6 +39,7 @@ export const ManageCategories = () => {
   const filtered = categories.filter((c) =>
     c.category_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const hasActiveFilters = searchQuery.trim() !== "";
 
   return (
     <div className="min-h-screen">
@@ -56,12 +58,23 @@ export const ManageCategories = () => {
           </div>
 
           <div className="mx-auto w-full max-w-md">
-            <Input
-              placeholder="Search category..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="rounded-md border border-gray-300 px-4 py-2 text-center focus-visible:ring-2 focus-visible:ring-blue-500"
-            />
+            <div className="flex gap-2">
+              <Input
+                placeholder="Search category..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="rounded-md border border-gray-300 px-4 py-2 text-center focus-visible:ring-2 focus-visible:ring-blue-500"
+              />
+              {hasActiveFilters ? (
+                <Button
+                  type="button"
+                  className="bg-(--status-inactive) text-white hover:brightness-110"
+                  onClick={() => setSearchQuery("")}
+                >
+                  Clear Filters
+                </Button>
+              ) : null}
+            </div>
             <div className="mt-4 bg-white rounded-lg border border-gray-200 overflow-hidden">
                 {loading ? (
                   <Loader />

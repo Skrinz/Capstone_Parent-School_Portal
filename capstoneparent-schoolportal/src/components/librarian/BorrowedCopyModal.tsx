@@ -131,6 +131,12 @@ const BorrowedCopyModal: React.FC = () => {
 
     return matchesSearch && matchesCategory && matchesSubject && matchesGrade && matchesStatus;
   });
+  const hasActiveFilters =
+    searchTerm.trim() !== "" ||
+    categoryFilter !== "All" ||
+    subjectFilter !== "All" ||
+    gradeFilter !== "All" ||
+    statusFilter !== "BORROWED";
 
   const getBorrowerName = (record: BorrowRecord) => {
     if (record.student)
@@ -239,19 +245,21 @@ const BorrowedCopyModal: React.FC = () => {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setSearchTerm("");
-                setCategoryFilter("All");
-                setSubjectFilter("All");
-                setGradeFilter("All");
-                setStatusFilter("BORROWED");
-              }}
-              className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 sm:shrink-0"
-            >
-              Clear Filter
-            </button>
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm("");
+                  setCategoryFilter("All");
+                  setSubjectFilter("All");
+                  setGradeFilter("All");
+                  setStatusFilter("BORROWED");
+                }}
+                className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 sm:shrink-0"
+              >
+                Clear Filter
+              </button>
+            ) : null}
           </div>
 
           {loading ? (

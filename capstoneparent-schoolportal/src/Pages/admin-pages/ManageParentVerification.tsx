@@ -141,6 +141,11 @@ export const ManageParentVerification = () => {
     setFromDate("");
     setToDate("");
   };
+  const hasActiveFilters =
+    searchQuery.trim() !== "" ||
+    statusFilter !== "all" ||
+    fromDate !== "" ||
+    toDate !== "";
 
   const updateVerification = async (nextStatus: "VERIFIED" | "DENIED") => {
     if (!selectedVerification) return;
@@ -242,13 +247,15 @@ export const ManageParentVerification = () => {
                   <RotateCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
                   Refresh
                 </button>
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="rounded-md border border-red-300 bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600"
-                >
-                  Clear Filter
-                </button>
+                {hasActiveFilters ? (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="rounded-md border border-red-300 bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600"
+                  >
+                    Clear Filter
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>

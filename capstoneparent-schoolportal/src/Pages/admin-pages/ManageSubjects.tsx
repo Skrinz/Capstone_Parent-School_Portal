@@ -64,6 +64,8 @@ export const ManageSubjects = () => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
     return archivedSubjects.filter((subject) => subject.name.toLowerCase().includes(normalizedQuery));
   }, [searchQuery, archivedSubjects]);
+  const hasActiveFilters =
+    searchQuery.trim() !== "" || activeTab !== "active";
 
   const assignedSubjectIds = useMemo(() => {
     if (!selectedGradeLevelId) {
@@ -278,6 +280,19 @@ export const ManageSubjects = () => {
                   >
                     {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
                   </Button>
+                  {hasActiveFilters ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setActiveTab("active");
+                      }}
+                      className="h-12 border-gray-300 text-gray-700 hover:bg-gray-100"
+                    >
+                      Clear Filters
+                    </Button>
+                  ) : null}
                 </div>
               </div>
 

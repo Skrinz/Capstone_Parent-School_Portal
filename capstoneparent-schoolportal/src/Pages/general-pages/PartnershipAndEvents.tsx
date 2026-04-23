@@ -107,6 +107,8 @@ export const PartnershipAndEvents = () => {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredEvents.slice(start, start + itemsPerPage);
   }, [filteredEvents, currentPage]);
+  const hasActiveFilters =
+    searchQuery.trim() !== "" || selectedYear !== "all";
 
   const handleDeleteEvent = async () => {
     if (eventToDeleteId === null) {
@@ -134,131 +136,145 @@ export const PartnershipAndEvents = () => {
                   Explore school highlights, community programs, and partner activities.
                 </p>
               </div>
-              <div className="relative w-full md:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
-            <input
-              type="text"
-              placeholder="Search event name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-4 text-base focus:outline-none focus:ring-2 focus:ring-(--button-green)"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_220px]">
-          <section>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {paginatedEvents.map((event) => (
-                <div key={event.id} className="flex h-full flex-col gap-3">
-                  <Link
-                    to={`/partnership&events/${event.slug}`}
-                    className="group block h-full"
-                  >
-                    <EventCard
-                      title={event.title}
-                      description={event.description}
-                      imageUrl={event.imageUrl}
-                    />
-                  </Link>
-                  {isAdmin && (
-                    <div className="flex items-center justify-end gap-3">
-                      <Button
-                        type="button"
-                        onClick={() => navigate(`/admin-edit-event/${event.id}`)}
-                        className="bg-(--button-green) text-white hover:bg-(--button-green)"
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={() => setEventToDeleteId(event.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  )}
+              <div className="flex w-full gap-3 md:w-auto md:items-center">
+                <div className="relative w-full md:w-96">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+                  <input
+                    type="text"
+                    placeholder="Search event name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-4 text-base focus:outline-none focus:ring-2 focus:ring-(--button-green)"
+                  />
                 </div>
-              ))}
+                {hasActiveFilters ? (
+                  <Button
+                    type="button"
+                    className="bg-(--status-inactive) text-white hover:brightness-110"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSelectedYear("all");
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
+                ) : null}
+              </div>
             </div>
 
-            {paginatedEvents.length === 0 && (
-              <div className="rounded-xl bg-white p-10 text-center text-gray-500 shadow-sm ring-1 ring-black/5">
-                No events found.
-              </div>
-            )}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_220px]">
+              <section>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                  {paginatedEvents.map((event) => (
+                    <div key={event.id} className="flex h-full flex-col gap-3">
+                      <Link
+                        to={`/partnership&events/${event.slug}`}
+                        className="group block h-full"
+                      >
+                        <EventCard
+                          title={event.title}
+                          description={event.description}
+                          imageUrl={event.imageUrl}
+                        />
+                      </Link>
+                      {isAdmin && (
+                        <div className="flex items-center justify-end gap-3">
+                          <Button
+                            type="button"
+                            onClick={() => navigate(`/admin-edit-event/${event.id}`)}
+                            className="bg-(--button-green) text-white hover:bg-(--button-green)"
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={() => setEventToDeleteId(event.id)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
 
-            <div className="mt-8 flex items-center justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="rounded-md px-3 py-1.5 font-semibold text-white bg-(--button-green) disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Prev
-              </button>
-              {Array.from({ length: totalPages }, (_, index) => {
-                const page = index + 1;
-                const isActive = page === currentPage;
+                {paginatedEvents.length === 0 && (
+                  <div className="rounded-xl bg-white p-10 text-center text-gray-500 shadow-sm ring-1 ring-black/5">
+                    No events found.
+                  </div>
+                )}
 
-                return (
+                <div className="mt-8 flex items-center justify-center gap-2">
                   <button
-                    key={page}
                     type="button"
-                    onClick={() => setCurrentPage(page)}
-                    className={`rounded-md px-3 py-1.5 font-semibold ${
-                      isActive
-                        ? "bg-(--button-green) text-white"
-                        : "bg-white text-gray-700 ring-1 ring-gray-300"
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-md px-3 py-1.5 font-semibold text-white bg-(--button-green) disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Prev
+                  </button>
+                  {Array.from({ length: totalPages }, (_, index) => {
+                    const page = index + 1;
+                    const isActive = page === currentPage;
+
+                    return (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => setCurrentPage(page)}
+                        className={`rounded-md px-3 py-1.5 font-semibold ${
+                          isActive
+                            ? "bg-(--button-green) text-white"
+                            : "bg-white text-gray-700 ring-1 ring-gray-300"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="rounded-md px-3 py-1.5 font-semibold text-white bg-(--button-green) disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </section>
+
+              <aside className="h-fit rounded-xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">By Year</h3>
+                <div className="space-y-2 text-3xl leading-none">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedYear("all")}
+                    className={`block w-full text-left rounded-md px-2 py-1 transition-colors ${
+                      selectedYear === "all"
+                        ? "bg-(--button-green) text-white font-bold"
+                        : "text-gray-700 hover:bg-gray-100"
                     }`}
                   >
-                    {page}
+                    All
                   </button>
-                );
-              })}
-              <button
-                type="button"
-                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-                className="rounded-md px-3 py-1.5 font-semibold text-white bg-(--button-green) disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
+                  {years.map((year) => (
+                    <button
+                      key={year}
+                      type="button"
+                      onClick={() => setSelectedYear(year)}
+                      className={`block w-full text-left rounded-md px-2 py-1 transition-colors ${
+                        selectedYear === year
+                          ? "bg-(--button-green) text-white font-bold"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      {year}
+                    </button>
+                  ))}
+                </div>
+              </aside>
             </div>
-          </section>
-
-          <aside className="h-fit rounded-xl bg-white p-5 shadow-sm ring-1 ring-black/5">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">By Year</h3>
-            <div className="space-y-2 text-3xl leading-none">
-              <button
-                type="button"
-                onClick={() => setSelectedYear("all")}
-                className={`block w-full text-left rounded-md px-2 py-1 transition-colors ${
-                  selectedYear === "all"
-                    ? "bg-(--button-green) text-white font-bold"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                All
-              </button>
-              {years.map((year) => (
-                <button
-                  key={year}
-                  type="button"
-                  onClick={() => setSelectedYear(year)}
-                  className={`block w-full text-left rounded-md px-2 py-1 transition-colors ${
-                    selectedYear === year
-                      ? "bg-(--button-green) text-white font-bold"
-                      : "text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  {year}
-                </button>
-              ))}
-            </div>
-          </aside>
-        </div>
           </>
         )}
       </main>

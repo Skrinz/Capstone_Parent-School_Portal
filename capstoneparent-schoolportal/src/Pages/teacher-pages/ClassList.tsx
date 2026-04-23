@@ -104,9 +104,25 @@ export const ClassList = () => {
   // Students for selected subject (filtered by subject record enrollment)
   const studentsForSelectedSubject = useMemo(() => {
     if (!selectedSubject) return [];
-    
+
+    const subjectClassIds = selectedSubject.classListIds ?? [];
+
     return allStudents.filter(
-      (student) => student.subject_records?.some(sr => sr.srecord_id === selectedSubject.srecord_id)
+      (student) =>
+        student.subject_records?.some((sr) => {
+          if (sr.srecord_id === selectedSubject.srecord_id) {
+            return true;
+          }
+
+          const belongsToSelectedClass = sr.subject_record?.class_lists?.some((classList) =>
+            subjectClassIds.includes(classList.clist_id)
+          );
+
+          return Boolean(
+            belongsToSelectedClass &&
+            sr.subject_name === selectedSubject.subject_name
+          );
+        }) ?? false
     );
   }, [selectedSubject, allStudents]);
 
@@ -147,6 +163,15 @@ export const ClassList = () => {
     () => filterStudents(studentsForSelectedClass, studentSearchQuery, remarksFilter),
     [studentsForSelectedClass, studentSearchQuery, remarksFilter]
   );
+  const hasActiveClassFilters =
+    classGradeLevel !== 'allgrades' || classSection !== 'all' || classYear !== 'all';
+  const hasActiveSubjectFilters =
+    subjectSearchQuery.trim() !== '' ||
+    subjectGradeLevel !== 'allgrades' ||
+    subjectSection !== 'all' ||
+    subjectYear !== 'all';
+  const hasActiveStudentFilters =
+    studentSearchQuery.trim() !== '' || remarksFilter !== 'all';
 
   const isDetailView = selectedClass !== null || selectedSubject !== null;
 
@@ -318,17 +343,19 @@ export const ClassList = () => {
                        </SelectContent>
                      </Select>
 
-                    <Button
-                      className="flex-none bg-(--status-inactive) text-white transition-all duration-200 hover:brightness-110 hover:shadow-md active:scale-95"
-                      onClick={() => {
-                          setClassGradeLevel('allgrades');
-                          setClassSection('all');
-                          setClassYear('all');
-                      }}
-                      title="Clear Filters"
-                    >
-                      Clear Filters
-                    </Button>
+                    {hasActiveClassFilters ? (
+                      <Button
+                        className="flex-none bg-(--status-inactive) text-white transition-all duration-200 hover:brightness-110 hover:shadow-md active:scale-95"
+                        onClick={() => {
+                            setClassGradeLevel('allgrades');
+                            setClassSection('all');
+                            setClassYear('all');
+                        }}
+                        title="Clear Filters"
+                      >
+                        Clear Filters
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
 
@@ -430,18 +457,20 @@ export const ClassList = () => {
                       </SelectContent>
                     </Select>
 
-                    <Button
-                      className="flex-none bg-(--status-inactive) text-white transition-all duration-200 hover:brightness-110 hover:shadow-md active:scale-95"
-                      onClick={() => {
-                          setSubjectSearchQuery('');
-                          setSubjectGradeLevel('allgrades');
-                          setSubjectSection('all');
-                          setSubjectYear('all');
-                      }}
-                      title="Clear Filters"
-                    >
-                      Clear Filters
-                    </Button>
+                    {hasActiveSubjectFilters ? (
+                      <Button
+                        className="flex-none bg-(--status-inactive) text-white transition-all duration-200 hover:brightness-110 hover:shadow-md active:scale-95"
+                        onClick={() => {
+                            setSubjectSearchQuery('');
+                            setSubjectGradeLevel('allgrades');
+                            setSubjectSection('all');
+                            setSubjectYear('all');
+                        }}
+                        title="Clear Filters"
+                      >
+                        Clear Filters
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
 
@@ -459,6 +488,10 @@ export const ClassList = () => {
                           setSelectedSubject(subjectItem);
                           setRemarksFilter('all');
                           setStudentSearchQuery('');
+                          setSelectedStudent(null);
+
+                          const subjectClassId = subjectItem.classListIds?.[0];
+                          loadStudents(subjectClassId);
                         }}
                       >
                         <div className="flex justify-between items-start gap-4">
@@ -573,16 +606,18 @@ export const ClassList = () => {
                           </SelectContent>
                         </Select>
 
-                        <Button
-                          className="flex-none bg-(--status-inactive) text-white transition-all duration-200 hover:brightness-110 hover:shadow-md active:scale-95"
-                          onClick={() => {
-                              setStudentSearchQuery('');
-                              setRemarksFilter('all');
-                          }}
-                          title="Clear Filters"
-                        >
-                          Clear Filters
-                        </Button>
+                        {hasActiveStudentFilters ? (
+                          <Button
+                            className="flex-none bg-(--status-inactive) text-white transition-all duration-200 hover:brightness-110 hover:shadow-md active:scale-95"
+                            onClick={() => {
+                                setStudentSearchQuery('');
+                                setRemarksFilter('all');
+                            }}
+                            title="Clear Filters"
+                          >
+                            Clear Filters
+                          </Button>
+                        ) : null}
                       </div>
 
                       <div className="flex gap-3 flex-wrap justify-center md:justify-start">
@@ -762,16 +797,18 @@ export const ClassList = () => {
                         </SelectContent>
                       </Select>
 
-                      <Button
-                          className="flex-none bg-(--status-inactive) text-white transition-all duration-200 hover:brightness-110 hover:shadow-md active:scale-95"
-                          onClick={() => {
-                              setStudentSearchQuery('');
-                              setRemarksFilter('all');
-                          }}
-                          title="Clear Filters"
-                        >
-                          Clear Filters
-                        </Button>
+                      {hasActiveStudentFilters ? (
+                        <Button
+                            className="flex-none bg-(--status-inactive) text-white transition-all duration-200 hover:brightness-110 hover:shadow-md active:scale-95"
+                            onClick={() => {
+                                setStudentSearchQuery('');
+                                setRemarksFilter('all');
+                            }}
+                            title="Clear Filters"
+                          >
+                            Clear Filters
+                          </Button>
+                      ) : null}
                     </div>
 
                     <div className="flex gap-3 flex-wrap justify-center md:justify-start">

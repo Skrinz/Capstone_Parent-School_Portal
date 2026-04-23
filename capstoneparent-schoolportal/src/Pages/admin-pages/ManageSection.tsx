@@ -95,6 +95,8 @@ export const ManageSection = () => {
 
     return filtered;
   }, [sections, searchQuery, sortField, sortDirection]);
+  const hasActiveFilters =
+    searchQuery.trim() !== "" || sortField !== null;
 
 
   const handleAddSection = () => {
@@ -239,6 +241,20 @@ export const ManageSection = () => {
               Section Name
               {getSortIcon("section_name")}
             </button>
+            {hasActiveFilters ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setSearchQuery("");
+                  setSortField(null);
+                  setSortDirection("asc");
+                }}
+                className="rounded-full border-gray-300 text-gray-700 hover:bg-gray-100"
+              >
+                Clear Filters
+              </Button>
+            ) : null}
           </div>
 
           <div className="mt-5">

@@ -48,8 +48,8 @@ export const StudentBatchUploadModal = ({
     }
 
     const validation = validateFiles([file], {
-      acceptedTypes: [".csv"],
-      label: "student CSV",
+      acceptedTypes: [".xlsx"],
+      label: "student XLSX",
     });
     if (!validation.valid) {
       setSelectedFile(null);
@@ -63,7 +63,7 @@ export const StudentBatchUploadModal = ({
 
   const handleUploadClick = () => {
     if (!selectedFile) {
-      showError("Please choose a CSV file to upload.");
+      showError("Please choose an .xlsx file to upload.");
       return;
     }
     setShowConfirm(true);
@@ -80,7 +80,7 @@ export const StudentBatchUploadModal = ({
       resetState();
     } catch (err) {
       showError(
-        err instanceof Error ? err.message : "Failed to upload student CSV.",
+        err instanceof Error ? err.message : "Failed to upload student XLSX.",
       );
     }
   };
@@ -89,7 +89,7 @@ export const StudentBatchUploadModal = ({
     <Modal isOpen={isOpen} onClose={handleClose} title="Batch Add Students">
       <div className="space-y-4">
         <p className="text-sm text-gray-700">
-          Upload a student list CSV. The file should include a{" "}
+          Upload a student list XLSX file. The file should include a{" "}
           <strong>Grade Level</strong> column using Kindergarten or Grade 1 to
           Grade 6.
         </p>
@@ -98,7 +98,7 @@ export const StudentBatchUploadModal = ({
           <input
             ref={fileInputRef}
             type="file"
-            accept=".csv"
+            accept=".xlsx"
             onChange={handleFileChange}
             disabled={isUploading}
             className="hidden"
@@ -111,9 +111,11 @@ export const StudentBatchUploadModal = ({
             className="w-full rounded-md border border-gray-300 bg-gray-100 text-black hover:bg-gray-200"
           >
             <Upload className="mr-2 h-4 w-4" />
-            Select CSV File
+            Select XLSX File
           </Button>
-          <p className="mt-1 text-center text-xs text-gray-400">Accepted: CSV only · No size limit</p>
+          <p className="mt-1 text-center text-xs text-gray-400">
+            Accepted: XLSX only · No size limit
+          </p>
 
           <div className="mt-3 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
             <FileText className="h-5 w-5 text-(--button-green)" />
@@ -123,15 +125,13 @@ export const StudentBatchUploadModal = ({
           </div>
         </div>
 
-
-
         <div className="flex justify-end">
           <Button
             onClick={handleUploadClick}
             disabled={isUploading}
             className="rounded-full bg-(--button-green) px-8 py-3 text-lg text-white hover:bg-(--button-hover-green)"
           >
-            {isUploading ? "Uploading..." : "Upload CSV"}
+            {isUploading ? "Uploading..." : "Upload XLSX"}
           </Button>
         </div>
       </div>

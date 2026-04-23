@@ -67,6 +67,8 @@ export const ManageLearningResources = () => {
       gradeFilter === "all" || resource.gl_id.toString() === gradeFilter;
     return matchesSearch && matchesCategory && matchesGrade;
   });
+  const hasActiveFilters =
+    searchQuery.trim() !== "" || categoryFilter !== "all" || gradeFilter !== "all";
 
   const handleAddResources = async (newResource: {
     title: string;
@@ -176,6 +178,19 @@ export const ManageLearningResources = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                {hasActiveFilters ? (
+                  <Button
+                    type="button"
+                    className="bg-(--status-inactive) text-white hover:brightness-110"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setCategoryFilter("all");
+                      setGradeFilter("all");
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
+                ) : null}
               </div>
             </section>
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, X, ArrowLeft, UserPlus } from 'lucide-react';
+import { Search, X, ArrowLeft, UserPlus, Download } from 'lucide-react';
 import type { Student } from '@/Pages/principal-pages/types';
 
 interface StudentListProps {
@@ -10,6 +10,7 @@ interface StudentListProps {
   onBack: () => void;
   onRemoveStudent: (student: Student) => void;
   onAddStudent: () => void;
+  onDownloadTemplate: () => void;
 }
 
 export const StudentList = ({
@@ -18,8 +19,10 @@ export const StudentList = ({
   onBack,
   onRemoveStudent,
   onAddStudent,
+  onDownloadTemplate,
 }: StudentListProps) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const hasActiveFilters = searchQuery.trim() !== '';
 
   // Filter students by search
   const filteredStudents = students.filter(
@@ -51,9 +54,25 @@ export const StudentList = ({
               className="pl-10 bg-white border-gray-300"
             />
           </div>
+          {hasActiveFilters ? (
+            <Button
+              type="button"
+              className="bg-(--status-inactive) text-white hover:brightness-110"
+              onClick={() => setSearchQuery('')}
+            >
+              Clear Filters
+            </Button>
+          ) : null}
         </div>
 
         <div className="flex gap-3 flex-wrap">
+          <Button
+            className="bg-(--navbar-bg) text-black hover:bg-yellow-300"
+            onClick={onDownloadTemplate}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Download Student List Template
+          </Button>
           <Button 
             className="bg-(--button-green) hover:bg-green-700 text-white"
             onClick={onAddStudent}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { FormInputError } from "@/components/ui/FormInputError";
 import type { ProfileModalData } from "./profileModalData";
 import { useApiFeedbackStore } from "@/lib/store/apiFeedbackStore";
 import { validateFiles } from "@/lib/fileValidation";
@@ -17,16 +18,19 @@ interface ManageAccountModalProps {
 export const ManageAccountModal = ({ isOpen, onClose, profileData, isSavingProfile, onSave }: ManageAccountModalProps) => {
   const [formData, setFormData] = useState<ProfileModalData>(profileData);
   const [profileFile, setProfileFile] = useState<File>();
-  const { showError, showSuccess, clearFeedback } = useApiFeedbackStore();
+  const [inlineError, setInlineError] = useState<string | null>(null);
+  const { showSuccess, clearFeedback } = useApiFeedbackStore();
 
   useEffect(() => {
     if (!isOpen) return;
     setFormData(profileData);
     setProfileFile(undefined);
+    setInlineError(null);
     clearFeedback();
   }, [isOpen, profileData, clearFeedback]);
 
   const handleFieldChange = (field: keyof ProfileModalData, value: string) => {
+    setInlineError(null);
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -41,7 +45,7 @@ export const ManageAccountModal = ({ isOpen, onClose, profileData, isSavingProfi
     });
     if (!validation.valid) {
       setProfileFile(undefined);
-      showError(validation.error);
+      setInlineError(validation.error);
       event.target.value = "";
       return;
     }
@@ -66,18 +70,19 @@ export const ManageAccountModal = ({ isOpen, onClose, profileData, isSavingProfi
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setInlineError(null);
     clearFeedback();
 
     if (!formData.fname.trim()) {
-      showError("First name is required.");
+      setInlineError("First name is required.");
       return;
     }
     if (!formData.lname.trim()) {
-      showError("Last name is required.");
+      setInlineError("Last name is required.");
       return;
     }
     if (!formData.contactNo.trim()) {
-      showError("Contact number is required.");
+      setInlineError("Contact number is required.");
       return;
     }
 
@@ -95,10 +100,10 @@ export const ManageAccountModal = ({ isOpen, onClose, profileData, isSavingProfi
       if (result.success) {
         showSuccess(result.message || "Account updated successfully.");
       } else {
-        showError(result.message || "Failed to update account.");
+        setInlineError(result.message || "Failed to update account.");
       }
     } catch (err) {
-      showError(err instanceof Error ? err.message : "An unexpected error occurred.");
+      setInlineError(err instanceof Error ? err.message : "An unexpected error occurred.");
     }
   };
 
@@ -185,8 +190,7 @@ export const ManageAccountModal = ({ isOpen, onClose, profileData, isSavingProfi
           </div>
         </div>
 
-
-
+        <FormInputError message={inlineError ?? undefined} className="px-1" />
         <div className="flex justify-end pt-2">
           <Button type="submit" disabled={isSavingProfile || !hasChanges} className="h-12 rounded-full bg-(--button-green) px-8 text-xl font-semibold text-white hover:bg-(--button-hover-green) disabled:bg-gray-400 disabled:text-white disabled:hover:bg-gray-400">
             {isSavingProfile ? "Saving..." : "Save Changes"}

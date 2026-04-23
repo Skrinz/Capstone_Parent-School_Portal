@@ -1,4 +1,14 @@
 const studentsService = require("../services/students.service");
+const XLSX = require("xlsx");
+const { createSignedUrlForPath } = require("../utils/supabaseStorage");
+
+const normalizeHeader = (value) =>
+  String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+
+const toCellValue = (value) => String(value ?? "").trim();
 
 const studentsController = {
   /**
@@ -100,9 +110,41 @@ const studentsController = {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const fileContent = req.file.buffer.toString("utf8");
-      const lines = fileContent.split(/\r?\n/).filter((line) => line.trim() !== "");
-      const headers = lines[0].split(",").map((header) => header.trim().toLowerCase());
+      const fileName = String(req.file.originalname || "").toLowerCase();
+      if (!fileName.endsWith(".xlsx")) {
+        return res.status(400).json({
+          message: "Invalid file type. Only .xlsx files are allowed.",
+        });
+      }
+
+      let worksheetRows = [];
+      try {
+        const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+        const firstSheetName = workbook.SheetNames[0];
+        if (!firstSheetName) {
+          return res
+            .status(400)
+            .json({ message: "Invalid XLSX file: No worksheet found." });
+        }
+        worksheetRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
+          header: 1,
+          defval: "",
+          raw: false,
+          blankrows: false,
+        });
+      } catch {
+        return res.status(400).json({
+          message: "Invalid XLSX file. Please upload a valid .xlsx student list.",
+        });
+      }
+
+      if (!worksheetRows.length) {
+        return res.status(400).json({
+          message: "Invalid XLSX format: The worksheet is empty.",
+        });
+      }
+
+      const headers = worksheetRows[0].map(normalizeHeader);
 
       const fnameIdx = headers.indexOf("first name");
       const lnameIdx = headers.indexOf("last name");
@@ -121,20 +163,19 @@ const studentsController = {
         syearEndIdx === -1
       ) {
         return res.status(400).json({
-          message: "Invalid CSV format: Required columns missing",
+          message: "Invalid XLSX format: Required columns missing",
         });
       }
 
-      const rows = lines.slice(1).map((line) => {
-        const cols = line.split(",");
+      const rows = worksheetRows.slice(1).map((cols) => {
         return {
-          fname: cols[fnameIdx]?.trim(),
-          lname: cols[lnameIdx]?.trim(),
-          sex: cols[sexIdx]?.trim(),
-          lrn: cols[lrnIdx]?.trim(),
-          grade_level: cols[gradeLevelIdx]?.trim(),
-          syear_start: cols[syearStartIdx]?.trim(),
-          syear_end: cols[syearEndIdx]?.trim(),
+          fname: toCellValue(cols[fnameIdx]),
+          lname: toCellValue(cols[lnameIdx]),
+          sex: toCellValue(cols[sexIdx]),
+          lrn: toCellValue(cols[lrnIdx]),
+          grade_level: toCellValue(cols[gradeLevelIdx]),
+          syear_start: toCellValue(cols[syearStartIdx]),
+          syear_end: toCellValue(cols[syearEndIdx]),
         };
       });
 
@@ -151,6 +192,35 @@ const studentsController = {
       ) {
         return res.status(400).json({ message: error.message });
       }
+      next(error);
+    }
+  },
+
+  async getImportTemplate(req, res, next) {
+    try {
+      const bucket =
+        process.env.SUPABASE_BUCKET_TEMPLATES ||
+        process.env.SUPABASE_BUCKET_TEACHER ||
+        "teacher-files";
+      const filePath = process.env.SUPABASE_STUDENT_IMPORT_TEMPLATE_PATH;
+
+      if (!filePath) {
+        return res.status(500).json({
+          message:
+            "Student import template is not configured. Set SUPABASE_STUDENT_IMPORT_TEMPLATE_PATH.",
+        });
+      }
+
+      const downloadUrl = await createSignedUrlForPath(bucket, filePath, 60 * 10);
+      const fileName = filePath.split("/").pop() || "student-import-template.xlsx";
+
+      res.status(200).json({
+        data: {
+          downloadUrl,
+          fileName,
+        },
+      });
+    } catch (error) {
       next(error);
     }
   },
@@ -218,10 +288,15 @@ const studentsController = {
   async exportQuarterlyGrades(req, res, next) {
     try {
       const { id } = req.params;
-      const exportedFile = await studentsService.exportQuarterlyGrades(parseInt(id, 10));
+      const exportedFile = await studentsService.exportQuarterlyGrades(
+        parseInt(id, 10),
+      );
 
       res.setHeader("Content-Type", exportedFile.contentType);
-      res.setHeader("Content-Disposition", `attachment; filename="${exportedFile.fileName}"`);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${exportedFile.fileName}"`,
+      );
       return res.send(exportedFile.buffer);
     } catch (error) {
       if (error.message === "Student not found") {

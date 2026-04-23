@@ -68,7 +68,7 @@ export const ProfileDropdown = () => {
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const { showSuccess, showError } = useApiFeedbackStore();
+  const { showSuccess } = useApiFeedbackStore();
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
 
@@ -157,7 +157,6 @@ export const ProfileDropdown = () => {
 
       return { success: true, message: "Profile updated successfully." };
     } catch (err: any) {
-      showError(err.message || "An error occurred.");
       return { success: false, message: err.message || "An error occurred."};
     } finally {
       setIsSavingProfile(false);
@@ -175,28 +174,23 @@ export const ProfileDropdown = () => {
       !newPassword.trim() ||
       !confirmPassword.trim()
     ) {
-      showError("All password fields are required.");
-      throw new Error("Validation failed");
+      throw new Error("All password fields are required.");
     }
 
     if (newPassword.length < 8) {
-      showError("New password must be at least 8 characters.");
-      throw new Error("Validation failed");
+      throw new Error("New password must be at least 8 characters.");
     }
 
     if (newPassword !== confirmPassword) {
-      showError("New password and confirmation do not match.");
-      throw new Error("Validation failed");
+      throw new Error("New password and confirmation do not match.");
     }
 
     if (currentPassword === newPassword) {
-      showError("New password must be different from the current password.");
-      throw new Error("Validation failed");
+      throw new Error("New password must be different from the current password.");
     }
 
     if (!user) {
-      showError("You are not logged in.");
-      throw new Error("Validation failed");
+      throw new Error("You are not logged in.");
     }
 
     // --- API call (apiFetch handles notifications) ---

@@ -20,6 +20,7 @@ export const usersApi = {
     return apiFetch<ApiData<AuthUser>>(`/users/${userId}`, {
       method: "PUT",
       successMessage: "Profile updated successfully.",
+      skipErrorFeedback: true,
       headers: { 
         ...bearerHeaders(),
         "Content-Type": "application/json" 
@@ -58,6 +59,7 @@ export const usersApi = {
     return apiFetch<ApiData<AuthUser>>(`/users/${userId}/photo`, {
       method: "POST",
       successMessage: "Profile picture updated successfully.",
+      skipErrorFeedback: true,
       headers: bearerHeaders(),
       body: formData,
     });
@@ -71,6 +73,7 @@ export const usersApi = {
     return apiFetch<ApiMessage>(`/users/${userId}/password`, {
       method: "PATCH",
       successMessage: "Password changed successfully.",
+      skipErrorFeedback: true,
       headers: { 
         ...bearerHeaders(),
         "Content-Type": "application/json" 

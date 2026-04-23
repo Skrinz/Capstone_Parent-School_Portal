@@ -20,6 +20,7 @@ export interface SubjectItem {
   time_end: string;
   subject_teacher?: number | null;
   studentCount?: number;
+  classListIds?: number[];
   // For UI list filtering
   grade?: string; 
   section?: string;
@@ -63,6 +64,11 @@ export interface SubjectGrade {
   q4_grade?: number;
   avg_grade: number | string;
   remarks: string; // PASSED/FAILED
+  subject_record?: {
+    class_lists?: Array<{
+      clist_id: number;
+    }>;
+  };
 }
 
 // Attendance data structure

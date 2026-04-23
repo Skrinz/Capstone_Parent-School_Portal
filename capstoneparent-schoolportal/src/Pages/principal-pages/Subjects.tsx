@@ -33,6 +33,7 @@ export const Subjects = ({
   onAssignAdviser,
 }: SubjectsProps) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const hasActiveFilters = searchQuery.trim() !== '';
   const buildTeacherListKey = (teacherId: number, index: number) => `${teacherId}-${index}`;
 
   const [isAssignAdviserModalOpen, setIsAssignAdviserModalOpen] = useState(false);
@@ -107,6 +108,15 @@ export const Subjects = ({
                   className="bg-white pl-10 border-gray-300"
                 />
               </div>
+              {hasActiveFilters ? (
+                <Button
+                  type="button"
+                  className="bg-(--status-inactive) text-white hover:brightness-110"
+                  onClick={() => setSearchQuery('')}
+                >
+                  Clear Filters
+                </Button>
+              ) : null}
             </div>
 
             <div className="whitespace-nowrap rounded-md border border-gray-300 bg-white px-4 py-2">
