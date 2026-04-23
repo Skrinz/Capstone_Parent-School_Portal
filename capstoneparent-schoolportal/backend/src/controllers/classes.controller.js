@@ -1,6 +1,7 @@
 const classesService = require("../services/classes.service");
 const path = require("path");
 const fs = require("fs");
+const XLSX = require("xlsx");
 
 const sendTemplateFile = (res, filename) => {
   const filePath = path.join(__dirname, "../../templates", filename);
@@ -97,6 +98,14 @@ const parseCsvContent = (content) => {
 
   return rows;
 };
+
+const normalizeHeader = (value) =>
+  String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+
+const toCellValue = (value) => String(value ?? "").trim();
 
 const getFirstNonEmptyCellAfter = (row, startIndex) => {
   for (let i = startIndex + 1; i < row.length; i += 1) {
@@ -998,9 +1007,41 @@ const classesController = {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const fileContent = req.file.buffer.toString('utf8');
-      const lines = fileContent.split(/\r?\n/).filter(line => line.trim() !== '');
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      const fileName = String(req.file.originalname || "").toLowerCase();
+      if (!fileName.endsWith(".xlsx")) {
+        return res.status(400).json({
+          message: "Invalid file type. Only .xlsx files are allowed.",
+        });
+      }
+
+      let worksheetRows = [];
+      try {
+        const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+        const firstSheetName = workbook.SheetNames[0];
+        if (!firstSheetName) {
+          return res
+            .status(400)
+            .json({ message: "Invalid XLSX file: No worksheet found." });
+        }
+        worksheetRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
+          header: 1,
+          defval: "",
+          raw: false,
+          blankrows: false,
+        });
+      } catch {
+        return res.status(400).json({
+          message: "Invalid XLSX file. Please upload a valid .xlsx student list.",
+        });
+      }
+
+      if (!worksheetRows.length) {
+        return res.status(400).json({
+          message: "Invalid XLSX format: The worksheet is empty.",
+        });
+      }
+
+      const headers = worksheetRows[0].map(normalizeHeader);
 
       const lrnIdx = headers.indexOf('lrn number');
       const fnameIdx = headers.indexOf('first name');
@@ -1010,18 +1051,17 @@ const classesController = {
       const sYearEndIdx = headers.indexOf('school year end');
 
       if (lrnIdx === -1 || fnameIdx === -1 || lnameIdx === -1) {
-        return res.status(400).json({ message: "Invalid CSV format: Required columns missing" });
+        return res.status(400).json({ message: "Invalid XLSX format: Required columns missing" });
       }
 
-      const rows = lines.slice(1).map(line => {
-        const cols = line.split(',');
+      const rows = worksheetRows.slice(1).map((cols) => {
         return {
-          lrn: cols[lrnIdx]?.trim(),
-          fname: cols[fnameIdx]?.trim(),
-          lname: cols[lnameIdx]?.trim(),
-          sex: cols[sexIdx]?.trim(),
-          syear_start: cols[sYearStartIdx]?.trim(),
-          syear_end: cols[sYearEndIdx]?.trim(),
+          lrn: toCellValue(cols[lrnIdx]),
+          fname: toCellValue(cols[fnameIdx]),
+          lname: toCellValue(cols[lnameIdx]),
+          sex: toCellValue(cols[sexIdx]),
+          syear_start: toCellValue(cols[sYearStartIdx]),
+          syear_end: toCellValue(cols[sYearEndIdx]),
         };
       });
 

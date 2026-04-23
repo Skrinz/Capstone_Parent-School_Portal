@@ -314,7 +314,7 @@ router.post('/import-attendance',
   classesController.importAttendance
 );
 
-// Import student list for a class via CSV
+// Import student list for a class via XLSX
 router.post('/:id/import-students',
   authorize('Teacher', 'Admin', 'Principal'),
   param('id').isInt(),

@@ -3,7 +3,7 @@ import { apiFetch, bearerHeaders } from '@/lib/api/base';
 const API_BASE_URL = '/api';
 
 // Download student list template
-export const downloadStudentListTemplate = async (fileType: 'csv' = 'csv') => {
+export const downloadStudentListTemplate = async (fileType: 'xlsx' = 'xlsx') => {
   try {
     const response = await fetch(`${API_BASE_URL}/templates/student-list?format=${fileType}`, {
       method: 'GET',

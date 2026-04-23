@@ -173,6 +173,25 @@ const refreshSignedUrl = async (fileUrl) => {
   }
 };
 
+const createSignedUrlForPath = async (bucket, key, ttlInSeconds = expiresIn) => {
+  if (!bucket || !key) {
+    throw new Error("Bucket and file path are required to create a signed URL.");
+  }
+
+  const supabase = getClient();
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(key, Math.floor(ttlInSeconds));
+
+  if (error || !data?.signedUrl) {
+    throw new Error(
+      `Supabase signed URL generation failed: ${error?.message ?? "no URL returned"}`,
+    );
+  }
+
+  return data.signedUrl;
+};
+
 /**
  * Upload a single multer file object to Supabase Storage and return a signed URL.
  *
@@ -331,5 +350,6 @@ module.exports = {
   replaceFile,
   deleteFileByUrl,
   refreshSignedUrl,
+  createSignedUrlForPath,
   STORAGE_TARGETS,
 };

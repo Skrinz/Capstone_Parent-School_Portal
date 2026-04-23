@@ -33,6 +33,13 @@ export interface StudentPayload {
   status?: StudentStatus;
 }
 
+export interface StudentImportTemplateResponse {
+  data: {
+    downloadUrl: string;
+    fileName: string;
+  };
+}
+
 export const studentsApi = {
   // GET /api/students/search?lrn=...
   searchByLrn(lrn: string) {
@@ -88,11 +95,21 @@ export const studentsApi = {
     const formData = new FormData();
     formData.append("file", file);
 
-    return apiFetch<{ message: string; data: StudentRecord[] }>("/students/import", {
-      method: "POST",
-      successMessage: "Student CSV uploaded successfully.",
+    return apiFetch<{ message: string; data: StudentRecord[] }>(
+      "/students/import",
+      {
+        method: "POST",
+        successMessage: "Student XLSX uploaded successfully.",
+        headers: bearerHeaders(),
+        body: formData,
+      },
+    );
+  },
+
+  getImportTemplate() {
+    return apiFetch<StudentImportTemplateResponse>("/students/import-template", {
+      method: "GET",
       headers: bearerHeaders(),
-      body: formData,
     });
   },
 
