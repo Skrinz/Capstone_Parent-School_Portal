@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const XLSX = require('xlsx');
 const { authenticate, authorize } = require('../middlewares/auth');
 
 const router = express.Router();
@@ -19,10 +20,42 @@ const serveTemplate = (res, filename, downloadName) => {
   }
 };
 
+const sendWorkbookTemplate = (res, rows, downloadName) => {
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.aoa_to_sheet(rows);
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Template');
+  const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+  res.setHeader(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  );
+  res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
+  res.send(buffer);
+};
+
 /**
  * GET /api/templates/student-list?format=csv
  */
 router.get('/student-list', (req, res) => {
+  const format = String(req.query.format || 'csv').toLowerCase();
+
+  if (format === 'xlsx') {
+    return sendWorkbookTemplate(
+      res,
+      [[
+        'First Name',
+        'Last Name',
+        'Sex',
+        'LRN Number',
+        'Grade Level',
+        'School Year Start',
+        'School Year End',
+      ]],
+      'student-list-template.xlsx'
+    );
+  }
+
   serveTemplate(res, 'student-list-template.csv', 'student-list-template.csv');
 });
 

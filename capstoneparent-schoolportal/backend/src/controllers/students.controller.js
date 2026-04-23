@@ -10,6 +10,26 @@ const normalizeHeader = (value) =>
 
 const toCellValue = (value) => String(value ?? "").trim();
 
+const createStudentTemplateDataUrl = () => {
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.aoa_to_sheet([
+    [
+      "First Name",
+      "Last Name",
+      "Sex",
+      "LRN Number",
+      "Grade Level",
+      "School Year Start",
+      "School Year End",
+    ],
+  ]);
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
+
+  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+  return `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${buffer.toString("base64")}`;
+};
+
 const studentsController = {
   /**
    * GET /students/search?lrn=<digits>
@@ -203,16 +223,19 @@ const studentsController = {
         process.env.SUPABASE_BUCKET_TEACHER ||
         "teacher-files";
       const filePath = process.env.SUPABASE_STUDENT_IMPORT_TEMPLATE_PATH;
+      const fallbackFileName = "student-import-template.xlsx";
 
       if (!filePath) {
-        return res.status(500).json({
-          message:
-            "Student import template is not configured. Set SUPABASE_STUDENT_IMPORT_TEMPLATE_PATH.",
+        return res.status(200).json({
+          data: {
+            downloadUrl: createStudentTemplateDataUrl(),
+            fileName: fallbackFileName,
+          },
         });
       }
 
       const downloadUrl = await createSignedUrlForPath(bucket, filePath, 60 * 10);
-      const fileName = filePath.split("/").pop() || "student-import-template.xlsx";
+      const fileName = filePath.split("/").pop() || fallbackFileName;
 
       res.status(200).json({
         data: {
