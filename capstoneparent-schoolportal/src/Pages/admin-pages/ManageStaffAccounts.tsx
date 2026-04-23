@@ -344,20 +344,6 @@ export const ManageStaffAccounts = () => {
     setFormErrors({});
   };
 
-  const editFormHasChanges = useMemo(() => {
-    if (!editingStaff) return false;
-    return (
-      formData.firstName.trim() !== editingStaff.firstName.trim() ||
-      formData.lastName.trim() !== editingStaff.lastName.trim() ||
-      formData.contactNo.trim() !== editingStaff.contactNo.trim() ||
-      formData.dateOfBirth.trim() !== editingStaff.dateOfBirth.trim() ||
-      formData.address.trim() !== editingStaff.address.trim() ||
-      formData.email.trim() !== editingStaff.email.trim() ||
-      formData.status !== editingStaff.status ||
-      selectedRoles.join(", ") !== editingStaff.roles
-    );
-  }, [formData, editingStaff, selectedRoles]);
-
   const handleUpdateStaff = () => {
     const errors: Partial<Record<keyof typeof emptyFormState, string>> = {};
     if (!formData.firstName.trim()) errors.firstName = "First name is required";
@@ -405,15 +391,6 @@ export const ManageStaffAccounts = () => {
       setIsAddingStaff(false);
     }
   };
-
-  const addFormIsValid =
-    formData.firstName.trim().length > 0 &&
-    formData.lastName.trim().length > 0 &&
-    formData.contactNo.trim().length > 0 &&
-    formData.dateOfBirth.trim().length > 0 &&
-    formData.address.trim().length > 0 &&
-    formData.email.trim().length > 0 &&
-    selectedRoles.length > 0;
 
   return (
     <div className="min-h-screen">
