@@ -88,6 +88,9 @@ export const fetchSubjects = async (): Promise<SubjectItem[]> => {
       return {
         ...item,
         studentCount: item.students?.length ?? 0,
+        classListIds: (item.class_lists ?? [])
+          .map((classListItem: any) => classListItem.clist_id)
+          .filter((classListId: unknown) => Number.isFinite(classListId)),
         grade: firstClass?.grade_level?.grade_level || '',
         section: firstClass?.section?.section_name || '',
         syear_start: firstClass?.syear_start ?? undefined,

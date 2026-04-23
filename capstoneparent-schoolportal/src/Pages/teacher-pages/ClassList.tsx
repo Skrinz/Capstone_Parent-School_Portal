@@ -104,9 +104,25 @@ export const ClassList = () => {
   // Students for selected subject (filtered by subject record enrollment)
   const studentsForSelectedSubject = useMemo(() => {
     if (!selectedSubject) return [];
-    
+
+    const subjectClassIds = selectedSubject.classListIds ?? [];
+
     return allStudents.filter(
-      (student) => student.subject_records?.some(sr => sr.srecord_id === selectedSubject.srecord_id)
+      (student) =>
+        student.subject_records?.some((sr) => {
+          if (sr.srecord_id === selectedSubject.srecord_id) {
+            return true;
+          }
+
+          const belongsToSelectedClass = sr.subject_record?.class_lists?.some((classList) =>
+            subjectClassIds.includes(classList.clist_id)
+          );
+
+          return Boolean(
+            belongsToSelectedClass &&
+            sr.subject_name === selectedSubject.subject_name
+          );
+        }) ?? false
     );
   }, [selectedSubject, allStudents]);
 
@@ -472,6 +488,10 @@ export const ClassList = () => {
                           setSelectedSubject(subjectItem);
                           setRemarksFilter('all');
                           setStudentSearchQuery('');
+                          setSelectedStudent(null);
+
+                          const subjectClassId = subjectItem.classListIds?.[0];
+                          loadStudents(subjectClassId);
                         }}
                       >
                         <div className="flex justify-between items-start gap-4">
