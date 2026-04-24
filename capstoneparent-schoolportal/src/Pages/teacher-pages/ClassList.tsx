@@ -20,6 +20,7 @@ import { SubjectSummary } from "./SubjectSummary";
 import { FileUploadModal } from './FileUploadModal';
 import {
   downloadGradeSheetTemplate,
+  downloadSubjectGradeSheetTemplate,
   exportAllQuartersGradeSheet,
   uploadGradeSheet,
   uploadAttendanceSheet,
@@ -179,6 +180,14 @@ export const ClassList = () => {
   const handleDownloadTemplate = async () => {
     try {
       await downloadGradeSheetTemplate();
+    } catch (error) {
+      showError('Failed to download template. Please try again.');
+    }
+  };
+
+  const handleDownloadSubjectTemplate = async () => {
+    try {
+      await downloadSubjectGradeSheetTemplate();
     } catch (error) {
       showError('Failed to download template. Please try again.');
     }
@@ -817,14 +826,14 @@ export const ClassList = () => {
                         onClick={() => setIsImportSubjectGradeSheetModalOpen(true)}
                       >
                         <Upload className="mr-2 h-4 w-4" />
-                        Import Grade Sheet (.csv)
+                        Import Grade Sheet (.xlsx)
                       </Button>
                       <Button 
-                        className="bg-(--button-green) hover:bg-green-700 text-white"
-                        onClick={handleDownloadTemplate}
+                        className="bg-(--navbar-bg) hover:bg-yellow-300 text-black"
+                        onClick={handleDownloadSubjectTemplate}
                       >
                         <Download className="mr-2 h-4 w-4" />
-                        Download Grade Sheet Template (.csv)
+                        Download Grade Sheet Template (.xlsx)
                       </Button>
                     </div>
 
@@ -945,7 +954,7 @@ export const ClassList = () => {
         onClose={() => setIsImportSubjectGradeSheetModalOpen(false)}
         onUpload={handleImportSubjectGradeSheet}
         title="Import Subject Grade Sheet"
-        acceptedFileTypes={['.csv']}
+        acceptedFileTypes={['.xlsx']}
         maxSizeMB={5}
       />
     </div>

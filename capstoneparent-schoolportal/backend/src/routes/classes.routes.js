@@ -64,6 +64,12 @@ router.get('/grade-sheet-template',
   classesController.downloadGradeSheetTemplate
 );
 
+// Download subject teacher grade sheet template
+router.get('/subject-grade-sheet-template',
+  authorize('Teacher', 'Admin', 'Principal'),
+  classesController.downloadSubjectGradeSheetTemplate
+);
+
 // Download attendance template
 router.get('/attendance-template',
   authorize('Teacher', 'Admin', 'Principal'),
@@ -279,7 +285,7 @@ router.get('/:id/export-grades-all-quarters',
   classesController.exportAllQuartersGrades
 );
 
-// Import subject grades via CSV
+// Import class grades
 router.post('/:id/import-grades',
   authorize('Teacher', 'Admin', 'Principal'),
   param('id').isInt(),
@@ -288,7 +294,7 @@ router.post('/:id/import-grades',
   classesController.importClassGrades
 );
 
-// Import subject grades via CSV
+// Import subject grades via XLSX
 router.post('/subjects/:id/import-grades',
   authorize('Teacher', 'Admin', 'Principal'),
   param('id').isInt(),

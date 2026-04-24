@@ -1,5 +1,24 @@
 import { apiFetch, bearerHeaders } from '@/lib/api/base';
 
+interface TemplateDownloadResponse {
+  data: {
+    downloadUrl: string;
+    fileName: string;
+  };
+}
+
+const triggerBrowserDownload = (blob: Blob, fileName: string) => {
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+
+  anchor.href = url;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.URL.revokeObjectURL(url);
+};
+
 // Download functions
 export const downloadGradeSheetTemplate = async () => {
   try {
@@ -157,4 +176,26 @@ export const uploadSubjectGradeSheet = async (srecord_id: number, file: File) =>
     headers: bearerHeaders(),
     body: formData,
   });
+};
+
+export const downloadSubjectGradeSheetTemplate = async () => {
+  try {
+    const response = await apiFetch<TemplateDownloadResponse>('/classes/subject-grade-sheet-template', {
+      method: 'GET',
+      headers: bearerHeaders(),
+    });
+
+    const fileName = response.data.fileName || 'SubjectTeacher_Grades-Attendance_Template.xlsx';
+    const downloadResponse = await fetch(response.data.downloadUrl);
+
+    if (!downloadResponse.ok) {
+      throw new Error('Failed to download template');
+    }
+
+    const blob = await downloadResponse.blob();
+    triggerBrowserDownload(blob, fileName);
+  } catch (error) {
+    console.error('Error downloading subject template:', error);
+    throw error;
+  }
 };

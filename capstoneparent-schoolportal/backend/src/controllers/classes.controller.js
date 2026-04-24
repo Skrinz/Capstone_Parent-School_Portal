@@ -2,6 +2,7 @@ const classesService = require("../services/classes.service");
 const path = require("path");
 const fs = require("fs");
 const XLSX = require("xlsx");
+const { createSignedUrlForPath } = require("../utils/supabaseStorage");
 
 const sendTemplateFile = (res, filename) => {
   const filePath = path.join(__dirname, "../../templates", filename);
@@ -106,6 +107,69 @@ const normalizeHeader = (value) =>
     .replace(/\s+/g, " ");
 
 const toCellValue = (value) => String(value ?? "").trim();
+
+const readFirstWorksheetRows = (buffer) => {
+  const workbook = XLSX.read(buffer, { type: "buffer" });
+  const firstSheetName = workbook.SheetNames[0];
+
+  if (!firstSheetName) {
+    throw new Error("Invalid XLSX file: No worksheet found.");
+  }
+
+  return XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
+    header: 1,
+    defval: "",
+    raw: false,
+    blankrows: false,
+  });
+};
+
+const findHeaderIndex = (headers, aliases) =>
+  headers.findIndex((header) => aliases.includes(header));
+
+const parseSubjectGradeWorksheetRows = (worksheetRows) => {
+  if (!worksheetRows.length) {
+    throw new Error("Invalid XLSX format: The worksheet is empty.");
+  }
+
+  const headers = worksheetRows[0].map(normalizeHeader);
+
+  const subjectTitleIdx = findHeaderIndex(headers, [
+    "subject title",
+    "subject",
+    "subject name",
+  ]);
+  const lrnIdx = findHeaderIndex(headers, ["lrn number", "lrn"]);
+  const q1Idx = findHeaderIndex(headers, ["q1", "quarter 1", "1st quarter"]);
+  const q2Idx = findHeaderIndex(headers, ["q2", "quarter 2", "2nd quarter"]);
+  const q3Idx = findHeaderIndex(headers, ["q3", "quarter 3", "3rd quarter"]);
+  const q4Idx = findHeaderIndex(headers, ["q4", "quarter 4", "4th quarter"]);
+
+  if (lrnIdx === -1) {
+    throw new Error("Invalid XLSX format: LRN number column missing.");
+  }
+
+  return worksheetRows.slice(1).map((cols) => ({
+    subject_title: subjectTitleIdx === -1 ? "" : toCellValue(cols[subjectTitleIdx]),
+    lrn: toCellValue(cols[lrnIdx]),
+    q1: q1Idx === -1 ? "" : toCellValue(cols[q1Idx]),
+    q2: q2Idx === -1 ? "" : toCellValue(cols[q2Idx]),
+    q3: q3Idx === -1 ? "" : toCellValue(cols[q3Idx]),
+    q4: q4Idx === -1 ? "" : toCellValue(cols[q4Idx]),
+  }));
+};
+
+const createSubjectTeacherTemplateDataUrl = () => {
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.aoa_to_sheet([
+    ["Subject Title", "LRN Number", "Q1", "Q2", "Q3", "Q4"],
+  ]);
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
+
+  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+  return `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${buffer.toString("base64")}`;
+};
 
 const getFirstNonEmptyCellAfter = (row, startIndex) => {
   for (let i = startIndex + 1; i < row.length; i += 1) {
@@ -799,36 +863,32 @@ const classesController = {
        if (!req.file) {
          return res.status(400).json({ message: "No file uploaded" });
        }
- 
-       const fileContent = req.file.buffer.toString('utf8');
-       const parsedRows = parseCsvContent(fileContent);
-       const headers = parsedRows[0].map(h => h.trim().toLowerCase());
-       
-       const subjectTitleIdx = headers.indexOf('subject title');
-       const lrnIdx = headers.indexOf('lrn number');
-       const q1Idx = headers.indexOf('q1');
-       const q2Idx = headers.indexOf('q2');
-       const q3Idx = headers.indexOf('q3');
-       const q4Idx = headers.indexOf('q4');
- 
-       if (lrnIdx === -1) {
-         return res.status(400).json({ message: "Invalid CSV: LRN number column missing" });
+
+       const fileName = String(req.file.originalname || "").toLowerCase();
+       if (!fileName.endsWith(".xlsx")) {
+         return res.status(400).json({
+           message: "Invalid file type. Only .xlsx files are allowed.",
+         });
        }
- 
-       const rows = parsedRows.slice(1).map(cols => {
-         return {
-           subject_title: cols[subjectTitleIdx]?.trim(),
-           lrn: cols[lrnIdx]?.trim(),
-           q1: cols[q1Idx]?.trim(),
-           q2: cols[q2Idx]?.trim(),
-           q3: cols[q3Idx]?.trim(),
-           q4: cols[q4Idx]?.trim(),
-         };
-       });
- 
+
+       let rows = [];
+       try {
+         const worksheetRows = readFirstWorksheetRows(req.file.buffer);
+         rows = parseSubjectGradeWorksheetRows(worksheetRows);
+       } catch (error) {
+         return res.status(400).json({
+           message:
+             error.message ||
+             "Invalid XLSX file. Please upload a valid .xlsx subject grade sheet.",
+         });
+       }
+
        const results = await classesService.importGrades(parseInt(id), rows);
        res.status(200).json({ message: "Grades imported successfully", data: results });
      } catch (error) {
+       if (error.message === "Subject title does not match the selected subject") {
+         return res.status(400).json({ message: error.message });
+       }
        next(error);
      }
    },
@@ -895,6 +955,40 @@ const classesController = {
   async downloadGradeSheetTemplate(_req, res, next) {
     try {
       return sendTemplateFile(res, "Grade Template.csv");
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async downloadSubjectGradeSheetTemplate(_req, res, next) {
+    try {
+      const bucket =
+        process.env.SUPABASE_BUCKET_TEMPLATES ||
+        process.env.SUPABASE_BUCKET_TEACHER ||
+        "teacher-files";
+      const filePath =
+        process.env.SUPABASE_SUBJECT_TEACHER_TEMPLATE_PATH ||
+        "subject-teacher/SubjectTeacher_Grades-Attendance_Template.xlsx";
+      const fallbackFileName = "SubjectTeacher_Grades-Attendance_Template.xlsx";
+
+      try {
+        const downloadUrl = await createSignedUrlForPath(bucket, filePath, 60 * 10);
+        const fileName = filePath.split("/").pop() || fallbackFileName;
+
+        return res.status(200).json({
+          data: {
+            downloadUrl,
+            fileName,
+          },
+        });
+      } catch (_) {
+        return res.status(200).json({
+          data: {
+            downloadUrl: createSubjectTeacherTemplateDataUrl(),
+            fileName: fallbackFileName,
+          },
+        });
+      }
     } catch (error) {
       next(error);
     }
