@@ -223,7 +223,7 @@ const studentsController = {
         process.env.SUPABASE_BUCKET_TEACHER ||
         "teacher-files";
       const filePath = process.env.SUPABASE_STUDENT_IMPORT_TEMPLATE_PATH;
-      const fallbackFileName = "student-import-template.xlsx";
+      const fallbackFileName = "StudentList_Template.xlsx";
 
       if (!filePath) {
         return res.status(200).json({

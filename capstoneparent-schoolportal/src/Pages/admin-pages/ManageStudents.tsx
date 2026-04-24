@@ -16,7 +16,11 @@ import {
 } from "../../components/admin/StudentFormModal";
 import { StudentBatchUploadModal } from "../../components/admin/StudentBatchUploadModal";
 import { ActionConfirmationModal } from "../../components/general/ActionConfirmationModal";
-import { studentsApi, type StudentPayload } from "@/lib/api/studentsApi";
+import {
+  downloadStudentImportTemplate,
+  studentsApi,
+  type StudentPayload,
+} from "@/lib/api/studentsApi";
 import type {
   GradeLevel,
   PaginationMeta,
@@ -330,8 +334,7 @@ export const ManageStudents = () => {
 
   const handleDownloadTemplate = async () => {
     try {
-      const response = await studentsApi.getImportTemplate();
-      window.open(response.data.downloadUrl, "_blank", "noopener,noreferrer");
+      await downloadStudentImportTemplate();
     } catch (err) {
       showError(
         err instanceof Error

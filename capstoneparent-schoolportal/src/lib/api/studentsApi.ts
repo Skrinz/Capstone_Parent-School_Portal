@@ -40,6 +40,18 @@ export interface StudentImportTemplateResponse {
   };
 }
 
+const triggerBrowserDownload = (blob: Blob, fileName: string) => {
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+
+  anchor.href = url;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.URL.revokeObjectURL(url);
+};
+
 export const studentsApi = {
   // GET /api/students/search?lrn=...
   searchByLrn(lrn: string) {
@@ -143,3 +155,16 @@ export const studentsApi = {
     });
   },
 };
+
+export async function downloadStudentImportTemplate() {
+  const response = await studentsApi.getImportTemplate();
+  const fileName = response.data.fileName || "StudentList_Template.xlsx";
+  const downloadResponse = await fetch(response.data.downloadUrl);
+
+  if (!downloadResponse.ok) {
+    throw new Error("Failed to download student import template");
+  }
+
+  const blob = await downloadResponse.blob();
+  triggerBrowserDownload(blob, fileName);
+}
