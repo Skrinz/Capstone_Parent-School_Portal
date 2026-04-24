@@ -403,23 +403,18 @@ const studentsService = {
 
     const existingStudents = await prisma.student.findMany({
       where: {
-        OR: normalizedRows.map((row) => ({
-          lrn_number: row.lrn_number,
-          syear_start: row.syear_start,
-        })),
+        lrn_number: {
+          in: [...new Set(normalizedRows.map((row) => row.lrn_number))],
+        },
       },
       select: {
         student_id: true,
         lrn_number: true,
-        syear_start: true,
       },
     });
 
     const existingStudentByKey = new Map(
-      existingStudents.map((student) => [
-        `${student.lrn_number}:${student.syear_start}`,
-        student.student_id,
-      ]),
+      existingStudents.map((student) => [student.lrn_number, student.student_id]),
     );
 
     const savedStudentIds = await prisma.$transaction(async (tx) => {
@@ -437,9 +432,7 @@ const studentsService = {
           status: "ENROLLED",
         };
 
-        const existingStudentId = existingStudentByKey.get(
-          `${row.lrn_number}:${row.syear_start}`,
-        );
+        const existingStudentId = existingStudentByKey.get(row.lrn_number);
 
         if (existingStudentId) {
           const updatedStudent = await tx.student.update({
@@ -455,6 +448,7 @@ const studentsService = {
           data: payload,
           select: { student_id: true },
         });
+        existingStudentByKey.set(row.lrn_number, createdStudent.student_id);
         ids.push(createdStudent.student_id);
       }
 

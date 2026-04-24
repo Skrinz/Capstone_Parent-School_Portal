@@ -1535,24 +1535,19 @@ const classesService = {
 
     const existingStudents = await prisma.student.findMany({
       where: {
-        OR: normalizedRows.map((row) => ({
-          lrn_number: row.lrn_number,
-          syear_start: row.syear_start,
-        })),
+        lrn_number: {
+          in: [...new Set(normalizedRows.map((row) => row.lrn_number))],
+        },
       },
       select: {
         student_id: true,
         lrn_number: true,
-        syear_start: true,
         gl_id: true,
       },
     });
 
     const existingStudentByKey = new Map(
-      existingStudents.map((student) => [
-        `${student.lrn_number}:${student.syear_start}`,
-        student,
-      ]),
+      existingStudents.map((student) => [student.lrn_number, student]),
     );
 
     existingStudents.forEach((student) =>
@@ -1568,8 +1563,7 @@ const classesService = {
       const enrolledStudents = [];
 
       for (const row of normalizedRows) {
-        const key = `${row.lrn_number}:${row.syear_start}`;
-        const existingStudent = existingStudentByKey.get(key);
+        const existingStudent = existingStudentByKey.get(row.lrn_number);
 
         if (existingStudent) {
           const updatedStudent = await tx.student.update({
@@ -1599,6 +1593,7 @@ const classesService = {
             status: "ENROLLED",
           },
         });
+        existingStudentByKey.set(row.lrn_number, createdStudent);
         enrolledStudents.push(createdStudent);
       }
 

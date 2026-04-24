@@ -180,7 +180,7 @@ model Student {
   fname                   String
   lname                   String
   sex                     Sex
-  lrn_number              String
+  lrn_number              String                      @unique
   gl_id                   Int
   syear_start             Int
   syear_end               Int
@@ -194,7 +194,6 @@ model Student {
   grade_level             GradeLevel                  @relation(fields: [gl_id], references: [gl_id])
   subject_records         SubjectRecordStudent[]
 
-  @@unique([lrn_number, syear_start])
   @@index([status, gl_id, syear_start])
   @@index([created_at])
   @@map("students")
