@@ -39,6 +39,7 @@ import { useApiFeedbackStore } from '@/lib/store/apiFeedbackStore';
 export const ManageClassLists = () => {
   const showError = useApiFeedbackStore((state) => state.showError);
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
+  const [isDownloadingStudentTemplate, setIsDownloadingStudentTemplate] = useState(false);
   
   // Filters
   const [gradeLevel, setGradeLevel] = useState('allgrades');
@@ -421,6 +422,7 @@ export const ManageClassLists = () => {
   };
 
   const handleDownloadStudentTemplate = async () => {
+    setIsDownloadingStudentTemplate(true);
     try {
       await downloadStudentListTemplate();
     } catch (error) {
@@ -429,6 +431,8 @@ export const ManageClassLists = () => {
           ? error.message
           : 'Failed to download student list template.'
       );
+    } finally {
+      setIsDownloadingStudentTemplate(false);
     }
   };
 
@@ -653,6 +657,7 @@ export const ManageClassLists = () => {
                     onRemoveStudent={handleRemoveStudent}
                     onAddStudent={handleOpenAddStudentModal}
                     onDownloadTemplate={handleDownloadStudentTemplate}
+                    isDownloadingTemplate={isDownloadingStudentTemplate}
                   />
                 </TabsContent>
               </Tabs>

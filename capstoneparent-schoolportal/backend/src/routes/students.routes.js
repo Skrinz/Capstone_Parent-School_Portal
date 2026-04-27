@@ -102,7 +102,7 @@ router.post(
   studentsController.createStudent,
 );
 
-// Import students via XLSX
+// Import students via CSV
 router.post(
   "/import",
   authorize("Admin", "Principal", "Teacher"),

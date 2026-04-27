@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, X, ArrowLeft, UserPlus, Download } from 'lucide-react';
+import { Search, X, ArrowLeft, UserPlus, Download, Loader2 } from 'lucide-react';
 import type { Student } from '@/Pages/principal-pages/types';
 
 interface StudentListProps {
@@ -11,6 +11,7 @@ interface StudentListProps {
   onRemoveStudent: (student: Student) => void;
   onAddStudent: () => void;
   onDownloadTemplate: () => void;
+  isDownloadingTemplate?: boolean;
 }
 
 export const StudentList = ({
@@ -20,6 +21,7 @@ export const StudentList = ({
   onRemoveStudent,
   onAddStudent,
   onDownloadTemplate,
+  isDownloadingTemplate = false,
 }: StudentListProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const hasActiveFilters = searchQuery.trim() !== '';
@@ -69,9 +71,14 @@ export const StudentList = ({
           <Button
             className="bg-(--navbar-bg) text-black hover:bg-yellow-300"
             onClick={onDownloadTemplate}
+            disabled={isDownloadingTemplate}
           >
-            <Download className="mr-2 h-4 w-4" />
-            Download Student List Template
+            {isDownloadingTemplate ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            {isDownloadingTemplate ? 'Downloading Template...' : 'Download Student List Template'}
           </Button>
           <Button 
             className="bg-(--button-green) hover:bg-green-700 text-white"

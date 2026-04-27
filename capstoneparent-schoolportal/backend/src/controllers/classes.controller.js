@@ -100,6 +100,11 @@ const parseCsvContent = (content) => {
   return rows;
 };
 
+const readCsvRows = (buffer) => {
+  const content = buffer.toString("utf8").replace(/^\uFEFF/, "");
+  return parseCsvContent(content);
+};
+
 const normalizeHeader = (value) =>
   String(value ?? "")
     .trim()
@@ -107,6 +112,32 @@ const normalizeHeader = (value) =>
     .replace(/\s+/g, " ");
 
 const toCellValue = (value) => String(value ?? "").trim();
+
+const toLrnCellValue = (value) => {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.trunc(value).toString();
+  }
+
+  const normalizedValue = String(value).trim();
+  if (!normalizedValue) {
+    return "";
+  }
+
+  if (/[eE][+-]?\d+/.test(normalizedValue)) {
+    const numericValue = Number(normalizedValue);
+    if (Number.isFinite(numericValue)) {
+      return Math.trunc(numericValue).toString();
+    }
+  }
+
+  return normalizedValue;
+};
+
+const isNumericIdentifier = (value) => /^\d+$/.test(String(value ?? "").trim());
 
 const readFirstWorksheetRows = (buffer) => {
   const workbook = XLSX.read(buffer, { type: "buffer" });
@@ -129,46 +160,102 @@ const findHeaderIndex = (headers, aliases) =>
 
 const parseSubjectGradeWorksheetRows = (worksheetRows) => {
   if (!worksheetRows.length) {
-    throw new Error("Invalid XLSX format: The worksheet is empty.");
+    throw new Error("Invalid CSV format: The worksheet is empty.");
   }
 
-  const headers = worksheetRows[0].map(normalizeHeader);
+  const firstRowHeaders = worksheetRows[0].map(normalizeHeader);
+  const lrnIdx = findHeaderIndex(firstRowHeaders, ["lrn number", "lrn"]);
 
-  const subjectTitleIdx = findHeaderIndex(headers, [
+  if (lrnIdx === -1) {
+    throw new Error("Invalid CSV format: LRN number column missing.");
+  }
+
+  const subjectTitleIdx = findHeaderIndex(firstRowHeaders, [
     "subject title",
     "subject",
     "subject name",
   ]);
-  const lrnIdx = findHeaderIndex(headers, ["lrn number", "lrn"]);
-  const q1Idx = findHeaderIndex(headers, ["q1", "quarter 1", "1st quarter"]);
-  const q2Idx = findHeaderIndex(headers, ["q2", "quarter 2", "2nd quarter"]);
-  const q3Idx = findHeaderIndex(headers, ["q3", "quarter 3", "3rd quarter"]);
-  const q4Idx = findHeaderIndex(headers, ["q4", "quarter 4", "4th quarter"]);
+  const q1Idx = findHeaderIndex(firstRowHeaders, ["q1", "quarter 1", "1st quarter"]);
+  const q2Idx = findHeaderIndex(firstRowHeaders, ["q2", "quarter 2", "2nd quarter"]);
+  const q3Idx = findHeaderIndex(firstRowHeaders, ["q3", "quarter 3", "3rd quarter"]);
+  const q4Idx = findHeaderIndex(firstRowHeaders, ["q4", "quarter 4", "4th quarter"]);
 
-  if (lrnIdx === -1) {
-    throw new Error("Invalid XLSX format: LRN number column missing.");
+  if ([q1Idx, q2Idx, q3Idx, q4Idx].some((index) => index !== -1)) {
+    return worksheetRows.slice(1).map((cols) => ({
+      subject_title: subjectTitleIdx === -1 ? "" : toCellValue(cols[subjectTitleIdx]),
+      lrn: toLrnCellValue(cols[lrnIdx]),
+      name: "",
+      q1: q1Idx === -1 ? "" : toCellValue(cols[q1Idx]),
+      q2: q2Idx === -1 ? "" : toCellValue(cols[q2Idx]),
+      q3: q3Idx === -1 ? "" : toCellValue(cols[q3Idx]),
+      q4: q4Idx === -1 ? "" : toCellValue(cols[q4Idx]),
+    }));
   }
 
-  return worksheetRows.slice(1).map((cols) => ({
-    subject_title: subjectTitleIdx === -1 ? "" : toCellValue(cols[subjectTitleIdx]),
-    lrn: toCellValue(cols[lrnIdx]),
-    q1: q1Idx === -1 ? "" : toCellValue(cols[q1Idx]),
-    q2: q2Idx === -1 ? "" : toCellValue(cols[q2Idx]),
-    q3: q3Idx === -1 ? "" : toCellValue(cols[q3Idx]),
-    q4: q4Idx === -1 ? "" : toCellValue(cols[q4Idx]),
+  if (worksheetRows.length < 2) {
+    return worksheetRows.slice(1).map((cols) => ({
+      subject_title: subjectTitleIdx === -1 ? "" : toCellValue(cols[subjectTitleIdx]),
+      lrn: toLrnCellValue(cols[lrnIdx]),
+      name: "",
+      q1: "",
+      q2: "",
+      q3: "",
+      q4: "",
+    }));
+  }
+
+  const secondRowHeaders = worksheetRows[1].map(normalizeHeader);
+  const templateQ1Idx = findHeaderIndex(secondRowHeaders, ["q1", "quarter 1", "1st quarter"]);
+  const templateQ2Idx = findHeaderIndex(secondRowHeaders, ["q2", "quarter 2", "2nd quarter"]);
+  const templateQ3Idx = findHeaderIndex(secondRowHeaders, ["q3", "quarter 3", "3rd quarter"]);
+  const templateQ4Idx = findHeaderIndex(secondRowHeaders, ["q4", "quarter 4", "4th quarter"]);
+  const studentNameIdx = findHeaderIndex(firstRowHeaders, [
+    "student name",
+    "student",
+    "learner name",
+    "name",
+  ]);
+  const subjectTitleIsHeaderLabel =
+    subjectTitleIdx !== -1 &&
+    ["subject title", "subject", "subject name"].includes(
+      normalizeHeader(worksheetRows[0][subjectTitleIdx]),
+    );
+  const subjectTitle =
+    !subjectTitleIsHeaderLabel && subjectTitleIdx !== -1
+      ? toCellValue(worksheetRows[0][subjectTitleIdx])
+      : worksheetRows[0]
+          .map(toCellValue)
+          .find(
+            (cell, index) =>
+              index !== lrnIdx &&
+              index !== studentNameIdx &&
+              cell &&
+              !["grades", "subject title", "subject", "subject name"].includes(
+                normalizeHeader(cell),
+              ),
+          ) || "";
+
+  return worksheetRows.slice(2).map((cols) => ({
+    subject_title:
+      subjectTitleIdx !== -1 && !subjectTitle ? toCellValue(cols[subjectTitleIdx]) : subjectTitle,
+    lrn: toLrnCellValue(cols[lrnIdx]),
+    name: studentNameIdx === -1 ? "" : toCellValue(cols[studentNameIdx]),
+    q1: templateQ1Idx === -1 ? "" : toCellValue(cols[templateQ1Idx]),
+    q2: templateQ2Idx === -1 ? "" : toCellValue(cols[templateQ2Idx]),
+    q3: templateQ3Idx === -1 ? "" : toCellValue(cols[templateQ3Idx]),
+    q4: templateQ4Idx === -1 ? "" : toCellValue(cols[templateQ4Idx]),
   }));
 };
 
 const createSubjectTeacherTemplateDataUrl = () => {
-  const workbook = XLSX.utils.book_new();
-  const worksheet = XLSX.utils.aoa_to_sheet([
-    ["Subject Title", "LRN Number", "Q1", "Q2", "Q3", "Q4"],
-  ]);
+  const csvContent = [
+    ["LRN Number", "Student Name", "Subject Name", "", "", ""],
+    ["", "", "Q1", "Q2", "Q3", "Q4"],
+  ]
+    .map((row) => row.join(","))
+    .join("\r\n");
 
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
-
-  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
-  return `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${buffer.toString("base64")}`;
+  return `data:text/csv;charset=utf-8;base64,${Buffer.from(csvContent, "utf8").toString("base64")}`;
 };
 
 const createClassAdviserTemplateDataUrl = () => {
@@ -495,63 +582,87 @@ const extractWorksheetHeaderRow = (worksheetRows, requiredHeaderAlias) => {
 
 const parseClassAdviserGradeWorksheetRows = (worksheetRows) => {
   if (!worksheetRows.length) {
-    throw new Error("Invalid XLSX format: The Grades worksheet is empty.");
+    throw new Error("Invalid CSV format: The grade sheet is empty.");
   }
 
   const { headerRowIndex, headers } = extractWorksheetHeaderRow(
     worksheetRows,
     "lrn number",
   );
+  const secondaryHeaders = worksheetRows[headerRowIndex + 1] ?? [];
   const normalizedHeaders = headers.map(normalizeHeader);
   const lrnIdx = normalizedHeaders.indexOf("lrn number");
+  const studentNameIdx = normalizedHeaders.indexOf("student name");
 
   if (lrnIdx === -1) {
-    throw new Error("Invalid XLSX format: LRN number column missing in Grades worksheet.");
+    throw new Error("Invalid CSV format: LRN number column missing in the grade sheet.");
   }
 
-  const quarterColumnIndexes = normalizedHeaders.reduce((indexes, header, index) => {
-    const quarterKey = normalizeQuarterHeader(header);
-    if (["q1", "q2", "q3", "q4"].includes(quarterKey)) {
-      indexes[quarterKey] = index;
-    }
-    return indexes;
-  }, {});
+  const subjectColumns = [];
 
-  const subjectColumnIndexes = normalizedHeaders.reduce((indexes, header, index) => {
-    if (!header || index === lrnIdx || quarterColumnIndexes[header] !== undefined) {
-      return indexes;
+  let currentSubjectTitle = "";
+
+  headers.forEach((header, index) => {
+    if (index === lrnIdx || index === studentNameIdx) {
+      return;
     }
 
-    if (["grades", "grade"].includes(header)) {
-      return indexes;
+    const rawSubjectTitle = String(header ?? "").trim();
+    const subjectTitle = rawSubjectTitle || currentSubjectTitle;
+    const normalizedSubjectTitle = normalizeHeader(subjectTitle);
+    const quarterKey = normalizeQuarterHeader(secondaryHeaders[index] || headers[index]);
+
+    if (rawSubjectTitle) {
+      currentSubjectTitle = rawSubjectTitle;
     }
 
-    indexes.push({ index, subjectTitle: headers[index].trim() });
-    return indexes;
-  }, []);
+    if (!subjectTitle || ["grades", "grade"].includes(normalizedSubjectTitle)) {
+      return;
+    }
 
-  if (subjectColumnIndexes.length === 0) {
-    throw new Error("Invalid XLSX format: No subject columns found in Grades worksheet.");
+    if (!["q1", "q2", "q3", "q4"].includes(quarterKey)) {
+      return;
+    }
+
+    if (/^\(replace this text with subject name/i.test(subjectTitle)) {
+      return;
+    }
+
+    let subjectEntry = subjectColumns.find(
+      (entry) => entry.subjectTitle === subjectTitle,
+    );
+
+    if (!subjectEntry) {
+      subjectEntry = {
+        subjectTitle,
+        quarters: {},
+      };
+      subjectColumns.push(subjectEntry);
+    }
+
+    subjectEntry.quarters[quarterKey] = index;
+  });
+
+  if (subjectColumns.length === 0) {
+    throw new Error("Invalid CSV format: No subject columns found in the grade sheet.");
   }
 
   const rows = [];
 
-  worksheetRows.slice(headerRowIndex + 1).forEach((cols) => {
-    const lrn = toCellValue(cols[lrnIdx]);
-    if (!lrn) return;
+  worksheetRows.slice(headerRowIndex + 2).forEach((cols) => {
+    const lrn = toLrnCellValue(cols[lrnIdx]);
+    const name = studentNameIdx === -1 ? "" : toCellValue(cols[studentNameIdx]);
+    if (!lrn && !name) return;
 
-    subjectColumnIndexes.forEach(({ index, subjectTitle }) => {
-      if (!subjectTitle || /^replace this text with/i.test(subjectTitle)) {
-        return;
-      }
-
+    subjectColumns.forEach(({ subjectTitle, quarters }) => {
       rows.push({
         subject_title: subjectTitle,
         lrn,
-        q1: quarterColumnIndexes.q1 === undefined ? "" : toCellValue(cols[quarterColumnIndexes.q1]),
-        q2: quarterColumnIndexes.q2 === undefined ? "" : toCellValue(cols[quarterColumnIndexes.q2]),
-        q3: quarterColumnIndexes.q3 === undefined ? "" : toCellValue(cols[quarterColumnIndexes.q3]),
-        q4: quarterColumnIndexes.q4 === undefined ? "" : toCellValue(cols[quarterColumnIndexes.q4]),
+        name,
+        q1: quarters.q1 === undefined ? "" : toCellValue(cols[quarters.q1]),
+        q2: quarters.q2 === undefined ? "" : toCellValue(cols[quarters.q2]),
+        q3: quarters.q3 === undefined ? "" : toCellValue(cols[quarters.q3]),
+        q4: quarters.q4 === undefined ? "" : toCellValue(cols[quarters.q4]),
       });
     });
   });
@@ -561,22 +672,25 @@ const parseClassAdviserGradeWorksheetRows = (worksheetRows) => {
 
 const parseClassAdviserAttendanceWorksheetRows = (worksheetRows) => {
   if (!worksheetRows.length) {
-    throw new Error("Invalid XLSX format: The Attendance worksheet is empty.");
+    throw new Error("Invalid CSV format: The attendance sheet is empty.");
   }
 
   const { headerRowIndex, headers } = extractWorksheetHeaderRow(
     worksheetRows,
     "lrn number",
   );
+  const secondaryHeaders = worksheetRows[headerRowIndex + 1] ?? [];
   const normalizedHeaders = headers.map(normalizeHeader);
   const lrnIdx = normalizedHeaders.indexOf("lrn number");
 
   if (lrnIdx === -1) {
-    throw new Error("Invalid XLSX format: LRN number column missing in Attendance worksheet.");
+    throw new Error("Invalid CSV format: LRN number column missing in the attendance sheet.");
   }
 
-  const monthIndexes = normalizedHeaders.reduce((indexes, header, index) => {
-    const monthKey = MONTH_HEADER_TO_ENUM[header];
+  const monthIndexes = headers.reduce((indexes, _header, index) => {
+    const monthKey =
+      MONTH_HEADER_TO_ENUM[normalizeHeader(secondaryHeaders[index])] ??
+      MONTH_HEADER_TO_ENUM[normalizeHeader(headers[index])];
     if (monthKey) {
       indexes[monthKey] = index;
     }
@@ -584,12 +698,12 @@ const parseClassAdviserAttendanceWorksheetRows = (worksheetRows) => {
   }, {});
 
   if (Object.keys(monthIndexes).length === 0) {
-    throw new Error("Invalid XLSX format: No monthly attendance columns found.");
+    throw new Error("Invalid CSV format: No monthly attendance columns found.");
   }
 
   return worksheetRows.slice(headerRowIndex + 1).reduce((rows, cols) => {
-    const lrn = toCellValue(cols[lrnIdx]);
-    if (!lrn) return rows;
+    const lrn = toLrnCellValue(cols[lrnIdx]);
+    if (!lrn || !isNumericIdentifier(lrn)) return rows;
 
     const absences = Object.entries(monthIndexes).reduce((result, [month, index]) => {
       const value = toCellValue(cols[index]);
@@ -1106,28 +1220,36 @@ const classesController = {
        }
 
        const fileName = String(req.file.originalname || "").toLowerCase();
-       if (!fileName.endsWith(".xlsx")) {
+       if (!fileName.endsWith(".csv")) {
          return res.status(400).json({
-           message: "Invalid file type. Only .xlsx files are allowed.",
+           message: "Invalid file type. Only .csv files are allowed.",
          });
        }
 
        let rows = [];
        try {
-         const worksheetRows = readFirstWorksheetRows(req.file.buffer);
-         rows = parseSubjectGradeWorksheetRows(worksheetRows);
+         rows = parseSubjectGradeWorksheetRows(readCsvRows(req.file.buffer));
        } catch (error) {
          return res.status(400).json({
            message:
              error.message ||
-             "Invalid XLSX file. Please upload a valid .xlsx subject grade sheet.",
+             "Invalid CSV file. Please upload a valid .csv subject grade sheet.",
          });
        }
 
        const results = await classesService.importGrades(parseInt(id), rows);
-       res.status(200).json({ message: "Grades imported successfully", data: results });
+       res.status(200).json({
+         message: "Grades imported successfully",
+         data: results.records,
+         summary: results.summary,
+       });
      } catch (error) {
-       if (error.message === "Subject title does not match the selected subject") {
+       if (
+         error.message === "Subject title does not match the selected subject" ||
+         error.message === "No students are enrolled in this subject" ||
+         error.message === "No matching students found for the uploaded LRN numbers" ||
+         error.message === "None of the uploaded students are enrolled in this subject"
+       ) {
          return res.status(400).json({ message: error.message });
        }
        next(error);
@@ -1142,28 +1264,29 @@ const classesController = {
       }
 
       const fileName = String(req.file.originalname || "").toLowerCase();
-      if (!fileName.endsWith(".xlsx")) {
+      if (!fileName.endsWith(".csv")) {
         return res.status(400).json({
-          message: "Invalid file type. Only .xlsx files are allowed.",
+          message: "Invalid file type. Only .csv files are allowed.",
         });
       }
 
       let rows = [];
       try {
-        const { gradesRows } = readWorkbookSheets(req.file.buffer);
-        rows = parseClassAdviserGradeWorksheetRows(gradesRows);
+        rows = parseClassAdviserGradeWorksheetRows(readCsvRows(req.file.buffer));
       } catch (error) {
         return res.status(400).json({
           message:
             error.message ||
-            "Invalid XLSX file. Please upload a valid .xlsx class grade sheet.",
+            "Invalid CSV file. Please upload a valid .csv class grade sheet.",
         });
       }
 
       const results = await classesService.importClassGrades(parseInt(id), rows);
-      res
-        .status(200)
-        .json({ message: "Class grades imported successfully", data: results });
+      res.status(200).json({
+        message: "Class grades imported successfully",
+        data: results.records,
+        summary: results.summary,
+      });
     } catch (error) {
       if (
         error.message === "Class not found" ||
@@ -1219,10 +1342,12 @@ const classesController = {
         process.env.SUPABASE_BUCKET_TEMPLATES ||
         process.env.SUPABASE_BUCKET_TEACHER ||
         "teacher-files";
+      const configuredTemplatePath = process.env.SUPABASE_SUBJECT_TEACHER_TEMPLATE_PATH;
       const filePath =
-        process.env.SUPABASE_SUBJECT_TEACHER_TEMPLATE_PATH ||
-        "subject-teacher/SubjectTeacher_Grades-Attendance_Template.xlsx";
-      const fallbackFileName = "SubjectTeacher_Grades-Attendance_Template.xlsx";
+        configuredTemplatePath && configuredTemplatePath.toLowerCase().endsWith(".csv")
+          ? configuredTemplatePath
+          : "subject-teacher/SubjectTeacher_Grades-Attendance_Template.csv";
+      const fallbackFileName = "SubjectTeacher_Grades-Attendance_Template.csv";
 
       try {
         const downloadUrl = await createSignedUrlForPath(bucket, filePath, 60 * 10);
@@ -1288,27 +1413,30 @@ const classesController = {
        }
 
        const fileName = String(req.file.originalname || "").toLowerCase();
-       if (!fileName.endsWith(".xlsx")) {
+       if (!fileName.endsWith(".csv")) {
          return res.status(400).json({
-           message: "Invalid file type. Only .xlsx files are allowed.",
+           message: "Invalid file type. Only .csv files are allowed.",
          });
        }
 
        let rows = [];
        try {
-         const { attendanceRows } = readWorkbookSheets(req.file.buffer);
-         rows = parseClassAdviserAttendanceWorksheetRows(attendanceRows);
+         rows = parseClassAdviserAttendanceWorksheetRows(readCsvRows(req.file.buffer));
        } catch (error) {
          return res.status(400).json({
            message:
              error.message ||
-             "Invalid XLSX file. Please upload a valid .xlsx class attendance sheet.",
+             "Invalid CSV file. Please upload a valid .csv class attendance sheet.",
          });
        }
  
        const classId = req.params.id ? parseInt(req.params.id, 10) : undefined;
        const results = await classesService.importAttendance(rows, classId);
-       res.status(200).json({ message: "Attendance imported successfully", data: results });
+       res.status(200).json({
+         message: "Attendance imported successfully",
+         data: results.records,
+         summary: results.summary,
+       });
      } catch (error) {
        if (
          error.message.startsWith("Invalid attendance date") ||
@@ -1331,36 +1459,24 @@ const classesController = {
       }
 
       const fileName = String(req.file.originalname || "").toLowerCase();
-      if (!fileName.endsWith(".xlsx")) {
+      if (!fileName.endsWith(".csv")) {
         return res.status(400).json({
-          message: "Invalid file type. Only .xlsx files are allowed.",
+          message: "Invalid file type. Only .csv files are allowed.",
         });
       }
 
       let worksheetRows = [];
       try {
-        const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
-        const firstSheetName = workbook.SheetNames[0];
-        if (!firstSheetName) {
-          return res
-            .status(400)
-            .json({ message: "Invalid XLSX file: No worksheet found." });
-        }
-        worksheetRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
-          header: 1,
-          defval: "",
-          raw: false,
-          blankrows: false,
-        });
+        worksheetRows = readCsvRows(req.file.buffer);
       } catch {
         return res.status(400).json({
-          message: "Invalid XLSX file. Please upload a valid .xlsx student list.",
+          message: "Invalid CSV file. Please upload a valid .csv student list.",
         });
       }
 
       if (!worksheetRows.length) {
         return res.status(400).json({
-          message: "Invalid XLSX format: The worksheet is empty.",
+          message: "Invalid CSV format: The file is empty.",
         });
       }
 
@@ -1374,12 +1490,12 @@ const classesController = {
       const sYearEndIdx = headers.indexOf('school year end');
 
       if (lrnIdx === -1 || fnameIdx === -1 || lnameIdx === -1) {
-        return res.status(400).json({ message: "Invalid XLSX format: Required columns missing" });
+        return res.status(400).json({ message: "Invalid CSV format: Required columns missing" });
       }
 
       const rows = worksheetRows.slice(1).map((cols) => {
         return {
-          lrn: toCellValue(cols[lrnIdx]),
+          lrn: toLrnCellValue(cols[lrnIdx]),
           fname: toCellValue(cols[fnameIdx]),
           lname: toCellValue(cols[lnameIdx]),
           sex: toCellValue(cols[sexIdx]),
@@ -1389,7 +1505,11 @@ const classesController = {
       });
 
       const results = await classesService.importStudents(parseInt(id), rows);
-      res.status(200).json({ message: "Student list imported successfully", data: results });
+      res.status(200).json({
+        message: "Student list imported successfully",
+        data: results.students,
+        summary: results.summary,
+      });
     } catch (error) {
       next(error);
     }

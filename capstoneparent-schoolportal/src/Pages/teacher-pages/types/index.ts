@@ -125,4 +125,8 @@ export interface SubjectAverage {
 export interface StudentGradesProps {
   student: Student;
   onBack: () => void;
+  subjectFilter?: {
+    srecord_id: number;
+    subject_name: string;
+  };
 }

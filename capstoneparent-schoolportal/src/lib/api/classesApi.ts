@@ -1,4 +1,5 @@
 import { apiFetch, bearerHeaders } from "./base";
+import type { ImportSummaryResponse } from "@/lib/importSummary";
 
 export interface Section {
   section_id: number;
@@ -71,7 +72,7 @@ export const classesApi = {
     const formData = new FormData();
     formData.append("file", file);
 
-    return apiFetch<{ message: string; data: unknown[] }>(
+    return apiFetch<ImportSummaryResponse>(
       `/classes/${classId}/import-students`,
       {
         method: "POST",

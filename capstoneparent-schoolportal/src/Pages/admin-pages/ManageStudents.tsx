@@ -92,6 +92,7 @@ export const ManageStudents = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
   const { clearFeedback } = useApiFeedbackStore();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -333,6 +334,7 @@ export const ManageStudents = () => {
   };
 
   const handleDownloadTemplate = async () => {
+    setIsDownloadingTemplate(true);
     try {
       await downloadStudentImportTemplate();
     } catch (err) {
@@ -341,6 +343,8 @@ export const ManageStudents = () => {
           ? err.message
           : "Failed to download student import template",
       );
+    } finally {
+      setIsDownloadingTemplate(false);
     }
   };
 
@@ -382,9 +386,14 @@ export const ManageStudents = () => {
                     <Button
                       className="bg-(--navbar-bg) px-6 py-2 text-black hover:bg-yellow-300"
                       onClick={handleDownloadTemplate}
+                      disabled={isDownloadingTemplate}
                     >
-                      <Download className="mr-2 h-4 w-4" />
-                      Download XLSX Template
+                      {isDownloadingTemplate ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="mr-2 h-4 w-4" />
+                      )}
+                      {isDownloadingTemplate ? "Downloading Template..." : "Download XLSX Template"}
                     </Button>
                     <Button
                       className="bg-(--button-green) px-6 py-2 text-white hover:bg-(--button-hover-green)"

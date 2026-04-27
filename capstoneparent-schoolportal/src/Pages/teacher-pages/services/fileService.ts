@@ -1,4 +1,5 @@
 import { apiFetch, bearerHeaders } from '@/lib/api/base';
+import type { ImportSummaryResponse } from '@/lib/importSummary';
 
 interface TemplateDownloadResponse {
   data: {
@@ -123,7 +124,7 @@ export const uploadGradeSheet = async (clist_id: number, file: File) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  return apiFetch(`/classes/${clist_id}/import-grades`, {
+  return apiFetch<ImportSummaryResponse>(`/classes/${clist_id}/import-grades`, {
     method: 'POST',
     successMessage: 'Grade sheet uploaded successfully.',
     headers: bearerHeaders(),
@@ -135,7 +136,7 @@ export const uploadAttendanceSheet = async (clist_id: number, file: File) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  return apiFetch(`/classes/${clist_id}/import-attendance`, {
+  return apiFetch<ImportSummaryResponse>(`/classes/${clist_id}/import-attendance`, {
     method: 'POST',
     successMessage: 'Attendance sheet uploaded successfully.',
     headers: bearerHeaders(),
@@ -160,7 +161,7 @@ export const uploadSubjectGradeSheet = async (srecord_id: number, file: File) =>
   formData.append('file', file);
 
   // Note: Subject specific grade import might use a different endpoint or shared logic
-  return apiFetch(`/classes/subjects/${srecord_id}/import-grades`, {
+  return apiFetch<ImportSummaryResponse>(`/classes/subjects/${srecord_id}/import-grades`, {
     method: 'POST',
     successMessage: 'Grade sheet uploaded successfully.',
     headers: bearerHeaders(),
@@ -175,7 +176,7 @@ export const downloadSubjectGradeSheetTemplate = async () => {
       headers: bearerHeaders(),
     });
 
-    const fileName = response.data.fileName || 'SubjectTeacher_Grades-Attendance_Template.xlsx';
+    const fileName = response.data.fileName || 'SubjectTeacher_Grades-Attendance_Template.csv';
     const downloadResponse = await fetch(response.data.downloadUrl);
 
     if (!downloadResponse.ok) {

@@ -1,21 +1,31 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Download } from 'lucide-react';
-import type { Student } from '@/Pages/teacher-pages/types';
+import { ArrowLeft, Download, Loader2 } from 'lucide-react';
+import type { StudentGradesProps } from '@/Pages/teacher-pages/types';
 import { exportStudentQuarterlyGrades } from './services/fileService';
 
-interface StudentGradesProps {
-  student: Student;
-  onBack: () => void;
+type StudentGradesComponentProps = StudentGradesProps & {
   isLoading?: boolean;
-}
+};
 
-export const StudentGrades = ({ student, onBack, isLoading = false }: StudentGradesProps) => {
+export const StudentGrades = ({
+  student,
+  onBack,
+  subjectFilter,
+  isLoading = false,
+}: StudentGradesComponentProps) => {
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
   const handleExportStudentGrades = async () => {
     const fallbackName = `${student.lname}_${student.fname}_${student.lrn_number}_ReportCard.pdf`
       .replace(/\s+/g, '_');
 
-    await exportStudentQuarterlyGrades(student.student_id, fallbackName);
+    setIsExportingPdf(true);
+    try {
+      await exportStudentQuarterlyGrades(student.student_id, fallbackName);
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   const getNumericGrade = (value: unknown) => {
@@ -29,9 +39,19 @@ export const StudentGrades = ({ student, onBack, isLoading = false }: StudentGra
 
   const subjectRows = useMemo(() => {
     return [...(student.subject_records ?? [])]
+      .filter((record) => {
+        if (!subjectFilter) {
+          return true;
+        }
+
+        return (
+          record.srecord_id === subjectFilter.srecord_id ||
+          record.subject_name === subjectFilter.subject_name
+        );
+      })
       .filter((record) => record.subject_name)
       .sort((a, b) => (a.subject_name || '').localeCompare(b.subject_name || ''));
-  }, [student.subject_records]);
+  }, [student.subject_records, subjectFilter]);
 
   // Calculate attendance totals
   const months = ['Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
@@ -102,15 +122,21 @@ export const StudentGrades = ({ student, onBack, isLoading = false }: StudentGra
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-          
-          <Button
-            className="bg-(--button-green) hover:bg-green-700 text-white"
-            onClick={handleExportStudentGrades}
-            disabled={isLoading}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export Quarterly Grades (.pdf)
-          </Button>
+
+          {!subjectFilter ? (
+            <Button
+              className="bg-(--button-green) hover:bg-green-700 text-white"
+              onClick={handleExportStudentGrades}
+              disabled={isLoading || isExportingPdf}
+            >
+              {isExportingPdf ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              {isExportingPdf ? 'Exporting PDF...' : 'Export Quarterly Grades (.pdf)'}
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -150,6 +176,12 @@ export const StudentGrades = ({ student, onBack, isLoading = false }: StudentGra
                     <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">School Year</span>
                     <span className="text-base font-medium text-slate-700">{student.schoolYear}</span>
                   </div>
+                  {subjectFilter ? (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Selected Subject</span>
+                      <span className="text-base font-medium text-slate-700">{subjectFilter.subject_name}</span>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>

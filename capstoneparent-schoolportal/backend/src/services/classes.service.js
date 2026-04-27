@@ -12,6 +12,17 @@ const normalizeSex = (sex) => {
   return "M";
 };
 
+const isClassImportStudentUnchanged = (existingStudent, payload) =>
+  existingStudent &&
+  existingStudent.fname === payload.fname &&
+  existingStudent.lname === payload.lname &&
+  existingStudent.sex === payload.sex &&
+  existingStudent.lrn_number === payload.lrn_number &&
+  existingStudent.gl_id === payload.gl_id &&
+  existingStudent.syear_start === payload.syear_start &&
+  existingStudent.syear_end === payload.syear_end &&
+  existingStudent.status === payload.status;
+
 const ensureStudentMatchesClassGrade = (student, classData) => {
   if (student.gl_id !== classData.gl_id) {
     throw new Error("Student grade level does not match this class");
@@ -130,7 +141,17 @@ const importGradesForSubjectRecord = async (srecord_id, rows, options = {}) => {
     .filter((row) => row.lrn);
 
   if (normalizedRows.length === 0) {
-    return [];
+    return {
+      records: [],
+      summary: {
+        added: 0,
+        replaced: 0,
+        unchanged: 0,
+        failed: 0,
+        totalProcessed: 0,
+        failures: [],
+      },
+    };
   }
 
   const allowedStudentIds = options.allowedStudentIds
@@ -144,7 +165,7 @@ const importGradesForSubjectRecord = async (srecord_id, rows, options = {}) => {
   });
 
   if (students.length === 0) {
-    return [];
+    throw new Error("No matching students found for the uploaded LRN numbers");
   }
 
   const studentIdByLrn = new Map(
@@ -160,16 +181,25 @@ const importGradesForSubjectRecord = async (srecord_id, rows, options = {}) => {
     select: {
       srs_id: true,
       student_id: true,
+      q1_grade: true,
+      q2_grade: true,
+      q3_grade: true,
+      q4_grade: true,
+      avg_grade: true,
+      remarks: true,
     },
   });
 
   const existingRecordByStudentId = new Map(
-    existingRecords.map((record) => [record.student_id, record.srs_id]),
+    existingRecords.map((record) => [record.student_id, record]),
   );
 
   const createPayloads = [];
   const updatePayloads = [];
   const touchedStudentIds = new Set();
+  let added = 0;
+  let replaced = 0;
+  let unchanged = 0;
 
   for (const row of normalizedRows) {
     const student_id = studentIdByLrn.get(row.lrn);
@@ -201,18 +231,33 @@ const importGradesForSubjectRecord = async (srecord_id, rows, options = {}) => {
 
     touchedStudentIds.add(student_id);
 
-    const existingId = existingRecordByStudentId.get(student_id);
-    if (existingId) {
+    const existingRecord = existingRecordByStudentId.get(student_id);
+    if (existingRecord) {
+      const isUnchanged =
+        existingRecord.q1_grade === payload.q1_grade &&
+        existingRecord.q2_grade === payload.q2_grade &&
+        existingRecord.q3_grade === payload.q3_grade &&
+        existingRecord.q4_grade === payload.q4_grade &&
+        existingRecord.avg_grade === payload.avg_grade &&
+        existingRecord.remarks === payload.remarks;
+
+      if (isUnchanged) {
+        unchanged += 1;
+        continue;
+      }
+
       updatePayloads.push({
-        srs_id: existingId,
+        srs_id: existingRecord.srs_id,
         data: payload,
       });
+      replaced += 1;
     } else {
       createPayloads.push({
         srecord_id,
         student_id,
         ...payload,
       });
+      added += 1;
     }
   }
 
@@ -237,10 +282,14 @@ const importGradesForSubjectRecord = async (srecord_id, rows, options = {}) => {
   });
 
   if (touchedStudentIds.size === 0) {
-    return [];
+    if (allowedStudentIds && allowedStudentIds.size === 0) {
+      throw new Error("No students are enrolled in this subject");
+    }
+
+    throw new Error("None of the uploaded students are enrolled in this subject");
   }
 
-  return prisma.subjectRecordStudent.findMany({
+  const records = await prisma.subjectRecordStudent.findMany({
     where: {
       srecord_id,
       student_id: { in: [...touchedStudentIds] },
@@ -251,6 +300,18 @@ const importGradesForSubjectRecord = async (srecord_id, rows, options = {}) => {
     },
     orderBy: { student_id: "asc" },
   });
+
+  return {
+    records,
+    summary: {
+      added,
+      replaced,
+      unchanged,
+      failed: 0,
+      totalProcessed: added + replaced + unchanged,
+      failures: [],
+    },
+  };
 };
 
 const ATTENDANCE_MONTHS = ['Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
@@ -1150,6 +1211,10 @@ const classesService = {
       select: { student_id: true },
     });
 
+    if (subjectStudents.length === 0) {
+      throw new Error("No students are enrolled in this subject");
+    }
+
     return importGradesForSubjectRecord(srecord_id, rows, {
       allowedStudentIds: subjectStudents.map((student) => student.student_id),
     });
@@ -1197,7 +1262,17 @@ const classesService = {
       .filter((row) => row.subject_title || row.lrn || row.name);
 
     if (normalizedRows.length === 0) {
-      return [];
+      return {
+        students: [],
+        summary: {
+          added: 0,
+          replaced: 0,
+          unchanged: 0,
+          failed: 0,
+          totalProcessed: 0,
+          failures: [],
+        },
+      };
     }
 
     const rowsMissingSubjectTitle = normalizedRows.some(
@@ -1278,14 +1353,44 @@ const classesService = {
       ),
     );
 
-    return importedGroups.flat();
+    return {
+      records: importedGroups.flatMap((group) => group.records),
+      summary: importedGroups.reduce(
+        (acc, group) => ({
+          added: acc.added + group.summary.added,
+          replaced: acc.replaced + group.summary.replaced,
+          unchanged: acc.unchanged + group.summary.unchanged,
+          failed: acc.failed + group.summary.failed,
+          totalProcessed: acc.totalProcessed + group.summary.totalProcessed,
+          failures: [...acc.failures, ...group.summary.failures],
+        }),
+        {
+          added: 0,
+          replaced: 0,
+          unchanged: 0,
+          failed: 0,
+          totalProcessed: 0,
+          failures: [],
+        },
+      ),
+    };
   },
 
   async importAttendance(rows, classId) {
     const normalizedRows = rows.filter((row) => row?.lrn || row?.name);
 
     if (normalizedRows.length === 0) {
-      return [];
+      return {
+        records: [],
+        summary: {
+          added: 0,
+          replaced: 0,
+          unchanged: 0,
+          failed: 0,
+          totalProcessed: 0,
+          failures: [],
+        },
+      };
     }
 
     const uniqueLrns = [
@@ -1352,7 +1457,20 @@ const classesService = {
     const students = [...studentsById.values()];
 
     if (students.length === 0) {
-      return [];
+      return {
+        records: [],
+        summary: {
+          added: 0,
+          replaced: 0,
+          unchanged: 0,
+          failed: normalizedRows.length,
+          totalProcessed: normalizedRows.length,
+          failures: normalizedRows.map((row) => ({
+            input: String(row.lrn ?? row.name ?? "Unknown entry").trim() || "Unknown entry",
+            message: "Student not found in the selected class.",
+          })),
+        },
+      };
     }
 
     const studentIdByLrn = new Map(
@@ -1400,10 +1518,12 @@ const classesService = {
     const updateOperations = [];
     const monthlyAttendanceMap = new Map();
     const touchedStudentIds = new Set();
+    const failures = [];
 
     for (const row of normalizedRows) {
       const normalizedLrn = String(row.lrn ?? "").trim();
       const normalizedName = normalizeAttendanceStudentName(row.name);
+      const rowLabel = normalizedLrn || String(row.name ?? "").trim() || "Unknown entry";
       const studentId = normalizedLrn
         ? studentIdByLrn.get(normalizedLrn)
         : studentIdByName.get(normalizedName);
@@ -1412,7 +1532,13 @@ const classesService = {
         throw new Error(`Attendance student name is ambiguous: ${row.name}`);
       }
 
-      if (!studentId) continue;
+      if (!studentId) {
+        failures.push({
+          input: rowLabel,
+          message: "Student not found in the selected class.",
+        });
+        continue;
+      }
       touchedStudentIds.add(studentId);
 
       if (row.date !== undefined) {
@@ -1515,10 +1641,20 @@ const classesService = {
     }
 
     if (touchedStudentIds.size === 0) {
-      return [];
+      return {
+        records: [],
+        summary: {
+          added: 0,
+          replaced: 0,
+          unchanged: 0,
+          failed: failures.length,
+          totalProcessed: failures.length,
+          failures,
+        },
+      };
     }
 
-    return prisma.attendanceRecord.findMany({
+    const records = await prisma.attendanceRecord.findMany({
       where: {
         student_id: { in: [...touchedStudentIds] },
         month: { in: ATTENDANCE_MONTHS },
@@ -1528,6 +1664,18 @@ const classesService = {
         { attendance_id: 'asc' },
       ],
     });
+
+    return {
+      records,
+      summary: {
+        added: createPayloads.length,
+        replaced: updateOperations.length,
+        unchanged: 0,
+        failed: failures.length,
+        totalProcessed: createPayloads.length + updateOperations.length + failures.length,
+        failures,
+      },
+    };
   },
 
   async importStudents(classId, rows) {
@@ -1559,8 +1707,14 @@ const classesService = {
       },
       select: {
         student_id: true,
+        fname: true,
+        lname: true,
+        sex: true,
         lrn_number: true,
         gl_id: true,
+        syear_start: true,
+        syear_end: true,
+        status: true,
       },
     });
 
@@ -1577,25 +1731,71 @@ const classesService = {
       select: { srecord_id: true },
     });
 
+    const existingEnrollments = await prisma.classListStudent.findMany({
+      where: {
+        clist_id: classId,
+        student_id: {
+          in: existingStudents.map((student) => student.student_id),
+        },
+      },
+      select: { student_id: true },
+    });
+
+    const alreadyEnrolledIds = new Set(
+      existingEnrollments.map((enrollment) => enrollment.student_id),
+    );
+
     return prisma.$transaction(async (tx) => {
       const enrolledStudents = [];
+      let added = 0;
+      let replaced = 0;
+      let unchanged = 0;
 
       for (const row of normalizedRows) {
         const existingStudent = existingStudentByKey.get(row.lrn_number);
+        const payload = {
+          fname: row.fname,
+          lname: row.lname,
+          sex: row.sex,
+          lrn_number: row.lrn_number,
+          gl_id: classData.gl_id,
+          syear_start: row.syear_start,
+          syear_end: row.syear_end,
+          status: "ENROLLED",
+        };
 
         if (existingStudent) {
-          const updatedStudent = await tx.student.update({
-            where: { student_id: existingStudent.student_id },
-            data: {
-              fname: row.fname,
-              lname: row.lname,
-              sex: row.sex,
-              syear_start: row.syear_start,
-              syear_end: row.syear_end,
-              status: "ENROLLED",
-            },
-          });
+          const alreadyEnrolled = alreadyEnrolledIds.has(existingStudent.student_id);
+          const unchangedRecord = isClassImportStudentUnchanged(existingStudent, payload);
+
+          if (alreadyEnrolled && unchangedRecord) {
+            enrolledStudents.push(existingStudent);
+            unchanged += 1;
+            continue;
+          }
+
+          const updatedStudent = unchangedRecord
+            ? existingStudent
+            : await tx.student.update({
+                where: { student_id: existingStudent.student_id },
+                data: {
+                  fname: payload.fname,
+                  lname: payload.lname,
+                  sex: payload.sex,
+                  syear_start: payload.syear_start,
+                  syear_end: payload.syear_end,
+                  status: payload.status,
+                },
+              });
+
           enrolledStudents.push(updatedStudent);
+          existingStudentByKey.set(row.lrn_number, updatedStudent);
+
+          if (alreadyEnrolled) {
+            replaced += 1;
+          } else {
+            added += 1;
+          }
           continue;
         }
 
@@ -1613,10 +1813,21 @@ const classesService = {
         });
         existingStudentByKey.set(row.lrn_number, createdStudent);
         enrolledStudents.push(createdStudent);
+        added += 1;
       }
 
       if (enrolledStudents.length === 0) {
-        return [];
+        return {
+          students: [],
+          summary: {
+            added: 0,
+            replaced: 0,
+            unchanged: 0,
+            failed: 0,
+            totalProcessed: 0,
+            failures: [],
+          },
+        };
       }
 
       const studentIds = enrolledStudents.map((student) => student.student_id);
@@ -1641,7 +1852,17 @@ const classesService = {
         });
       }
 
-      return enrolledStudents;
+      return {
+        students: enrolledStudents,
+        summary: {
+          added,
+          replaced,
+          unchanged,
+          failed: 0,
+          totalProcessed: normalizedRows.length,
+          failures: [],
+        },
+      };
     });
   },
 

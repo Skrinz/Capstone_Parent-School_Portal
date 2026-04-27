@@ -20,7 +20,7 @@ const BorrowerModal: React.FC<BorrowerModalProps> = ({
 	onConfirm,
 	lookupBorrowers,
 	title = 'Name of Borrower',
-	placeholder = 'Input Name',
+	placeholder = 'Input borrower name or LRN',
 	initialValue = '',
 	confirmLabel = 'Confirm',
 	cancelLabel = 'Cancel',
@@ -30,6 +30,30 @@ const BorrowerModal: React.FC<BorrowerModalProps> = ({
 	const [selectedBorrower, setSelectedBorrower] = React.useState<BorrowerLookupResult | null>(null);
 	const [isSearching, setIsSearching] = React.useState(false);
 	const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+	const normalize = (value: string) => value.trim().toLowerCase();
+
+	const resolveBorrower = React.useCallback(
+		(query: string) => {
+			const normalizedQuery = normalize(query);
+
+			if (!normalizedQuery) {
+				return null;
+			}
+
+			return (
+				selectedBorrower ??
+				matches.find((match) => {
+					const displayName = normalize(match.display_name);
+					const meta = normalize(match.meta ?? '');
+
+					return displayName === normalizedQuery || meta.includes(normalizedQuery);
+				}) ??
+				(matches.length === 1 ? matches[0] : null)
+			);
+		},
+		[matches, selectedBorrower],
+	);
 
 	React.useEffect(() => {
 		const query = borrowerName.trim();
@@ -60,13 +84,7 @@ const BorrowerModal: React.FC<BorrowerModalProps> = ({
 	}, [borrowerName, lookupBorrowers, selectedBorrower]);
 
 	const handleConfirm = async () => {
-		const chosenBorrower =
-			selectedBorrower ??
-			matches.find(
-				(match) =>
-					match.display_name.toLowerCase() === borrowerName.trim().toLowerCase(),
-			) ??
-			null;
+		const chosenBorrower = resolveBorrower(borrowerName);
 
 		if (!chosenBorrower) {
 			return;
@@ -146,7 +164,7 @@ const BorrowerModal: React.FC<BorrowerModalProps> = ({
 					<Button
 						type="button"
 						onClick={() => void handleConfirm()}
-						disabled={!selectedBorrower || isSubmitting}
+						disabled={!resolveBorrower(borrowerName) || isSubmitting}
 						className="bg-(--button-green) hover:bg-(--button-hover-green) text-white px-8 py-3 text-lg rounded-full"
 					>
 						{confirmLabel}

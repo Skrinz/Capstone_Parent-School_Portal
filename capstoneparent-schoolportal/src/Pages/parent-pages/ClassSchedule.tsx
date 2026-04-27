@@ -104,18 +104,8 @@ export const ClassSchedule = () => {
 
         {/* Class Schedule */}
         <section className="rounded-xl border-2 border-gray-300 bg-white p-6 shadow-sm">
-          <div className="flex justify-between items-center mb-6">
+          <div className="mb-6">
             <h2 className="text-2xl font-bold">Class Schedule</h2>
-            {schedule?.class_sched && (
-                <a 
-                    href={schedule.class_sched} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-green-600 font-semibold hover:underline"
-                >
-                    View Official Document
-                </a>
-            )}
           </div>
           
           {loading ? (

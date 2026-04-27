@@ -15,13 +15,13 @@ interface ImportResultModalProps {
 const summaryItems = (summary: ImportSummaryData) => [
   {
     label: `${summary.replaced} record${summary.replaced === 1 ? '' : 's'} replaced`,
-    value: summary.added,
+    value: summary.replaced,
     icon: RefreshCw,
     className: 'text-emerald-500',
   },
   {
     label: `${summary.added} record${summary.added === 1 ? '' : 's'} added`,
-    value: summary.replaced,
+    value: summary.added,
     icon: Plus,
     className: 'text-emerald-500',
   },

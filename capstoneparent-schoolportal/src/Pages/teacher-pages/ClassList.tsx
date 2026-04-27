@@ -10,8 +10,9 @@ import {
 } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Search, Download, Upload, Image } from 'lucide-react';
+import { ArrowLeft, Search, Download, Upload, Image, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ImportResultModal } from '@/components/general/ImportResultModal';
 import { useClassData } from '@/Pages/teacher-pages/hooks/useClassData';
 import type { ClassItem, SubjectItem, Student } from '@/Pages/teacher-pages/types';
 import { ClassSummary } from "./ClassSummary";
@@ -22,12 +23,15 @@ import {
   downloadGradeSheetTemplate,
   downloadSubjectGradeSheetTemplate,
   exportAllQuartersGradeSheet,
+  uploadAttendanceSheet,
   uploadGradeSheet,
   uploadClassSchedulePicture,
   uploadSubjectGradeSheet,
 } from './services/fileService';
 import { fetchStudentById } from './services/api';
 import { useApiFeedbackStore } from '@/lib/store/apiFeedbackStore';
+import type { ImportSummaryData } from '@/lib/importSummary';
+import { resolveImportSummary } from '@/lib/importSummary';
 
 export const ClassList = () => {
   const showError = useApiFeedbackStore((state) => state.showError);
@@ -56,8 +60,13 @@ export const ClassList = () => {
 
   // Modal states for file uploads
   const [isImportGradeSheetModalOpen, setIsImportGradeSheetModalOpen] = useState(false);
+  const [isImportAttendanceModalOpen, setIsImportAttendanceModalOpen] = useState(false);
   const [isUploadScheduleModalOpen, setIsUploadScheduleModalOpen] = useState(false);
   const [isImportSubjectGradeSheetModalOpen, setIsImportSubjectGradeSheetModalOpen] = useState(false);
+  const [importSummary, setImportSummary] = useState<ImportSummaryData | null>(null);
+  const [isDownloadingClassTemplate, setIsDownloadingClassTemplate] = useState(false);
+  const [isDownloadingSubjectTemplate, setIsDownloadingSubjectTemplate] = useState(false);
+  const [isExportingClassGrades, setIsExportingClassGrades] = useState(false);
 
   // Use custom hook for data management
   const {
@@ -176,28 +185,37 @@ export const ClassList = () => {
 
   // Download handlers
   const handleDownloadTemplate = async () => {
+    setIsDownloadingClassTemplate(true);
     try {
       await downloadGradeSheetTemplate();
     } catch (error) {
       showError('Failed to download template. Please try again.');
+    } finally {
+      setIsDownloadingClassTemplate(false);
     }
   };
 
   const handleDownloadSubjectTemplate = async () => {
+    setIsDownloadingSubjectTemplate(true);
     try {
       await downloadSubjectGradeSheetTemplate();
     } catch (error) {
       showError('Failed to download template. Please try again.');
+    } finally {
+      setIsDownloadingSubjectTemplate(false);
     }
   };
 
   const handleExportAllQuartersGrades = async () => {
     if (!selectedClass) return;
-    
+
+    setIsExportingClassGrades(true);
     try {
       await exportAllQuartersGradeSheet(selectedClass.clist_id);
     } catch (error) {
       showError('Failed to export grades. Please try again.');
+    } finally {
+      setIsExportingClassGrades(false);
     }
   };
 
@@ -206,8 +224,9 @@ export const ClassList = () => {
     if (!selectedClass) return;
     
     try {
-      await uploadGradeSheet(selectedClass.clist_id, file);
-      // TODO: Reload student data
+      const response = await uploadGradeSheet(selectedClass.clist_id, file);
+      setImportSummary(resolveImportSummary(response));
+      loadStudents(selectedClass.clist_id);
     } catch (error) {
       throw error instanceof Error ? error : new Error('Failed to upload grade sheet');
     }
@@ -223,12 +242,25 @@ export const ClassList = () => {
     }
   };
 
+  const handleImportAttendanceSheet = async (file: File) => {
+    const targetClassId = selectedClass?.clist_id ?? selectedSubject?.classListIds?.[0];
+    if (!targetClassId) return;
+
+    try {
+      const response = await uploadAttendanceSheet(targetClassId, file);
+      setImportSummary(resolveImportSummary(response));
+      loadStudents(targetClassId);
+    } catch (error) {
+      throw error instanceof Error ? error : new Error('Failed to upload attendance sheet');
+    }
+  };
+
   const handleImportSubjectGradeSheet = async (file: File) => {
     if (!selectedSubject) return;
     
     try {
-      await uploadSubjectGradeSheet(selectedSubject.srecord_id, file);
-      // TODO: Reload student data
+      const response = await uploadSubjectGradeSheet(selectedSubject.srecord_id, file);
+      setImportSummary(resolveImportSummary(response));
     } catch (error) {
       throw error instanceof Error ? error : new Error('Failed to upload grade sheet');
     }
@@ -622,21 +654,38 @@ export const ClassList = () => {
                           onClick={() => setIsImportGradeSheetModalOpen(true)}
                         >
                           <Upload className="mr-2 h-4 w-4" />
-                          Import Grade Sheets (.xlsx)
+                          Import Grade Sheets (.csv)
+                        </Button>
+                        <Button
+                          className="bg-(--button-green) hover:bg-green-700 text-white"
+                          onClick={() => setIsImportAttendanceModalOpen(true)}
+                        >
+                          <Upload className="mr-2 h-4 w-4" />
+                          Import Attendance (.csv)
                         </Button>
                         <Button 
                           className="bg-(--button-green) hover:bg-green-700 text-white"
                           onClick={handleExportAllQuartersGrades}
+                          disabled={isExportingClassGrades}
                         >
-                          <Download className="mr-2 h-4 w-4" />
-                          Export Quarterly Grade Sheet (.zip)
+                          {isExportingClassGrades ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Download className="mr-2 h-4 w-4" />
+                          )}
+                          {isExportingClassGrades ? 'Exporting Grade Sheet...' : 'Export Quarterly Grade Sheet (.zip)'}
                         </Button>
                         <Button 
                           className="bg-(--navbar-bg) hover:bg-yellow-300 text-black"
                           onClick={handleDownloadTemplate}
+                          disabled={isDownloadingClassTemplate}
                         >
-                          <Download className="mr-2 h-4 w-4" />
-                          Download Grade Sheet Template (.xlsx)
+                          {isDownloadingClassTemplate ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Download className="mr-2 h-4 w-4" />
+                          )}
+                          {isDownloadingClassTemplate ? 'Downloading Template...' : 'Download Grade Sheet Template (.xlsx)'}
                         </Button>
                         <Button 
                           className="bg-(--button-green) hover:bg-green-700 text-white"
@@ -750,6 +799,18 @@ export const ClassList = () => {
 
                   {/* Student List Tab */}
                   <TabsContent value="students" className="flex-1 p-4 md:p-6 space-y-4 mt-0 overflow-y-auto">
+                    {selectedStudent ? (
+                      <StudentGrades
+                        student={selectedStudent}
+                        onBack={() => setSelectedStudent(null)}
+                        subjectFilter={{
+                          srecord_id: selectedSubject.srecord_id,
+                          subject_name: selectedSubject.subject_name,
+                        }}
+                        isLoading={isLoadingStudentDetail}
+                      />
+                    ) : (
+                    <>
                     <div className="flex gap-3 flex-wrap items-center justify-center md:justify-start">
                       <Button 
                         className="bg-(--button-green) hover:bg-green-700 text-white"
@@ -757,6 +818,7 @@ export const ClassList = () => {
                           setSelectedSubject(null);
                           setRemarksFilter('all');
                           setStudentSearchQuery('');
+                          setSelectedStudent(null);
                         }}
                       >
                         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -806,14 +868,26 @@ export const ClassList = () => {
                         onClick={() => setIsImportSubjectGradeSheetModalOpen(true)}
                       >
                         <Upload className="mr-2 h-4 w-4" />
-                        Import Grade Sheet (.xlsx)
+                        Import Grade Sheet (.csv)
+                      </Button>
+                      <Button
+                        className="bg-(--button-green) hover:bg-green-700 text-white"
+                        onClick={() => setIsImportAttendanceModalOpen(true)}
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        Import Attendance (.csv)
                       </Button>
                       <Button 
                         className="bg-(--navbar-bg) hover:bg-yellow-300 text-black"
                         onClick={handleDownloadSubjectTemplate}
+                        disabled={isDownloadingSubjectTemplate}
                       >
-                        <Download className="mr-2 h-4 w-4" />
-                        Download Grade Sheet Template (.xlsx)
+                        {isDownloadingSubjectTemplate ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="mr-2 h-4 w-4" />
+                        )}
+                        {isDownloadingSubjectTemplate ? 'Downloading Template...' : 'Download Grade Sheet Template (.csv)'}
                       </Button>
                     </div>
 
@@ -845,7 +919,19 @@ export const ClassList = () => {
                               </tr>
                             ) : filteredSubjectStudents.length > 0 ? (
                               filteredSubjectStudents.map((student) => (
-                                <tr key={student.id} className="hover:bg-gray-50">
+                                <tr
+                                  key={student.id}
+                                  className="hover:bg-gray-50 cursor-pointer"
+                                  onClick={() => {
+                                    const matchingStudent = studentsForSelectedSubject.find(
+                                      (subjectStudent) => subjectStudent.student_id === student.id
+                                    );
+
+                                    if (matchingStudent) {
+                                      handleSelectStudent(matchingStudent);
+                                    }
+                                  }}
+                                >
                                   <td className="px-6 py-4 whitespace-nowrap text-sm text-left text-gray-900">
                                     {student.name}
                                   </td>
@@ -879,6 +965,8 @@ export const ClassList = () => {
                         </table>
                       </div>
                     </div>
+                    </>
+                    )}
                   </TabsContent>
 
                   {/* Subject Summary Tab */}
@@ -907,7 +995,16 @@ export const ClassList = () => {
         onClose={() => setIsImportGradeSheetModalOpen(false)}
         onUpload={handleImportGradeSheet}
         title="Import Grade Sheets"
-        acceptedFileTypes={['.xlsx']}
+        acceptedFileTypes={['.csv']}
+        maxSizeMB={5}
+      />
+
+      <FileUploadModal
+        isOpen={isImportAttendanceModalOpen}
+        onClose={() => setIsImportAttendanceModalOpen(false)}
+        onUpload={handleImportAttendanceSheet}
+        title="Import Attendance Sheet"
+        acceptedFileTypes={['.csv']}
         maxSizeMB={5}
       />
 
@@ -925,8 +1022,14 @@ export const ClassList = () => {
         onClose={() => setIsImportSubjectGradeSheetModalOpen(false)}
         onUpload={handleImportSubjectGradeSheet}
         title="Import Subject Grade Sheet"
-        acceptedFileTypes={['.xlsx']}
+        acceptedFileTypes={['.csv']}
         maxSizeMB={5}
+      />
+
+      <ImportResultModal
+        isOpen={Boolean(importSummary)}
+        onClose={() => setImportSummary(null)}
+        summary={importSummary}
       />
     </div>
   );
