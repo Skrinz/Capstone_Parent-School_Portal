@@ -131,9 +131,9 @@ const studentsController = {
       }
 
       const fileName = String(req.file.originalname || "").toLowerCase();
-      if (!fileName.endsWith(".xlsx")) {
+      if (!fileName.endsWith(".csv")) {
         return res.status(400).json({
-          message: "Invalid file type. Only .xlsx files are allowed.",
+          message: "Invalid file type. Only .csv files are allowed.",
         });
       }
 
@@ -144,7 +144,7 @@ const studentsController = {
         if (!firstSheetName) {
           return res
             .status(400)
-            .json({ message: "Invalid XLSX file: No worksheet found." });
+            .json({ message: "Invalid CSV file: No worksheet found." });
         }
         worksheetRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
           header: 1,
@@ -154,13 +154,13 @@ const studentsController = {
         });
       } catch {
         return res.status(400).json({
-          message: "Invalid XLSX file. Please upload a valid .xlsx student list.",
+          message: "Invalid CSV file. Please upload a valid .csv student list.",
         });
       }
 
       if (!worksheetRows.length) {
         return res.status(400).json({
-          message: "Invalid XLSX format: The worksheet is empty.",
+          message: "Invalid CSV format: The file is empty.",
         });
       }
 
@@ -183,7 +183,7 @@ const studentsController = {
         syearEndIdx === -1
       ) {
         return res.status(400).json({
-          message: "Invalid XLSX format: Required columns missing",
+          message: "Invalid CSV format: Required columns missing",
         });
       }
 
@@ -199,11 +199,12 @@ const studentsController = {
         };
       });
 
-      const students = await studentsService.importStudents(rows);
+      const result = await studentsService.importStudents(rows);
 
       res.status(200).json({
         message: "Students imported successfully",
-        data: students,
+        data: result.students,
+        summary: result.summary,
       });
     } catch (error) {
       if (

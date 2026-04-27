@@ -32,6 +32,17 @@ const normalizeGradeLevelName = (gradeLevel) => {
   return gradeAliases[normalized] ?? null;
 };
 
+const isImportedStudentUnchanged = (existingStudent, payload) =>
+  existingStudent &&
+  existingStudent.fname === payload.fname &&
+  existingStudent.lname === payload.lname &&
+  existingStudent.sex === payload.sex &&
+  existingStudent.lrn_number === payload.lrn_number &&
+  existingStudent.gl_id === payload.gl_id &&
+  existingStudent.syear_start === payload.syear_start &&
+  existingStudent.syear_end === payload.syear_end &&
+  existingStudent.status === payload.status;
+
 const studentsService = {
   /**
    * Public LRN prefix search used during parent registration.
@@ -398,7 +409,17 @@ const studentsService = {
     }
 
     if (normalizedRows.length === 0) {
-      return [];
+      return {
+        students: [],
+        summary: {
+          added: 0,
+          replaced: 0,
+          unchanged: 0,
+          failed: 0,
+          totalProcessed: 0,
+          failures: [],
+        },
+      };
     }
 
     const existingStudents = await prisma.student.findMany({
@@ -409,16 +430,26 @@ const studentsService = {
       },
       select: {
         student_id: true,
+        fname: true,
+        lname: true,
+        sex: true,
         lrn_number: true,
+        gl_id: true,
+        syear_start: true,
+        syear_end: true,
+        status: true,
       },
     });
 
     const existingStudentByKey = new Map(
-      existingStudents.map((student) => [student.lrn_number, student.student_id]),
+      existingStudents.map((student) => [student.lrn_number, student]),
     );
 
-    const savedStudentIds = await prisma.$transaction(async (tx) => {
+    const importSummary = await prisma.$transaction(async (tx) => {
       const ids = [];
+      let added = 0;
+      let replaced = 0;
+      let unchanged = 0;
 
       for (const row of normalizedRows) {
         const payload = {
@@ -432,15 +463,27 @@ const studentsService = {
           status: "ENROLLED",
         };
 
-        const existingStudentId = existingStudentByKey.get(row.lrn_number);
+        const existingStudent = existingStudentByKey.get(row.lrn_number);
 
-        if (existingStudentId) {
+        if (existingStudent) {
+          if (isImportedStudentUnchanged(existingStudent, payload)) {
+            ids.push(existingStudent.student_id);
+            unchanged += 1;
+            continue;
+          }
+
           const updatedStudent = await tx.student.update({
-            where: { student_id: existingStudentId },
+            where: { student_id: existingStudent.student_id },
             data: payload,
             select: { student_id: true },
           });
           ids.push(updatedStudent.student_id);
+          replaced += 1;
+          existingStudentByKey.set(row.lrn_number, {
+            ...existingStudent,
+            ...payload,
+            student_id: updatedStudent.student_id,
+          });
           continue;
         }
 
@@ -448,18 +491,34 @@ const studentsService = {
           data: payload,
           select: { student_id: true },
         });
-        existingStudentByKey.set(row.lrn_number, createdStudent.student_id);
+        existingStudentByKey.set(row.lrn_number, {
+          ...payload,
+          student_id: createdStudent.student_id,
+        });
         ids.push(createdStudent.student_id);
+        added += 1;
       }
 
-      return ids;
+      return { ids, added, replaced, unchanged };
     });
 
-    return prisma.student.findMany({
-      where: { student_id: { in: savedStudentIds } },
+    const students = await prisma.student.findMany({
+      where: { student_id: { in: importSummary.ids } },
       include: { grade_level: true },
       orderBy: [{ fname: "asc" }, { lname: "asc" }],
     });
+
+    return {
+      students,
+      summary: {
+        added: importSummary.added,
+        replaced: importSummary.replaced,
+        unchanged: importSummary.unchanged,
+        failed: 0,
+        totalProcessed: normalizedRows.length,
+        failures: [],
+      },
+    };
   },
 
   async updateStudent(studentId, updateData) {

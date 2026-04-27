@@ -319,14 +319,14 @@ export const ManageStudents = () => {
   const handleBatchUpload = async (file: File) => {
     setIsSubmitting(true);
     try {
-      await studentsApi.import(file);
-      setIsBatchModalOpen(false);
+      const response = await studentsApi.import(file);
       await loadStudents(1);
       setCurrentPage(1);
+      return response;
     } catch (err) {
       throw err instanceof Error
         ? err
-        : new Error("Failed to upload student XLSX");
+        : new Error("Failed to upload student CSV");
     } finally {
       setIsSubmitting(false);
     }

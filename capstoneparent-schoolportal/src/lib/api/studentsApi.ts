@@ -3,6 +3,7 @@
  */
 
 import { apiFetch, bearerHeaders } from "./base";
+import type { ImportSummaryResponse } from "@/lib/importSummary";
 import type {
   ApiData,
   ApiList,
@@ -107,11 +108,11 @@ export const studentsApi = {
     const formData = new FormData();
     formData.append("file", file);
 
-    return apiFetch<{ message: string; data: StudentRecord[] }>(
+    return apiFetch<ImportSummaryResponse>(
       "/students/import",
       {
         method: "POST",
-        successMessage: "Student XLSX uploaded successfully.",
+        successMessage: "Student CSV uploaded successfully.",
         headers: bearerHeaders(),
         body: formData,
       },

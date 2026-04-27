@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, CheckCircle2, FileText, PlusCircle, Search, Upload, UserPlus, X } from 'lucide-react';
+import { FileText, Search, Upload, UserPlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FormInputError } from '@/components/ui/FormInputError';
 import { cn } from '@/lib/utils';
@@ -9,8 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { addStudentToClass, lookupStudents } from '@/Pages/principal-pages/services/api';
 import type { ClassItem, Student, StudentAddSummary, StudentLookupResult } from '@/Pages/principal-pages/types';
 import { ActionConfirmationModal } from '@/components/general/ActionConfirmationModal';
+import { ImportResultModal } from '@/components/general/ImportResultModal';
 import { validateFiles } from '@/lib/fileValidation';
 import { useApiFeedbackStore } from '@/lib/store/apiFeedbackStore';
+import { emptyImportSummary, resolveImportSummary } from '@/lib/importSummary';
 
 interface StudentAddModalProps {
   isOpen: boolean;
@@ -18,39 +20,14 @@ interface StudentAddModalProps {
   selectedClass: ClassItem | null;
   existingStudents: Student[];
   onStudentsChanged: () => Promise<void>;
-  onBatchUpload: (classId: number, file: File) => Promise<{ data?: unknown[] } | void>;
+  onBatchUpload: (
+    classId: number,
+    file: File,
+  ) => Promise<{ data?: unknown; summary?: Partial<StudentAddSummary> } | void>;
 }
 
-const normalizeText = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
-
-const findLookupCandidate = (
-  rawEntry: string,
-  results: StudentLookupResult[]
-): StudentLookupResult | null => {
-  if (results.length === 0) return null;
-
-  const normalizedEntry = normalizeText(rawEntry);
-  const digitsOnly = rawEntry.replace(/\D/g, '');
-
-  if (digitsOnly) {
-    const exactLrn = results.find((student) => student.lrn === digitsOnly);
-    if (exactLrn) return exactLrn;
-  }
-
-  const exactName = results.find(
-    (student) => normalizeText(student.name) === normalizedEntry
-  );
-  if (exactName) return exactName;
-
-  return results.length === 1 ? results[0] : null;
-};
-
 const emptySummary: StudentAddSummary = {
-  added: 0,
-  unchanged: 0,
-  failed: 0,
-  totalProcessed: 0,
-  failures: [],
+  ...emptyImportSummary,
 };
 
 export const StudentAddModal = ({
@@ -232,12 +209,7 @@ export const StudentAddModal = ({
     try {
       const response = await onBatchUpload(selectedClass.id, selectedBatchFile);
       await onStudentsChanged();
-      const added = Array.isArray(response?.data) ? response.data.length : 0;
-      setSummary({
-        ...emptySummary,
-        added,
-        totalProcessed: added,
-      });
+      setSummary(resolveImportSummary(response));
       setSelectedBatchFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -260,13 +232,12 @@ export const StudentAddModal = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+    <>
+    <Dialog open={isOpen && !summary} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-2xl border-none bg-[#FFFACD] p-0 gap-0" showCloseButton={false}>
         <DialogHeader className="p-6 pb-4">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl font-bold text-gray-900">
-              {summary ? 'Added Students' : 'Add Students'}
-            </DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-gray-900">Add Students</DialogTitle>
             <button
               onClick={handleClose}
               className="text-red-600 transition-colors hover:text-red-700"
@@ -283,74 +254,7 @@ export const StudentAddModal = ({
         </DialogHeader>
 
         <div className="px-6 pb-6">
-          {summary ? (
-            <div className="space-y-6 rounded-b-xl bg-white p-6 text-center">
-              <div className="flex items-center justify-center gap-3 text-gray-900">
-                <CheckCircle2 className="h-10 w-10 text-green-600" />
-                <span className="text-4xl font-bold">Added Students</span>
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="text-2xl font-bold text-gray-900">Summary</h3>
-                <div className="space-y-2 text-xl text-gray-700">
-                  <div className="flex items-center justify-center gap-2">
-                    <PlusCircle className="h-6 w-6 text-green-600" />
-                    <span>
-                      <span className="font-semibold text-green-600">{summary.added}</span> students added
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-center gap-2">
-                    <AlertCircle className="h-6 w-6 text-gray-500" />
-                    <span>
-                      <span className="font-semibold text-gray-700">{summary.unchanged}</span> records unchanged
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-center gap-2">
-                    <X className="h-6 w-6 text-red-600" />
-                    <span>
-                      <span className="font-semibold text-red-600">{summary.failed}</span> records failed
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <p className="text-2xl font-bold text-gray-900">
-                Total processed: {summary.totalProcessed}
-              </p>
-
-              {summary.failures.length > 0 && (
-                <div className="max-h-40 overflow-y-auto rounded-lg border border-red-200 bg-red-50 p-4 text-left">
-                  <p className="mb-2 font-semibold text-red-700">Failed entries</p>
-                  <div className="space-y-2 text-sm text-red-700">
-                    {summary.failures.map((failure, index) => (
-                      <p key={`${failure.input}-${index}`}>
-                        <span className="font-semibold">{failure.input}:</span> {failure.message}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setSummary(null)}
-                  className="border-gray-300 bg-white text-gray-900 hover:bg-gray-50"
-                >
-                  Add More
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleClose}
-                  className="bg-(--button-green) text-white hover:bg-green-700"
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
               <TabsList className="grid w-full grid-cols-2 bg-white">
                 <TabsTrigger value="single">One at a Time</TabsTrigger>
                 <TabsTrigger value="batch">Batch</TabsTrigger>
@@ -488,8 +392,7 @@ export const StudentAddModal = ({
                   {isSubmitting ? 'Uploading...' : 'Upload XLSX'}
                 </Button>
               </TabsContent>
-            </Tabs>
-          )}
+          </Tabs>
         </div>
 
         <ActionConfirmationModal
@@ -513,5 +416,12 @@ export const StudentAddModal = ({
         />
       </DialogContent>
     </Dialog>
+
+      <ImportResultModal
+        isOpen={Boolean(summary)}
+        onClose={handleClose}
+        summary={summary}
+      />
+    </>
   );
 };
