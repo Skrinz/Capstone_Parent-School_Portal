@@ -53,6 +53,7 @@ export interface StudentLookupResult {
 }
 
 export interface StudentAddSummary {
+  replaced: number;
   added: number;
   unchanged: number;
   failed: number;

@@ -97,8 +97,8 @@ export const StudentAddModal = ({
     }
 
     const validation = validateFiles([file], {
-      acceptedTypes: ['.xlsx'],
-      label: 'student XLSX',
+      acceptedTypes: ['.csv'],
+      label: 'student CSV',
     });
 
     if (!validation.valid) {
@@ -193,7 +193,7 @@ export const StudentAddModal = ({
   const handleBatchAdd = () => {
     if (!selectedClass) return;
     if (!selectedBatchFile) {
-      showError('Please choose an .xlsx file to upload.');
+      showError('Please choose a .csv file to upload.');
       return;
     }
     setShowBatchConfirm(true);
@@ -222,7 +222,7 @@ export const StudentAddModal = ({
         failures: [
           {
             input: selectedBatchFile.name,
-            message: error instanceof Error ? error.message : 'Failed to upload student XLSX.',
+            message: error instanceof Error ? error.message : 'Failed to upload student CSV.',
           },
         ],
       });
@@ -348,14 +348,14 @@ export const StudentAddModal = ({
 
               <TabsContent value="batch" className="space-y-4">
                 <p className="text-sm text-gray-700">
-                  Upload a student list XLSX file. The file should include a <strong>Grade Level</strong> column using Kindergarten or Grade 1 to Grade 6.
+                  Upload a student list CSV file. The file should include <strong>First Name</strong>, <strong>Last Name</strong>, <strong>Sex</strong>, <strong>LRN Number</strong>, <strong>School Year Start</strong>, and <strong>School Year End</strong>.
                 </p>
 
                 <div className="rounded-md border-2 border-dashed border-black bg-white p-4">
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".xlsx"
+                    accept=".csv"
                     onChange={handleBatchFileChange}
                     disabled={isSubmitting}
                     className="hidden"
@@ -368,10 +368,10 @@ export const StudentAddModal = ({
                     className="w-full rounded-md border border-gray-300 bg-gray-100 text-black hover:bg-gray-200"
                   >
                     <Upload className="mr-2 h-4 w-4" />
-                    Select XLSX File
+                    Select CSV File
                   </Button>
                   <p className="mt-1 text-center text-xs text-gray-400">
-                    Accepted: XLSX only · No size limit
+                    Accepted: CSV only · No size limit
                   </p>
 
                   <div className="mt-3 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
@@ -389,7 +389,7 @@ export const StudentAddModal = ({
                   className="h-12 w-full bg-(--button-green) text-lg font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Upload className="mr-2 h-5 w-5" />
-                  {isSubmitting ? 'Uploading...' : 'Upload XLSX'}
+                  {isSubmitting ? 'Uploading...' : 'Upload CSV'}
                 </Button>
               </TabsContent>
           </Tabs>
