@@ -107,15 +107,35 @@ export const FileUploadModal = ({
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
+  const formatDisplayFileName = (fileName: string, maxLength = 40) => {
+    if (fileName.length <= maxLength) return fileName;
+
+    const extensionIndex = fileName.lastIndexOf('.');
+    if (extensionIndex <= 0 || extensionIndex === fileName.length - 1) {
+      return `${fileName.slice(0, maxLength - 3)}...`;
+    }
+
+    const extension = fileName.slice(extensionIndex);
+    const baseNameMaxLength = maxLength - extension.length - 3;
+
+    if (baseNameMaxLength <= 0) {
+      return `${fileName.slice(0, maxLength - 3)}...`;
+    }
+
+    return `${fileName.slice(0, baseNameMaxLength)}...${extension}`;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="bg-[#FFFACD] border-none max-w-md p-0 gap-0" showCloseButton={false}>
-        <DialogHeader className="p-6 pb-4">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl font-bold text-gray-900">{title}</DialogTitle>
+        <DialogHeader className="relative p-6 pb-4">
+          <div className="pr-12">
+            <DialogTitle className="min-w-0 text-2xl leading-tight font-bold text-gray-900">
+              {title}
+            </DialogTitle>
             <button
               onClick={handleClose}
-              className="text-red-600 hover:text-red-700 transition-colors"
+              className="absolute top-6 right-6 text-red-600 transition-colors hover:text-red-700"
               disabled={isUploading}
             >
               <X className="h-8 w-8 font-bold" strokeWidth={3} />
@@ -151,14 +171,16 @@ export const FileUploadModal = ({
           </div>
 
           {/* Selected File Display */}
-          <div className="min-h-[120px] bg-white border-2 border-gray-300 rounded-lg p-4">
+          <div className="min-h-[120px] overflow-hidden bg-white border-2 border-gray-300 rounded-lg p-4">
             {selectedFile ? (
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-4 overflow-hidden">
                 <div className="flex-shrink-0">
                   {getFileIcon()}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 truncate">{selectedFile.name}</p>
+                <div className="min-w-0 flex-1 overflow-hidden">
+                  <p className="font-semibold text-gray-900 truncate" title={selectedFile.name}>
+                    {formatDisplayFileName(selectedFile.name)}
+                  </p>
                   <p className="text-sm text-gray-600">{formatFileSize(selectedFile.size)}</p>
                   <p className="text-xs text-gray-500 mt-1">
                     Type: {selectedFile.type || 'Unknown'}
