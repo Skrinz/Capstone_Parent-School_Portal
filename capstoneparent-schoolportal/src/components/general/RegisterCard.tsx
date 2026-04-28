@@ -122,6 +122,7 @@ export const RegisterCard = () => {
   const { showError, showSuccess, clearFeedback } = useApiFeedbackStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -303,6 +304,30 @@ export const RegisterCard = () => {
         setSearchParams(next, { replace: true });
       });
   }, [clearFeedback, searchParams, setSearchParams, showError, showSuccess]);
+
+  // ─── Resend OTP Cooldown ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (resendCountdown > 0) {
+      const timer = setTimeout(
+        () => setResendCountdown(resendCountdown - 1),
+        1000,
+      );
+      return () => clearTimeout(timer);
+    }
+  }, [resendCountdown]);
+
+  const handleResendOtp = async () => {
+    if (resendCountdown > 0 || isVerifyingOtp) return;
+
+    clearFeedback();
+    try {
+      await authApi.resendRegistrationOtp(pendingEmail);
+      showSuccess("Verification code resent successfully");
+      setResendCountdown(60);
+    } catch (error) {
+      showError(getErrorMessage(error, "Unable to resend OTP"));
+    }
+  };
 
   // ─── File handling ───────────────────────────────────────────────────────────
 
@@ -964,6 +989,20 @@ export const RegisterCard = () => {
               >
                 {isVerifyingOtp ? "Verifying…" : "Verify OTP"}
               </Button>
+
+              <div className="text-center mt-6">
+                <p className="text-gray-600 mb-2">Didn't receive the code?</p>
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={resendCountdown > 0 || isVerifyingOtp}
+                  className="text-blue-600 font-semibold hover:underline disabled:text-gray-400 disabled:no-underline transition-all"
+                >
+                  {resendCountdown > 0
+                    ? `Resend code (${resendCountdown}s)`
+                    : "Resend code"}
+                </button>
+              </div>
             </div>
           </form>
         )}

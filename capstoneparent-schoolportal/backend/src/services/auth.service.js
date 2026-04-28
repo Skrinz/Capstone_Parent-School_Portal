@@ -146,6 +146,34 @@ const authService = {
     };
   },
 
+  async resendRegistrationOTP(email) {
+    const pending = getPendingRegistration(email);
+    if (!pending) {
+      throw new Error(
+        "No pending registration found or it has expired. Please register again.",
+      );
+    }
+
+    const otpCode = generateOTP();
+    const otpExpiresAt = Date.now() + PENDING_TTL_MS;
+
+    // Update the pending entry
+    storePendingRegistration(email, {
+      ...pending,
+      otpCode,
+      otpExpiresAt,
+    });
+
+    const emailSent = await sendOTPEmail(email, otpCode, {
+      isRegistration: true,
+    });
+    if (!emailSent) {
+      throw new Error("Failed to send OTP email");
+    }
+
+    return true;
+  },
+
   //http://localhost:5000/api/auth/register/employee
   async initiateEmployeeRegistration(userData, files = []) {
     const {

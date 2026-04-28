@@ -23,8 +23,9 @@ export const SignInCard = () => {
   const [step, setStep] = useState<Step>("credentials");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-   const [otpCode, setOtpCode] = useState("");
+  const [otpCode, setOtpCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { showError, showSuccess, clearFeedback } = useApiFeedbackStore();
   const navigate = useNavigate();
@@ -33,23 +34,21 @@ export const SignInCard = () => {
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   // ── Finish: store session and navigate ──────────────────────────────────────
-  // NOTE: device token is always written per-email BEFORE calling finalise,
-  // so no rawDeviceToken parameter is needed here.
   const finalise = (token: string, user: AuthUser) => {
     useAuthStore.getState().loginSuccess(token, user);
-
     const role = useAuthStore.getState().user?.role ?? "staff";
     navigate(getDefaultRouteForRole(role));
   };
-  //masking the email
+
+  // masking the email
   const maskEmail = (email: string): string => {
-  const [local, domain] = email.split("@");
-  if (!domain) return email;
-  if (local.length <= 2) {
-    return local[0] + "*".repeat(local.length - 1) + "@" + domain;
-  }
-  return local.slice(0, 2) + "*".repeat(local.length - 2) + "@" + domain;
-};
+    const [local, domain] = email.split("@");
+    if (!domain) return email;
+    if (local.length <= 2) {
+      return local[0] + "*".repeat(local.length - 1) + "@" + domain;
+    }
+    return local.slice(0, 2) + "*".repeat(local.length - 2) + "@" + domain;
+  };
 
   // ── Step 1: credentials ─────────────────────────────────────────────────────
   const handleCredentials = async (e: React.FormEvent) => {
@@ -75,7 +74,6 @@ export const SignInCard = () => {
     }
 
     setErrors({});
-
     setLoading(true);
 
     try {
@@ -126,7 +124,6 @@ export const SignInCard = () => {
 
     try {
       const res = await authApi.verifyOtp(normalizedEmail, otpCode);
-      // Save device token keyed to this specific email
       if (res.data.deviceToken) {
         setDeviceToken(res.data.deviceToken, normalizedEmail);
       }
@@ -138,7 +135,17 @@ export const SignInCard = () => {
     }
   };
 
+  // ─── Resend OTP Cooldown ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (resendCountdown > 0) {
+      const timer = setTimeout(() => setResendCountdown(resendCountdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCountdown]);
+
   const handleResendOtp = async () => {
+    if (resendCountdown > 0 || loading) return;
+
     clearFeedback();
     const normalizedEmail = email.trim();
     if (!normalizedEmail) {
@@ -153,6 +160,8 @@ export const SignInCard = () => {
     setLoading(true);
     try {
       await authApi.sendOtp(normalizedEmail);
+      showSuccess("Verification code resent successfully");
+      setResendCountdown(60);
     } catch (err) {
       showError(err instanceof Error ? err.message : "Could not resend OTP");
     } finally {
@@ -196,7 +205,6 @@ export const SignInCard = () => {
       .verifyOtp(emailFromLink, normalizedOtpFromLink)
       .then((res) => {
         showSuccess("OTP verified successfully.");
-        // Save device token keyed to this specific email
         if (res.data.deviceToken) {
           setDeviceToken(res.data.deviceToken, emailFromLink);
         }
@@ -327,10 +335,12 @@ export const SignInCard = () => {
               <button
                 type="button"
                 onClick={handleResendOtp}
-                disabled={loading}
-                className="text-blue-600 hover:underline disabled:opacity-50"
+                disabled={loading || resendCountdown > 0}
+                className="text-blue-600 hover:underline disabled:opacity-50 disabled:no-underline"
               >
-                Resend code
+                {resendCountdown > 0
+                  ? `Resend code (${resendCountdown}s)`
+                  : "Resend code"}
               </button>
             </div>
           </form>

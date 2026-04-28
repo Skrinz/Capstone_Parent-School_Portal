@@ -35,6 +35,15 @@ export const authApi = {
     );
   },
 
+  // POST /api/auth/resend-registration-otp
+  resendRegistrationOtp(email: string) {
+    return apiFetch<ApiMessage>("/auth/resend-registration-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+  },
+
   // POST /api/auth/login
   login(email: string, password: string, deviceToken?: string) {
     return apiFetch<ApiData<{ token: string; user: AuthUser }>>("/auth/login", {
