@@ -154,7 +154,7 @@ export const downloadSubjectGradeSheetTemplate = async () => {
       headers: bearerHeaders(),
     });
 
-    const fileName = response.data.fileName || 'SubjectTeacher_Grades-Attendance_Template.csv';
+    const fileName = response.data.fileName || 'SubjectTeacher_Grades-Attendance_Template.xlsx';
     const downloadResponse = await fetch(response.data.downloadUrl);
 
     if (!downloadResponse.ok) {

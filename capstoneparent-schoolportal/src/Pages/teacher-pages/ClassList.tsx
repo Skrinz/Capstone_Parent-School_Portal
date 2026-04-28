@@ -21,6 +21,7 @@ import { SubjectSummary } from "./SubjectSummary";
 import { FileUploadModal } from './FileUploadModal';
 import {
   downloadGradeSheetTemplate,
+  downloadSubjectGradeSheetTemplate,
   exportAllQuartersGradeSheet,
   uploadGradeAttendanceWorkbook,
   uploadClassSchedulePicture,
@@ -181,7 +182,11 @@ export const ClassList = () => {
   const handleDownloadTemplate = async () => {
     setIsDownloadingClassTemplate(true);
     try {
-      await downloadGradeSheetTemplate();
+      if (activeTab === 'subject' && selectedSubject) {
+        await downloadSubjectGradeSheetTemplate();
+      } else {
+        await downloadGradeSheetTemplate();
+      }
     } catch (error) {
       showError('Failed to download template. Please try again.');
     } finally {
