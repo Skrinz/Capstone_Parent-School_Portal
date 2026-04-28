@@ -12,6 +12,7 @@ interface ActionConfirmationModalProps {
   cancelLabel?: string;
   confirmVariant?: 'primary' | 'destructive';
   isLoading?: boolean;
+  children?: React.ReactNode;
 }
 
 export const ActionConfirmationModal: React.FC<ActionConfirmationModalProps> = ({
@@ -24,11 +25,13 @@ export const ActionConfirmationModal: React.FC<ActionConfirmationModalProps> = (
   cancelLabel = 'Cancel',
   confirmVariant = 'primary',
   isLoading = false,
+  children,
 }) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <div className="space-y-6">
         <p className="text-base text-gray-900">{message}</p>
+        {children}
 
         <div className="flex justify-end gap-3">
           <Button

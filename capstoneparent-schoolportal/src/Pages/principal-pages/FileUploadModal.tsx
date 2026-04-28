@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Upload, FileText, Image as ImageIcon } from 'lucide-react';
 import {
@@ -31,8 +31,23 @@ export const FileUploadModal = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showError, clearFeedback } = useApiFeedbackStore();
+
+  useEffect(() => {
+    if (!selectedFile || !selectedFile.type.startsWith('image/')) {
+      setImagePreviewUrl(null);
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(selectedFile);
+    setImagePreviewUrl(previewUrl);
+
+    return () => {
+      URL.revokeObjectURL(previewUrl);
+    };
+  }, [selectedFile]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -79,6 +94,7 @@ export const FileUploadModal = ({
   const handleClose = () => {
     setSelectedFile(null);
     setIsUploading(false);
+    setShowConfirm(false);
     clearFeedback();
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -125,94 +141,107 @@ export const FileUploadModal = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="bg-[#FFFACD] border-none max-w-md p-0 gap-0" showCloseButton={false}>
-        <DialogHeader className="relative p-6 pb-4">
-          <div className="pr-12">
-            <DialogTitle className="min-w-0 text-2xl leading-tight font-bold text-gray-900">
-              {title}
-            </DialogTitle>
-            <button
-              onClick={handleClose}
-              className="absolute top-6 right-6 text-red-600 transition-colors hover:text-red-700"
-              disabled={isUploading}
-            >
-              <X className="h-8 w-8 font-bold" strokeWidth={3} />
-            </button>
-          </div>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen && !showConfirm} onOpenChange={handleClose}>
+        <DialogContent className="bg-[#FFFACD] border-none max-w-md p-0 gap-0" showCloseButton={false}>
+          <DialogHeader className="relative p-6 pb-4">
+            <div className="pr-12">
+              <DialogTitle className="min-w-0 text-2xl leading-tight font-bold text-gray-900">
+                {title}
+              </DialogTitle>
+              <button
+                onClick={handleClose}
+                className="absolute top-6 right-6 text-red-600 transition-colors hover:text-red-700"
+                disabled={isUploading}
+              >
+                <X className="h-8 w-8 font-bold" strokeWidth={3} />
+              </button>
+            </div>
+          </DialogHeader>
 
-        <div className="px-6 pb-6 space-y-4">
-          {/* File Input Button */}
-          <div className="space-y-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={acceptedFileTypes.join(',')}
-              onChange={handleFileSelect}
-              className="hidden"
-              disabled={isUploading}
-            />
+          <div className="px-6 pb-6 space-y-4">
+            {/* File Input Button */}
+            <div className="space-y-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={acceptedFileTypes.join(',')}
+                onChange={handleFileSelect}
+                className="hidden"
+                disabled={isUploading}
+              />
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full h-12 bg-white hover:bg-gray-50 text-gray-900 border-2 border-gray-300"
+                disabled={isUploading}
+              >
+                <Upload className="mr-2 h-5 w-5" />
+                Select File
+              </Button>
+              <p className="text-sm text-gray-600 text-center">
+                Accepted formats: {acceptedFileTypes.join(', ')} (Max {maxSizeMB}MB)
+              </p>
+            </div>
+
+            {/* Selected File Display */}
+            <div className="min-h-[120px] overflow-hidden bg-white border-2 border-gray-300 rounded-lg p-4">
+              {selectedFile ? (
+                <div className="flex items-start gap-4 overflow-hidden">
+                  <div className="flex-shrink-0">
+                    {getFileIcon()}
+                  </div>
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <p className="font-semibold text-gray-900 truncate" title={selectedFile.name}>
+                      {formatDisplayFileName(selectedFile.name)}
+                    </p>
+                    <p className="text-sm text-gray-600">{formatFileSize(selectedFile.size)}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Type: {selectedFile.type || 'Unknown'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                  <FileText className="h-12 w-12 mb-2" />
+                  <p className="text-sm">No file selected</p>
+                </div>
+              )}
+            </div>
+
+            {/* Upload Button */}
             <Button
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full h-12 bg-white hover:bg-gray-50 text-gray-900 border-2 border-gray-300"
+              onClick={handleUploadClick}
               disabled={isUploading}
+              className="w-full h-12 bg-(--button-green) hover:bg-green-700 text-white text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Upload className="mr-2 h-5 w-5" />
-              Select File
+              {isUploading ? 'Uploading...' : 'Upload'}
             </Button>
-            <p className="text-sm text-gray-600 text-center">
-              Accepted formats: {acceptedFileTypes.join(', ')} (Max {maxSizeMB}MB)
-            </p>
           </div>
+        </DialogContent>
+      </Dialog>
 
-          {/* Selected File Display */}
-          <div className="min-h-[120px] overflow-hidden bg-white border-2 border-gray-300 rounded-lg p-4">
-            {selectedFile ? (
-              <div className="flex items-start gap-4 overflow-hidden">
-                <div className="flex-shrink-0">
-                  {getFileIcon()}
-                </div>
-                <div className="min-w-0 flex-1 overflow-hidden">
-                  <p className="font-semibold text-gray-900 truncate" title={selectedFile.name}>
-                    {formatDisplayFileName(selectedFile.name)}
-                  </p>
-                  <p className="text-sm text-gray-600">{formatFileSize(selectedFile.size)}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Type: {selectedFile.type || 'Unknown'}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                <FileText className="h-12 w-12 mb-2" />
-                <p className="text-sm">No file selected</p>
-              </div>
-            )}
+      <ActionConfirmationModal
+        isOpen={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={() => void handleUploadConfirm()}
+        title="Confirm File Upload"
+        message={`Are you sure you want to upload "${selectedFile?.name}"?`}
+        confirmLabel="Upload"
+        isLoading={isUploading}
+      >
+        {imagePreviewUrl ? (
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-gray-700">Preview</p>
+            <div className="overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+              <img
+                src={imagePreviewUrl}
+                alt={selectedFile?.name ?? 'Selected upload preview'}
+                className="max-h-80 w-full object-contain"
+              />
+            </div>
           </div>
-
-
-
-          {/* Upload Button */}
-          <Button
-            onClick={handleUploadClick}
-            disabled={isUploading}
-            className="w-full h-12 bg-(--button-green) hover:bg-green-700 text-white text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isUploading ? 'Uploading...' : 'Upload'}
-          </Button>
-        </div>
-
-        <ActionConfirmationModal
-          isOpen={showConfirm}
-          onClose={() => setShowConfirm(false)}
-          onConfirm={() => void handleUploadConfirm()}
-          title="Confirm File Upload"
-          message={`Are you sure you want to upload "${selectedFile?.name}"?`}
-          confirmLabel="Upload"
-          isLoading={isUploading}
-        />
-      </DialogContent>
-    </Dialog>
+        ) : null}
+      </ActionConfirmationModal>
+    </>
   );
 };
