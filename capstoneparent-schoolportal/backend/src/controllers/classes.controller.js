@@ -248,14 +248,17 @@ const parseSubjectGradeWorksheetRows = (worksheetRows) => {
 };
 
 const createSubjectTeacherTemplateDataUrl = () => {
-  const csvContent = [
+  const workbook = XLSX.utils.book_new();
+
+  const gradesSheet = XLSX.utils.aoa_to_sheet([
     ["LRN Number", "Student Name", "Subject Name", "", "", ""],
     ["", "", "Q1", "Q2", "Q3", "Q4"],
-  ]
-    .map((row) => row.join(","))
-    .join("\r\n");
+  ]);
 
-  return `data:text/csv;charset=utf-8;base64,${Buffer.from(csvContent, "utf8").toString("base64")}`;
+  XLSX.utils.book_append_sheet(workbook, gradesSheet, "Grades");
+
+  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+  return `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${buffer.toString("base64")}`;
 };
 
 const createClassAdviserTemplateDataUrl = () => {

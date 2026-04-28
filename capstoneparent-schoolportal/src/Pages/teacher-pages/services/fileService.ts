@@ -20,6 +20,23 @@ const triggerBrowserDownload = (blob: Blob, fileName: string) => {
   window.URL.revokeObjectURL(url);
 };
 
+/**
+ * Converts a data: URI to a Blob and triggers a download without using fetch().
+ * This avoids CSP connect-src violations when the backend returns a data URI fallback.
+ */
+const triggerDataUriDownload = (dataUri: string, fileName: string) => {
+  const [header, base64Data] = dataUri.split(',');
+  const mimeMatch = header.match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+  const binary = atob(base64Data);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  const blob = new Blob([bytes], { type: mime });
+  triggerBrowserDownload(blob, fileName);
+};
+
 // Download functions
 export const downloadGradeSheetTemplate = async () => {
   try {
@@ -29,7 +46,14 @@ export const downloadGradeSheetTemplate = async () => {
     });
 
     const fileName = response.data.fileName || 'ClassAdviser_Grades-Attendance_Template.xlsx';
-    const downloadResponse = await fetch(response.data.downloadUrl);
+    const { downloadUrl } = response.data;
+
+    if (downloadUrl.startsWith('data:')) {
+      triggerDataUriDownload(downloadUrl, fileName);
+      return;
+    }
+
+    const downloadResponse = await fetch(downloadUrl);
 
     if (!downloadResponse.ok) {
       throw new Error('Failed to download template');
@@ -155,7 +179,14 @@ export const downloadSubjectGradeSheetTemplate = async () => {
     });
 
     const fileName = response.data.fileName || 'SubjectTeacher_Grades-Attendance_Template.xlsx';
-    const downloadResponse = await fetch(response.data.downloadUrl);
+    const { downloadUrl } = response.data;
+
+    if (downloadUrl.startsWith('data:')) {
+      triggerDataUriDownload(downloadUrl, fileName);
+      return;
+    }
+
+    const downloadResponse = await fetch(downloadUrl);
 
     if (!downloadResponse.ok) {
       throw new Error('Failed to download template');

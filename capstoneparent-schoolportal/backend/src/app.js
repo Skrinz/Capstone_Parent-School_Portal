@@ -38,7 +38,7 @@ app.use(
       directives: {
         "img-src": ["'self'", "data:", "https://*.supabase.co", "blob:"],
         "frame-src": ["'self'", "https://www.google.com", "https://*.google.com"],
-        "connect-src": ["'self'", "https://*.supabase.co"],
+        "connect-src": ["'self'", "https://*.supabase.co", "data:"],
       },
     },
   }),
