@@ -166,7 +166,7 @@ export const ManageBooks = () => {
                   <SelectTrigger className="w-40 bg-white">
                     <SelectValue placeholder="Subject" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white">
                     <SelectItem value="all">All</SelectItem>
                     {subjects.map((subject) => (
                       <SelectItem
@@ -183,7 +183,7 @@ export const ManageBooks = () => {
                   <SelectTrigger className="w-40 bg-white">
                     <SelectValue placeholder="Grade Level" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white">
                     <SelectItem value="all">All</SelectItem>
                     {GRADE_LEVELS.map((grade) => (
                       <SelectItem key={grade.id.toString()} value={grade.id.toString()}>
