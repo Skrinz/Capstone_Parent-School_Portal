@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "npm ci --include=dev && npm run build"
+buildCommand = "npm run build"
 
 [deploy]
 startCommand = "npx prisma migrate deploy --schema=backend/prisma/schema.prisma && node backend/src/server.js"
