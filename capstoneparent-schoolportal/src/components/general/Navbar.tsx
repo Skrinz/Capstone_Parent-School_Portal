@@ -65,7 +65,7 @@ export const Navbar = () => {
     },
     {
       key: "learn",
-      label: "Learn about your child",
+      label: "Learn About Your Child",
       to: "/login",
       isActive: location.pathname === "/login",
     },
