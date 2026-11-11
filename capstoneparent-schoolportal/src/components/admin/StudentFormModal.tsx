@@ -175,7 +175,7 @@ export const StudentFormModal = ({
                       : formData.schoolYearEnd,
                 })
               }
-              className={getFieldClassName("schoolYearEnd")}
+              className={getFieldClassName("schoolYearEnd")} disabled
             >
               <option value="">Select school year end</option>
               {endYearOptions.map((year) => (
