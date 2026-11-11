@@ -789,7 +789,7 @@ export const ManageClassLists = () => {
                 setAddFormData({ ...addFormData, schoolYearEnd: value });
                 setAddFormErrors((current) => ({ ...current, schoolYearEnd: '' }));
               }}
-              disabled={isSubmitting}
+              disabled
             >
               <SelectTrigger className={`w-full h-12 bg-white ${addFormErrors.schoolYearEnd ? 'border-red-500 focus:ring-red-500/50' : getSelectColor(addFormData.schoolYearEnd)}`}>
                 <SelectValue placeholder="School Year End" />
